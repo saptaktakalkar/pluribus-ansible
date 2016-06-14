@@ -1,0 +1,11 @@
+---
+- name: PN-CLI VLAN Create
+  hosts: testswitches
+  user: root
+  
+
+  tasks:
+  - name: Create VLAN 
+    pn_vlan: pn_vlancommand='vlan-create' pn_vlanid=140 pn_quiet=True
+    register: cmd_output
+  - debug: var=cmd_output 

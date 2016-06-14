@@ -1,0 +1,11 @@
+---
+- name: PN-CLI Cluster Create
+  hosts: testswitches
+  user: root
+  
+
+  tasks:
+  - name: Create Cluster 
+    pn_clustercreate: pn_clustercommand='cluster-create' pn_clustername='ansible-cluster' pn_clusternode1='dorado-tme-1' pn_clusternode2='dorado-tme-2' pn_clustervalidate=True pn_quiet=True
+    register: cmd_output
+  - debug: var=cmd_output 
