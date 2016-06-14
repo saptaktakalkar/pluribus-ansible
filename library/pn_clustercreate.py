@@ -31,18 +31,24 @@ def main():
 	else:
 		cli = "/usr/bin/cli " 
 	
-	if clustercommand == " ":
+	if clustercommand != "cluster-create":
 		module.fail_json(msg="Invalid command")
 
 
 	if clustername:
 		cluster = cli + clustercommand + ' name ' + clustername
-
+	else:
+		module.fail_json(msg="Missing cluster name")
+		
 	if clusternode1:
 		cluster += ' cluster-node-1 ' + clusternode1
-	
+	else:
+		module.fail_json(msg="Missing cluster-node-1")
+		
 	if clusternode2: 
 		cluster += ' cluster-node-2 ' + clusternode2
+	else:
+		module.fail_json(msg="Missing cluster-node-1")
 
 	if clustervalidate==True: 
 		cluster += ' validate '
