@@ -1,7 +1,6 @@
 #!/usr/bin/python
-# Test PN CLI vlag-create
+# Test PN CLI vlag-create/vlag-delete
 
-import sys
 import subprocess
 import shlex
 import json
@@ -29,30 +28,47 @@ def main():
 	quiet = module.params['pn_quiet']
 
 	if quiet==True:
-		vlag = '/usr/bin/cli --quiet ' + vlagcommand 
+		vlag = '/usr/bin/cli --quiet ' 
 	else:
-		vlag = '/usr/bin/cli ' + vlagcommand 
+		vlag = '/usr/bin/cli '  
 
-	if vlagname:
-		vlag += ' name ' + vlagname
-	else:
-                module.fail_json(msg="Failed:Error in vlag name")
+	if vlagcommand=="vlag-create":
 
-	if vlaglport: 
-		vlag += ' port ' + str(vlaglport)
-	else:
-		module.fail_json(msg="Failed:Error in vlag port")
+		vlag += vlagcommand
 
-	if vlagpeerport:
-		vlag += ' peer-port ' + str(vlagpeerport)
-	else:
-		module.fail_json(msg="Failed:Error in vlag peer port")
+		if vlagname:
+			vlag += ' name ' + vlagname
+		else:
+        	        module.fail_json(msg="Failed:Error in vlag name")
 
-	if vlagmode:
-		vlag += ' mode ' + vlagmode
+		if vlaglport: 
+			vlag += ' port ' + str(vlaglport)
+		else:
+			module.fail_json(msg="Failed:Error in vlag port")
+
+		if vlagpeerport:
+			vlag += ' peer-port ' + str(vlagpeerport)
+		else:
+			module.fail_json(msg="Failed:Error in vlag peer port")
+
+		if vlagmode:
+			vlag += ' mode ' + vlagmode
 	
-	if options!=' ':
-		vlag += ' ' + options
+		if options!=' ':
+			vlag += ' ' + options
+
+
+	elif vlagcommand=="vlag-delete": 
+		
+		vlag += vlagcommand
+
+		if vlagname:
+                        vlag += ' name ' + vlagname
+                else:
+                        module.fail_json(msg="Failed:Error in vlag name")		
+
+	else:
+		module.fail_json(msg="Failed: Invalid command")
 
 	vlagcmd = shlex.split(vlag)
 	p = subprocess.Popen(vlagcmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
@@ -66,8 +82,8 @@ def main():
 		stdout = out.rstrip("\r\n"),
                 changed = True
         )
+
 from ansible.module_utils.basic import *
-#from ansible.module_utils.shell import *
 
 if __name__ == '__main__':
 	main()

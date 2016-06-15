@@ -1,7 +1,6 @@
 #!/usr/bin/python
 # Test PN CLI cluster-create
 
-import sys
 import subprocess
 import shlex
 import json
@@ -63,7 +62,6 @@ def main():
 	)
 
 from ansible.module_utils.basic import *
-#from ansible.module_utils.shell import *
 
 if __name__ == '__main__':
 	main()

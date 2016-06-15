@@ -1,0 +1,11 @@
+---
+- name: PN-CLI Cluster Delete
+  hosts: testswitches
+  user: root
+  
+
+  tasks:
+  - name: Delete Cluster 
+    pn_clusterdelete: pn_clustercommand='cluster-delete' pn_clustername='ansible-cluster' pn_quiet=True
+    register: cmd_output
+  - debug: var=cmd_output 

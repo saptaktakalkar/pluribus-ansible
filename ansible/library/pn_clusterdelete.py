@@ -1,7 +1,6 @@
 #!/usr/bin/python
-# Test PN CLI cluster-create
+# Test PN CLI cluster-delete
 
-import sys
 import subprocess
 import shlex
 import json
@@ -12,18 +11,12 @@ def main():
 		argument_spec = dict(
 			pn_clustercommand = dict(required=True, type='str'),
 			pn_clustername = dict(required=True, type='str'),
-			pn_clusternode1 = dict(required=True, type='str'),
-			pn_clusternode2 = dict(required=True, type='str'),	
-			pn_clustervalidate = dict(type='bool'),
 			pn_quiet = dict(default=True, type='bool')
 			)
 	)
 
 	clustercommand = module.params['pn_clustercommand']
 	clustername = module.params['pn_clustername']
-	clusternode1 = module.params['pn_clusternode1']
-	clusternode2 = module.params['pn_clusternode2']
-	clustervalidate = module.params['pn_clustervalidate']
 	quiet = module.params['pn_quiet']
 
 	if quiet==True:
@@ -31,29 +24,11 @@ def main():
 	else:
 		cli = "/usr/bin/cli " 
 	
-	if clustercommand != "cluster-create":
+	if clustercommand != "cluster-delete":
 		module.fail_json(msg="Invalid command")
-
 
 	if clustername:
 		cluster = cli + clustercommand + ' name ' + clustername
-	else:
-		module.fail_json(msg="Missing cluster name")
-		
-	if clusternode1:
-		cluster += ' cluster-node-1 ' + clusternode1
-	else:
-		module.fail_json(msg="Missing cluster-node-1")
-		
-	if clusternode2: 
-		cluster += ' cluster-node-2 ' + clusternode2
-	else:
-		module.fail_json(msg="Missing cluster-node-1")
-
-	if clustervalidate==True: 
-		cluster += ' validate '
-	else:
-		cluster += ' no-validate '
 
 	clustercmd = shlex.split(cluster)
 
@@ -69,7 +44,6 @@ def main():
 	)
 
 from ansible.module_utils.basic import *
-#from ansible.module_utils.shell import *
 
 if __name__ == '__main__':
 	main()
