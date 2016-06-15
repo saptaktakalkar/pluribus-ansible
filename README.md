@@ -1,6 +1,6 @@
 # pluribus-ansible
 
-Ansible
+**Ansible**
 Ansible is an IT automation platform for configuration, management and orchestration of systems and applications. Pluribus Networks provides support for using Ansible to deploy, configure and manage devices running on Netvisor Operating System. 
 
 Requirements:
