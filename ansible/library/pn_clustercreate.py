@@ -57,10 +57,10 @@ EXAMPLES = """
 """
 
 RETURN = """
-showcmd:
+clustercmd:
   description: the CLI command run on the target node(s).
 stdout:
-  description: the set of responses from the show command.
+  description: the set of responses from the cluster command.
   returned: always
   type: list
 stdout_lines:
