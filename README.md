@@ -18,15 +18,15 @@ Pluribus Networks provides support for using Ansible to deploy, configure and ma
 
 #Sample Playbooks:
 
- - [pn_vlan_show.yml](examples/pn_vlan_show.yml)
- - [pn_vlan_stats_show.yml](examples/pn_vlan_stats_show.yml)
- - [pn_vlan_stats_settings_show.yml](examples/pn_vlan_stats_settings_show.yml)
- - [pn_vlancreate.yml](examples/pn_vlancreate.yml)
- - [pn_vlandelete.yml](examples/pn_vlandelete.yml)
- - [pn_vlagcreate.yml](examples/pn_vlagcreate.yml)
- - [pn_vlagdelete.yml](examples/pn_vlagdelete.yml)
- - [pn_clustecreate.yml](examples/pn_clustecreate.yml)
- - [pn_clusterdelete.yml](examples/pn_clusterdelete.yml)
+ - [pn_vlan_show.yml](ansible/examples/pn_vlan_show.yml)
+ - [pn_vlan_stats_show.yml](ansible/examples/pn_vlan_stats_show.yml)
+ - [pn_vlan_stats_settings_show.yml](ansible/examples/pn_vlan_stats_settings_show.yml)
+ - [pn_vlancreate.yml](ansible/examples/pn_vlancreate.yml)
+ - [pn_vlandelete.yml](ansible/examples/pn_vlandelete.yml)
+ - [pn_vlagcreate.yml](ansible/examples/pn_vlagcreate.yml)
+ - [pn_vlagdelete.yml](ansible/examples/pn_vlagdelete.yml)
+ - [pn_clustecreate.yml](ansible/examples/pn_clustecreate.yml)
+ - [pn_clusterdelete.yml](ansible/examples/pn_clusterdelete.yml)
 
 #Inventory file path: 
  - /etc/ansible/hosts
