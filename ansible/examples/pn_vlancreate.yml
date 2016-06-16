@@ -6,6 +6,9 @@
 
   tasks:
   - name: Create VLAN 
-    pn_vlan: pn_vlancommand='vlan-create' pn_vlanid=140 pn_quiet=True
+    pn_vlan: pn_vlancommand='vlan-create' pn_vlanid={{ item.id }} pn_vlanscope={{ item.scope }} pn_quiet=True
+    with_items:
+      - { id: '201', scope: 'fabric' }
+      - { id: '202', scope: 'local' }
     register: cmd_output
   - debug: var=cmd_output 
