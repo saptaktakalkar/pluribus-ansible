@@ -14,7 +14,7 @@ Execute CLI show commands
 ## Usage
 
 ```
-- name: Playbook for VLAN CLI show
+- name: Playbook for CLI show
   hosts: <hosts>
   user: <user>
   
