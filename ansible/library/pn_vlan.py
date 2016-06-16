@@ -1,7 +1,74 @@
 #!/usr/bin/python
 # Test PN CLI vlan-create/vlan-delete
 
-import sys
+DOCUMENTATION = """
+---
+module: pn_vlan
+author: "Pluribus Networks"
+short_description: CLI command to create/delete a vlan
+description:
+  - Execute vlan-create or vlan-delete command. 
+  - Requires vlan id:
+  	- id should be in the range 2...4092
+  - If vlan-create, scope is required. Scope can be fabric/local. 
+options:
+  pn_vlancommand:
+    description:
+      - The C(pn_vlancommand) takes the vlan-create/delete command as value.
+        Create a VLAN.
+    required: true
+    type: str
+  pn_vlanid:
+    description:
+      - The VLAN id. ID should be in the range 2...4092
+    required: true
+    type: int
+  pn_vlanscope:
+    description:
+      - Scope for the VLAN(fabric/local). Required when creating a vlan
+    required: False
+    type: str
+    default: fabric
+  pn_quiet:
+    description:
+      - The C(pn_quiet) option to enable or disable the system bootup message
+    required: false
+    type: bool
+    default: true
+"""
+
+EXAMPLES = """
+- name: create a VLAN with id=1854, scope=fabric
+  pn_vlan: pn_vlancommand='vlan-create' pn_vlanid=1854 pn_vlanscope='fabric' pn_quiet=True
+
+- name: create a vlan with id=220, scope=local
+  pn_vlan: pn_vlancommand='vlan-create' pn_vlanid=220 pn_vlanscope='local' pn_quiet=True
+
+- name: delete vlan with id=1854 and id=220
+  pn_vlan: pn_vlancommand='vlan-delete' pn_vlanid={{ item }} pn_quiet=True
+  with_items:
+    - 1854
+    - 220
+"""
+
+RETURN = """
+vlancmd:
+  description: the CLI command run on the target node(s).
+stdout:
+  description: the set of responses from the vlan command.
+  returned: always
+  type: list
+stdout_lines:
+  description: the value of stdout split into a list.
+  returned: always
+  type: list
+stderr:
+  description: the set of error responses from the vlan command.
+  returned: on error
+  type: list
+"""
+
+
 import subprocess
 import shlex
 import json
@@ -12,13 +79,14 @@ def main():
 		argument_spec = dict(
 			pn_vlancommand = dict(required=True, type='str'),
 			pn_vlanid = dict(required=True, type='int'),
+			pn_vlanscope = dict(required=False, type='str', default='fabric'),
 			pn_quiet = dict(default=True, type='bool')
 			)
 	)
 
 	vlancommand = module.params['pn_vlancommand']
 	vlanid = module.params['pn_vlanid']
-	#vlanscope = module.params['pn_vlanscope']
+	vlanscope = module.params['pn_vlanscope']
 	quiet = module.params['pn_quiet']
 
 	if quiet==True:
@@ -35,7 +103,7 @@ def main():
 	vlan = cli + vlancommand + " id " + str(vlanid)
 
 	if vlancommand == "vlan-create":
-		vlan += " scope fabric " 
+		vlan += " scope " + vlanscope
 
 	vlancmd = shlex.split(vlan)
 	p = subprocess.Popen(vlancmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
@@ -51,7 +119,6 @@ def main():
 	)
 
 from ansible.module_utils.basic import *
-#from ansible.module_utils.shell import *
 
 if __name__ == '__main__':
 	main()
