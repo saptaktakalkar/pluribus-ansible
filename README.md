@@ -28,6 +28,8 @@ Pluribus Networks provides support for using Ansible to deploy, configure and ma
  - pn_clustecreate.yml
  - pn_clusterdelete.yml
 
-inventory file: /etc/ansible/hosts
+#Inventory file path: 
+ - /etc/ansible/hosts
 
-command: ansible-playbook /etc/ansible/pn_vlan_show.yml -i /etc/ansible/hosts -k
+#Syntax 
+ - command: ansible-playbook /etc/ansible/pn_vlan_show.yml -i /etc/ansible/hosts -k
