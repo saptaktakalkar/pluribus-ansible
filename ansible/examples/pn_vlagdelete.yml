@@ -1,0 +1,11 @@
+---
+- name: PN-CLI VLAG Delete
+  hosts: testswitches
+  user: root
+
+
+  tasks:
+  - name: Delete VLAG
+    pn_vlag: pn_vlagcommand='vlag-delete' pn_vlagname='ansible-vlag' pn_quiet=True
+    register: cmd_output
+  - debug: var=cmd_output
