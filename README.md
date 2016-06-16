@@ -10,11 +10,11 @@ Pluribus Networks provides support for using Ansible to deploy, configure and ma
  - Ansible(1.8 and above) on the control machine
 
 #Modules:
- - pn_show: To execute CLI show commands
- - pn_vlan: To create/delete vlans
- - pn_vlag: To create/delete vlags
- - pn_clustercreate: To create clusters
- - pn_clusterdelete: To delete clusters
+ - [pn_show](ansible/library/pn_show.py): To execute CLI show commands
+ - [pn_vlan](ansible/library/pn_vlan.py): To create/delete vlans
+ - [pn_vlag](ansible/library/pn_vlag.py): To create/delete vlags
+ - [pn_clustercreate](ansible/library/pn_clustercreate.py): To create clusters
+ - [pn_clusterdelete](ansible/library/pn_clusterdelete.py): To delete clusters
 
 #Sample Playbooks:
 
@@ -25,7 +25,7 @@ Pluribus Networks provides support for using Ansible to deploy, configure and ma
  - [pn_vlandelete.yml](ansible/examples/pn_vlandelete.yml)
  - [pn_vlagcreate.yml](ansible/examples/pn_vlagcreate.yml)
  - [pn_vlagdelete.yml](ansible/examples/pn_vlagdelete.yml)
- - [pn_clustecreate.yml](ansible/examples/pn_clustecreate.yml)
+ - [pn_clustercreate.yml](ansible/examples/pn_clustecreate.yml)
  - [pn_clusterdelete.yml](ansible/examples/pn_clusterdelete.yml)
 
 #Inventory file path: 
