@@ -23,7 +23,7 @@ options:
     type: str
   pn_quiet:
     description:
-      - The C(pn_quiet) option to enable or disable the system bootup message
+      - The C(pn_quiet) option to enable or disable the system bootup message.
     required: false
     type: bool
     default: true
