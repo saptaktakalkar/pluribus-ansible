@@ -13,8 +13,8 @@ Pluribus Networks provides support for using Ansible to deploy, configure and ma
  - [pn_show](ansible/library/pn_show.py): To execute CLI show commands
  - [pn_vlan](ansible/library/pn_vlan.py): To create/delete vlans
  - [pn_vlag](ansible/library/pn_vlag.py): To create/delete vlags
- - [pn_clustercreate](ansible/library/pn_clustercreate.py): To create clusters
- - [pn_clusterdelete](ansible/library/pn_clusterdelete.py): To delete clusters
+ - [pn_cluster](ansible/library/pn_cluster.py): To create/delete clusters
+
 
 #Sample Playbooks:
 
