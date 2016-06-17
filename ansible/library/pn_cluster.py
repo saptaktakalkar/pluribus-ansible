@@ -68,7 +68,7 @@ stdout_lines:
   returned: always
   type: list
 stderr:
-  description: the set of error responses from the show command.
+  description: the set of error responses from the cluster command.
   returned: on error
   type: list
 """
