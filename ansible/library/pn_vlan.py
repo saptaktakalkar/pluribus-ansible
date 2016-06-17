@@ -5,34 +5,34 @@ DOCUMENTATION = """
 ---
 module: pn_vlan
 author: "Pluribus Networks"
-short_description: CLI command to create/delete a vlan
+short_description: CLI command to create/delete a vlan.
 description:
   - Execute vlan-create or vlan-delete command. 
   - Requires vlan id:
-  	- id should be in the range 2...4092
+  	- id should be in the range 2...4092.
   - If vlan-create, scope is required. Scope can be fabric/local. 
+  - Can provide options for vlan-create.
 options:
   pn_vlancommand:
     description:
       - The C(pn_vlancommand) takes the vlan-create/delete command as value.
-        Create a VLAN.
     required: true
     choices: vlan-create, vlan-delete
     type: str
   pn_vlanid:
     description:
-      - The VLAN id. ID should be in the range 2...4092
+      - The VLAN id. ID should be in the range 2...4092.
     required: true
     type: int
   pn_vlanscope:
     description:
-      - Scope for the VLAN(fabric/local). Required when creating a vlan
+      - Scope for the VLAN(fabric/local). Required when creating a vlan.
     required_if: vlan-create
     choices: fabric/local
     type: str
   pn_vlandesc:
     description:
-      - Description for the VLAN
+      - Description for the VLAN.
     required: False
     type: str
   pn_vlanstats:
@@ -43,17 +43,17 @@ options:
     type: str
   pn_vlanports:
     description:
-      - List of ports for the VLAN, comma separated
+      - List of ports for the VLAN, comma separated.
     required: False
     type: str
   pn_vlanuntaggedports:
     description:
-      - List of untagged ports for the VLAN, comma separated
+      - List of untagged ports for the VLAN, comma separated.
     required: False
     type: str
   pn_quiet:
     description:
-      - The C(pn_quiet) option to enable or disable the system bootup message
+      - The C(pn_quiet) option to enable or disable the system bootup message.
     required: false
     type: bool
     default: true
