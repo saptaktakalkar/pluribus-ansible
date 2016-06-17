@@ -26,9 +26,8 @@ options:
   pn_vlanscope:
     description:
       - Scope for the VLAN(fabric/local). Required when creating a vlan
-    required: False
+    required_if: vlan-create
     type: str
-    default: fabric
   pn_quiet:
     description:
       - The C(pn_quiet) option to enable or disable the system bootup message
@@ -38,13 +37,13 @@ options:
 """
 
 EXAMPLES = """
-- name: create a VLAN with id=1854, scope=fabric
+- name: create a VLAN
   pn_vlan: pn_vlancommand='vlan-create' pn_vlanid=1854 pn_vlanscope='fabric' pn_quiet=True
 
-- name: create a vlan with id=220, scope=local
+- name: create a VLAN 
   pn_vlan: pn_vlancommand='vlan-create' pn_vlanid=220 pn_vlanscope='local' pn_quiet=True
 
-- name: delete vlan with id=1854 and id=220
+- name: delete VLANs
   pn_vlan: pn_vlancommand='vlan-delete' pn_vlanid={{ item }} pn_quiet=True
   with_items:
     - 1854
@@ -77,11 +76,15 @@ import json
 def main():
 	module = AnsibleModule(
 		argument_spec = dict(
-			pn_vlancommand = dict(required=True, type='str'),
+			pn_vlancommand = dict(required=True, type='str', choices=['vlan-create', 'vlan-delete']),
 			pn_vlanid = dict(required=True, type='int'),
-			pn_vlanscope = dict(required=False, type='str', default='fabric'),
+			pn_vlanscope = dict(type='str', choices=['fabric', 'local']),
 			pn_quiet = dict(default=True, type='bool')
 			)
+		required_if = (
+			[ "pn_vlancommand", "vlan-create", [ "pn_vlanid", "pn_vlanscope" ] ],
+                        [ "pn_vlancommand", "vlan-delete", [ "pn_vlanid" ] ]
+                        )
 	)
 
 	vlancommand = module.params['pn_vlancommand']
