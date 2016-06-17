@@ -6,7 +6,7 @@ DOCUMENTATION = """
 ---
 module: pn_clustercreate
 author: "Pluribus Networks"
-short_description: CLI command to create a cluster
+short_description: CLI command to create a cluster.
 description:
   - Execute cluster-create command. 
   - Requires cluster name:
