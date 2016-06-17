@@ -12,7 +12,6 @@ description:
   - Requires cluster name:
   	- Alphanumeric characters
   	- Special characters like: _ 
-  - Requires 2 nodes, cluster-node-1 and cluster-node-2
 options:
   pn_clustercommand:
     description:
