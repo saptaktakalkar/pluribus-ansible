@@ -107,7 +107,7 @@ def main():
                         pn_vlanports = dict(required=False, type='str'),
                         pn_vlanuntaggedports = dict(required=False, type='str'),
 			pn_quiet = dict(default=True, type='bool')
-			)
+			),
 		required_if = (
 			[ "pn_vlancommand", "vlan-create", [ "pn_vlanid", "pn_vlanscope" ] ],
                         [ "pn_vlancommand", "vlan-delete", [ "pn_vlanid" ] ]
@@ -127,9 +127,6 @@ def main():
 		cli  = "/usr/bin/cli --quiet "
 	else:
 		cli = "/usr/bin/cli " 
-	
-	if vlancommand == " ":
-		module.fail_json(msg="Invalid command")
 
 
 	if (vlanid<2 | vlanid>4092):
