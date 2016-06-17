@@ -17,6 +17,7 @@ options:
       - The C(pn_vlancommand) takes the vlan-create/delete command as value.
         Create a VLAN.
     required: true
+    choices: vlan-create, vlan-delete
     type: str
   pn_vlanid:
     description:
@@ -27,6 +28,28 @@ options:
     description:
       - Scope for the VLAN(fabric/local). Required when creating a vlan
     required_if: vlan-create
+    choices: fabric/local
+    type: str
+  pn_vlandesc:
+    description:
+      - Description for the VLAN
+    required: False
+    type: str
+  pn_vlanstats:
+    description:
+      - Enalble/disable stats
+    required: False
+    choices: stats/no-stats
+    type: str
+  pn_vlanports:
+    description:
+      - List of ports for the VLAN, comma separated
+    required: False
+    type: str
+  pn_vlanuntaggedports:
+    description:
+      - List of untagged ports for the VLAN, comma separated
+    required: False
     type: str
   pn_quiet:
     description:
@@ -79,6 +102,10 @@ def main():
 			pn_vlancommand = dict(required=True, type='str', choices=['vlan-create', 'vlan-delete']),
 			pn_vlanid = dict(required=True, type='int'),
 			pn_vlanscope = dict(type='str', choices=['fabric', 'local']),
+			pn_vlandesc = dict(required=False, type='str'),
+                        pn_vlanstats = dict(required=False, type='str', choices=['stats', 'no-stats']),
+                        pn_vlanports = dict(required=False, type='str'),
+                        pn_vlanuntaggedports = dict(required=False, type='str'),
 			pn_quiet = dict(default=True, type='bool')
 			)
 		required_if = (
@@ -90,6 +117,10 @@ def main():
 	vlancommand = module.params['pn_vlancommand']
 	vlanid = module.params['pn_vlanid']
 	vlanscope = module.params['pn_vlanscope']
+        vlandesc = module.params['pn_vlandesc']
+        vlanstats = module.params['pn_vlanstats']
+        vlanports = module.params['pn_vlanports']
+        vlanuntaggedports = module.params['pn_vlanuntaggedports']
 	quiet = module.params['pn_quiet']
 
 	if quiet==True:
@@ -107,6 +138,16 @@ def main():
 
 	if vlancommand == "vlan-create":
 		vlan += " scope " + vlanscope
+        if vlancommand == "vlan-create":
+                vlan += " scope " + vlanscope
+        if vlandesc:
+                vlan += " description " + vlandesc
+        if vlanstats:
+                vlan += " stats " + vlanstats
+        if vlanports:
+                vlan += " ports " + vlanports
+        if vlanuntaggedports:
+                vlan += " untagged-ports " + vlanuntaggedports
 
 	vlancmd = shlex.split(vlan)
 	p = subprocess.Popen(vlancmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
