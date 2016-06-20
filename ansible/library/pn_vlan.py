@@ -133,9 +133,7 @@ def main():
 		module.fail_json(msg="Invalid vlan ID")
 	vlan = cli + vlancommand + " id " + str(vlanid)
 
-	if vlancommand == "vlan-create":
-		vlan += " scope " + vlanscope
-        if vlancommand == "vlan-create":
+        if vlanscope:
                 vlan += " scope " + vlanscope
         if vlandesc:
                 vlan += " description " + vlandesc
