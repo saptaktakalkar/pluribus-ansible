@@ -30,8 +30,8 @@ For a complete installation guide, please refer: [Ansible-Installation](https://
  - [pn_vlan](ansible/library/pn_vlan.py): To create/delete/modify VLANs
  - [pn_vlag](ansible/library/pn_vlag.py): To create/delete/modify VLAGs
  - [pn_cluster](ansible/library/pn_cluster.py): To create/delete/modify Clusters
- - [pn_trunk](): To create/delete/modify Trunks(LAGs)
- - [pn_vrouter]() To create/delete/modify vRouters
+ - [pn_trunk](ansible/library/pn_trunk.py): To create/delete/modify Trunks(LAGs)
+ - [pn_vrouter](ansible/library/pn_vrouter.py): To create/delete/modify vRouters
 
 
 #Playbooks
