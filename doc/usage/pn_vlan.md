@@ -4,13 +4,13 @@ Execute CLI show commands
 
 | parameter      | required       | default      |choices       |comments                                                    |
 |----------------|----------------|--------------|--------------|------------------------------------------------------------|
-|pn_vlancommand  | yes            |              | vlan-create, vlan-delete            |                                                            |
+|pn_vlancommand  | yes            |              | vlan-create, vlan-delete, vlan-modify | Create, delete or modify VLAN configuration                                                            |
 |pn_vlanid       | yes            |              |              | Range: 2 - 4092                                               |
-|pn_vlanscope    | conditional    |              | fabric, local| Required for vlan-create                                                      |
-|pn_vlandesc     | no             |              |              | Description for the vlan. Can be used with vlan-create.   |
-|pn_vlanstats    | no             |              | stats, no-stats| Enable/disable stats for the vlan. Can be used with vlan-create.  |
-|pn_vlanports    | no             |              | | Comma separated list of ports for the vlan. Can be used with vlan-create.  |
-|pn_vlanuntaggedports    | no             |              | | Comma separated list of untagged ports for the vlan. Can be used with vlan-create.  |
+|pn_vlanscope    | conditional    |              | fabric, local| Scope. Required for vlan-create                                                      |
+|pn_vlandesc     | no             |              |              | Description for the vlan. Required for vlan-modify    |
+|pn_vlanstats    | no             |              | stats, no-stats| Enable/disable stats for the vlan  |
+|pn_vlanports    | no             |              | | Comma separated list of ports for the vlan |
+|pn_vlanuntaggedports    | no             |              | | Comma separated list of untagged ports for the vlan  |
 |pn_quiet        | no             | true         |              | --quiet                                                       |
 
 1. [Usage](#usage)
