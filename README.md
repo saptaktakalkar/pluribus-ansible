@@ -21,9 +21,9 @@ For a complete installation guide, please refer: [Ansible-Installation](https://
 
 #Modules
  Modules are library plugins that do the actual work. Modules get called and executed in playbook tasks. Modules are placed in ./library location. Modules return JSON format data. Documentation for each module can be accessed from the commandline using:
- '''
+ ```
  ansible-doc <module> 
- '''
+ ```
  
  Pluribus Networks CLI modules:
  - [pn_show](ansible/library/pn_show.py): To execute CLI show commands
