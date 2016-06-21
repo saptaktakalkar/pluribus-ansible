@@ -1,23 +1,44 @@
-# pluribus-ansible
+#Pluribus Networks - Ansible
 
-##Ansible
-Ansible is an IT automation platform for configuration, management and orchestration of systems and applications. 
-Pluribus Networks provides support for using Ansible to deploy, configure and manage devices running Netvisor Operating System.
+#Ansible
+ Ansible is an open source IT automation tool for configuration management, provisioning and application deployment. Ansible is agentless and does not require a software agent to be installed on the target nodes, it uses SSH for secured communication with the target nodes. The Pluribus Networks Ansible library provides support for using Ansible to deploy, configure and manage devices running Netvisor OS. This repository contains modules developed for Netvisor OS CLI to perform specific tasks on devices running Netvisor OS. These modules run CLI commands for installing Netvisor OS, configuring, retrieving information/device statistics, modifying configuration settings on the target nodes. 
 
-#Requirements:
- - SSH
- - Python 2.6 and above
- - Ansible(1.8 and above) on the control machine
+#Getting started
+ Ansible by default manages machines over the SSH protocol. Ansible is installed on a control machine that manages one or more nodes. Managed nodes do not require any agent software. 
+ 
+##Control Machine Requirements 
+  The Ansible control machine requires the following software:
+  - SSH
+  - Python 2.6 or later
+  - Ansible 1.8 or later release 
 
-#Modules:
+##Managed Node Requirements
+  The following software are requied on managed nodes:
+  - SSH for communication
+  - Python 2.6 or later
+
+For a complete installation guide, please refer: [Ansible-Installation](https://docs.ansible.com/ansible/intro_installation.html)
+
+#Modules
+ Modules are library plugins that do the actual work. Modules get called and executed in playbook tasks. Modules are placed in ./library location. Modules return JSON format data. Documentation for each module can be accessed from the commandline using:
+ '''
+ ansible-doc <module> 
+ '''
+ 
+ Pluribus Networks CLI modules:
  - [pn_show](ansible/library/pn_show.py): To execute CLI show commands
- - [pn_vlan](ansible/library/pn_vlan.py): To create/delete vlans
- - [pn_vlag](ansible/library/pn_vlag.py): To create/delete vlags
- - [pn_cluster](ansible/library/pn_cluster.py): To create/delete clusters
+ - [pn_vlan](ansible/library/pn_vlan.py): To create/delete/modify VLANs
+ - [pn_vlag](ansible/library/pn_vlag.py): To create/delete/modify VLAGs
+ - [pn_cluster](ansible/library/pn_cluster.py): To create/delete/modify Clusters
+ - [pn_trunk](): To create/delete/modify Trunks(LAGs)
+ - [pn_vrouter]() To create/delete/modify vRouters
 
 
-#Sample Playbooks:
-
+#Playbooks
+ Playbooks are Ansible's configuration, deployment and orchestration language. Playbooks are expressed in [YAML](https://docs.ansible.com/ansible/YAMLSyntax.html) format and have a minimum of syntax. Each playbook is composed of one or more plays. The goal of a play is to map a group of hosts to some well defined tasks. A task is basically a call to an Ansible Module. 
+ 
+ Some example playbooks:
+ 
  - [pn_vlan_show.yml](ansible/examples/pn_vlan_show.yml)
  - [pn_vlan_stats_show.yml](ansible/examples/pn_vlan_stats_show.yml)
  - [pn_vlan_stats_settings_show.yml](ansible/examples/pn_vlan_stats_settings_show.yml)
@@ -28,8 +49,6 @@ Pluribus Networks provides support for using Ansible to deploy, configure and ma
  - [pn_clustercreate.yml](ansible/examples/pn_clustecreate.yml)
  - [pn_clusterdelete.yml](ansible/examples/pn_clusterdelete.yml)
 
-#Inventory file path: 
- - /etc/ansible/hosts
+#Inventory
+ Ansible can work against multiple nodes in the infrastructure simultaneously. This is done by selecting a group of nodes in the Ansible's inventory file located at /etc/ansible/hosts on the control machine. This file is configurable. Please refer: [Ansible-Inventory](https://docs.ansible.com/ansible/intro_inventory.html) for more on this.
 
-#Syntax 
- - command: ansible-playbook /etc/ansible/pn_vlan_show.yml -i /etc/ansible/hosts -k
