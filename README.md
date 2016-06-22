@@ -50,5 +50,5 @@ For a complete installation guide, please refer: [Ansible-Installation](https://
  - [pn_clusterdelete.yml](ansible/examples/pn_clusterdelete.yml)
 
 #Inventory
- Ansible can work against multiple nodes in the infrastructure simultaneously. This is done by selecting a group of nodes in the Ansible's inventory file located at /etc/ansible/hosts on the control machine. This file (see [hosts](pluribus-ansible/ansible/hosts))is configurable. Please refer: [Ansible-Inventory](https://docs.ansible.com/ansible/intro_inventory.html) for more on this.
+ Ansible can work against multiple nodes in the infrastructure simultaneously. This is done by selecting a group of nodes in the Ansible's inventory file located at /etc/ansible/hosts on the control machine. This file (see [hosts](ansible/hosts))is configurable. Please refer: [Ansible-Inventory](https://docs.ansible.com/ansible/intro_inventory.html) for more on this.
 
