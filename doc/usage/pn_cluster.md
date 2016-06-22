@@ -33,6 +33,7 @@ Module for CLI cluster configurations. Supports `cluster-create`, `cluster-delet
 
 ## Examples
 
+# cluster-create
 YAML Playbook for **_creating_** a Cluster configuration using `pn_cluster` module
 
 ```
@@ -53,7 +54,10 @@ YAML Playbook for **_creating_** a Cluster configuration using `pn_cluster` modu
   - debug: var=cmd_output
   
 ```
-
+```
+ansible-cm$ ansible-playbook pn_clustercreate.yml -k
+```
+# cluster-delete
 YAML Playbook for **_deleting_** a Cluster Configuration using `pn_cluster` module
 
 ```
@@ -70,4 +74,7 @@ YAML Playbook for **_deleting_** a Cluster Configuration using `pn_cluster` modu
     register: cmd_output
   - debug: var=cmd_output
   
+```
+```
+ansible-cm$ ansible-playbook pn_clusterdelete.yml -k
 ```
