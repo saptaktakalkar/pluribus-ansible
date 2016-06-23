@@ -49,6 +49,8 @@ For a complete installation guide, please refer: [Ansible-Installation](https://
  - [pn_clustercreate.yml](ansible/examples/pn_clustecreate.yml)
  - [pn_clusterdelete.yml](ansible/examples/pn_clusterdelete.yml)
 
+[YAML Lint](http://www.yamllint.com/) (online) helps you debug YAML syntax if you are having problems
+ 
 #Inventory
  Ansible can work against multiple nodes in the infrastructure simultaneously. This is done by selecting a group of nodes in the Ansible's inventory file located at /etc/ansible/hosts on the control machine. This file (see [hosts](ansible/hosts))is configurable. Please refer: [Ansible-Inventory](https://docs.ansible.com/ansible/intro_inventory.html) for more on this.
 
