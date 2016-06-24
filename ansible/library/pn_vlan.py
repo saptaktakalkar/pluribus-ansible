@@ -71,13 +71,13 @@ options:
 
 EXAMPLES = """
 - name: create a VLAN
-  pn_vlan: pn_vlancommand='vlan-create' pn_vlanid=1854 pn_vlanscope='local' pn_quiet=True
+  pn_vlan: pn_cliusername=admin pn_clipassword=admin pn_vlancommand='vlan-create' pn_vlanid=1854 pn_vlanscope='local' pn_quiet=True
 
 - name: create a VLAN 
-  pn_vlan: pn_vlancommand='vlan-create' pn_vlanid=220 pn_vlanscope='fabric' pn_vlandesc='ansible-vlan' pn_vlanports={{ "10,11,12" }} pn_quiet=True
+  pn_vlan: pn_cliusername=admin pn_clipassword=admin pn_vlancommand='vlan-create' pn_vlanid=220 pn_vlanscope='fabric' pn_vlandesc='ansible-vlan' pn_vlanports={{ "10,11,12" }} pn_quiet=True
 
 - name: delete VLANs
-  pn_vlan: pn_vlancommand='vlan-delete' pn_vlanid={{ item }} pn_quiet=True
+  pn_vlan: pn_cliusername=admin pn_clipassword=admin pn_vlancommand='vlan-delete' pn_vlanid={{ item }} pn_quiet=True
   with_items:
     - 1854
     - 220
