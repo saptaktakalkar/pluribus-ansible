@@ -12,7 +12,7 @@ description:
   	- Alphanumeric characters
   	- Special characters like: _
 options:
-    pn_cliusername:
+  pn_cliusername:
     description:
       - Login username
     required: true
