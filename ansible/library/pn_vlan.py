@@ -13,6 +13,16 @@ description:
   - If vlan-create, scope is required. Scope can be fabric/local. 
   - Can provide options for vlan-create.
 options:
+  pn_cliusername:
+    description:
+      - Login username
+    required: true
+    type: str
+  pn_clipassword:
+    description:
+      - Login password
+    required: true
+    type: str
   pn_vlancommand:
     description:
       - The C(pn_vlancommand) takes the vlan-create/delete command as value.
@@ -88,6 +98,10 @@ stderr:
   description: the set of error responses from the vlan command.
   returned: on error
   type: list
+changed:
+  description: Indicates whether the CLI caused changes on the target.
+  returned: always
+  type: bool
 """
 
 
@@ -99,7 +113,9 @@ import json
 def main():
 	module = AnsibleModule(
 		argument_spec = dict(
-			pn_vlancommand = dict(required=True, type='str', choices=['vlan-create', 'vlan-delete']),
+			pn_cliusername = dict(required=True, type='str'),
+                        pn_clipassword = dict(required=True, type='str'),
+                        pn_vlancommand = dict(required=True, type='str', choices=['vlan-create', 'vlan-delete']),
 			pn_vlanid = dict(required=True, type='int'),
 			pn_vlanscope = dict(type='str', choices=['fabric', 'local']),
 			pn_vlandesc = dict(required=False, type='str'),
@@ -114,7 +130,9 @@ def main():
                         )
 	)
 
-	vlancommand = module.params['pn_vlancommand']
+	cliusername = module.params['pn_cliusername']
+        clipassword = module.params['pn_clipassword']
+        vlancommand = module.params['pn_vlancommand']
 	vlanid = module.params['pn_vlanid']
 	vlanscope = module.params['pn_vlanscope']
         vlandesc = module.params['pn_vlandesc']
@@ -124,9 +142,9 @@ def main():
 	quiet = module.params['pn_quiet']
 
 	if quiet==True:
-		cli  = "/usr/bin/cli --quiet "
+		cli  = '/usr/bin/cli --quiet --user ' + cliusername + ':' + clipassword + ' '
 	else:
-		cli = "/usr/bin/cli " 
+		cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
 
 
 	if (vlanid<2 | vlanid>4092):
@@ -148,14 +166,21 @@ def main():
 	p = subprocess.Popen(vlancmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
 
 	out,err = p.communicate();
-
-
-	module.exit_json(
-		vlancmd	= vlan,
-		stdout	= out.rstrip("\r\n"),
-		stderr	= err.rstrip("\r\n"),	
-		changed	= True
-	)
+	
+        if out:
+                module.exit_json(
+                        vlancmd	= vlan,
+                        stdout = out.rstrip("\r\n"),
+                        changed = True
+                )
+                
+	if err:
+                module.exit_json(
+                        vlancmd	= vlan,
+                        stderr = err.rstrip("\r\n"),
+                        changed = False
+                )
+	
 
 from ansible.module_utils.basic import *
 
