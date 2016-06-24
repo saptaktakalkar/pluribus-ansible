@@ -12,6 +12,16 @@ description:
   	- Alphanumeric characters
   	- Special characters like: _
 options:
+    pn_cliusername:
+    description:
+      - Login username
+    required: true
+    type: str
+  pn_clipassword:
+    description:
+      - Login password
+    required: true
+    type: str
   pn_vlagcommand:
     description:
       - The C(pn_vlagcommand) takes the vlag-create/delete command as value.
@@ -114,6 +124,10 @@ stderr:
   description: the set of error responses from the vlag command.
   returned: on error
   type: list
+changed:
+  description: Indicates whether the CLI caused changes.
+  returned: always
+  type: bool
 """
 
 
@@ -125,7 +139,9 @@ import json
 def main():
 	module = AnsibleModule(
 		argument_spec = dict(
-			pn_vlagcommand = dict(required=True, type='str', choices=['vlag-create', 'vlag-delete']),
+			pn_cliusername = dict(required=True, type='str'),
+                        pn_clipassword = dict(required=True, type='str'),
+                        pn_vlagcommand = dict(required=True, type='str', choices=['vlag-create', 'vlag-delete']),
 			pn_vlagname = dict(required=True, type='str'),
 			pn_vlaglport = dict(type='str'),
 			pn_vlagpeerport = dict(type='str'),
@@ -144,7 +160,9 @@ def main():
 			)
 	)
 
-	vlagcommand = module.params['pn_vlagcommand']
+	cliusername = module.params['pn_cliusername']
+        clipassword = module.params['pn_clipassword']
+        vlagcommand = module.params['pn_vlagcommand']
 	vlagname = module.params['pn_vlagname']
 	vlaglport = module.params['pn_vlaglport']
 	vlagpeerport = module.params['pn_vlagpeerport']
@@ -158,9 +176,9 @@ def main():
 	quiet = module.params['pn_quiet'] 
 
 	if quiet==True:
-		cli = '/usr/bin/cli --quiet ' 
+		cli = '/usr/bin/cli --quiet --user ' + cliusername + ':' + clipassword + ' ' 
 	else:
-		cli = '/usr/bin/cli '  
+		cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '  
 
 
 	if vlagname:
@@ -198,13 +216,20 @@ def main():
 
 	out,err = p.communicate();
 
+        if out:
+                module.exit_json(
+                        vlagcmd = vlag,
+                        stdout = out.rstrip("\r\n"),
+                        changed = True
+                )
 
-        module.exit_json(
-                vlagcmd = vlag,
-		stderr = err.rstrip("\r\n"),
-		stdout = out.rstrip("\r\n"),
-                changed = True
-        )
+	if err:
+                module.exit_json(
+                        vlagcmd = vlag,
+                        stderr = err.rstrip("\r\n"),
+                        changed = False
+                )       
+        
 
 from ansible.module_utils.basic import *
 
