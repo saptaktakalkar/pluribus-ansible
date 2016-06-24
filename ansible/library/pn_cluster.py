@@ -13,6 +13,16 @@ description:
   	- Alphanumeric characters
   	- Special characters like: _ 
 options:
+  pn_cliusername:
+    description:
+      - Login username
+    required: true
+    type: str
+  pn_clipassword:
+    description:
+      - Login password
+    required: true
+    type: str
   pn_clustercommand:
     description:
       - The C(pn_clustercommand) takes the cluster-create/cluster-delete command as value.
@@ -70,6 +80,10 @@ stderr:
   description: the set of error responses from the cluster command.
   returned: on error
   type: list
+changed:
+  description: Indicates whether the CLI was executed or not.
+  returned: always
+  type: bool
 """
 import subprocess
 import shlex
@@ -79,6 +93,8 @@ import json
 def main():
         module = AnsibleModule(
                 argument_spec = dict(
+                        pn_cliusername = dict(required=True, type='str'),
+                        pn_clipassword = dict(required=True, type='str'),
                         pn_clustercommand = dict(required=True, type='str', choices=['cluster-create', 'cluster-delete']),
                         pn_clustername = dict(required=True, type='str'),
                         pn_clusternode1 = dict(type='str'),
@@ -91,7 +107,9 @@ def main():
                         [ "pn_clustercommand", "cluster-delete", ["pn_clustername"] ]
                         )
         )
-
+        
+        cliusername = module.params['pn_cliusername']
+        clipassword = module.params['pn_clipassword']
         clustercommand = module.params['pn_clustercommand']
         clustername = module.params['pn_clustername']
         clusternode1 = module.params['pn_clusternode1']
@@ -100,9 +118,9 @@ def main():
         quiet = module.params['pn_quiet']
 
         if quiet==True:
-                cli  = "/usr/bin/cli --quiet "
+                cli  = '/usr/bin/cli --quiet --user ' + cliusername + ':' + clipassword + ' '
         else:
-                cli = "/usr/bin/cli "
+                cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
 
 
         if clustername:
@@ -122,14 +140,19 @@ def main():
         p = subprocess.Popen(clustercmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
         out,err = p.communicate();
 
-
-        module.exit_json(
-                clustercmd = cluster,
-                stdout = out.rstrip("\r\n"),
-                stderr = err.rstrip("\r\n"),
-                changed = True
-        )
-
+        if out:
+                module.exit_json(
+                        clustercmd = cluster,
+                        stdout = out.rstrip("\r\n"),
+                        changed = True
+                )
+        
+        if err:
+                module.exit_json(
+                        clustercmd = cluster,
+                        stderr = err.rstrip("\r\n"),
+                        changed = False
+                )
 from ansible.module_utils.basic import *
 
 if __name__ == '__main__':
