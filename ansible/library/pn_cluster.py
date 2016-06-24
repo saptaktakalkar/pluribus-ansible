@@ -60,9 +60,9 @@ options:
 
 EXAMPLES = """
 - name: create spine cluster 
-  pn_cluster: pn_clustercommand='cluster-create' pn_clustername='spine-cluster' pn_clusternode1='spine01' pn_clusternode2='spine02' pn_clustervalidate=True pn_quiet=True
+  pn_cluster: pn_cliusername=admin pn_clipassword=admin pn_clustercommand='cluster-create' pn_clustername='spine-cluster' pn_clusternode1='spine01' pn_clusternode2='spine02' pn_clustervalidate=True pn_quiet=True
 - name: delete spine cluster 
-  pn_cluster: pn_clustercommand='cluster-delete' pn_clustername='spine-cluster' pn_quiet=True
+  pn_cluster: pn_cliusername=admin pn_clipassword=admin pn_clustercommand='cluster-delete' pn_clustername='spine-cluster' pn_quiet=True
 """
 
 RETURN = """
@@ -81,7 +81,7 @@ stderr:
   returned: on error
   type: list
 changed:
-  description: Indicates whether the CLI was executed or not.
+  description: Indicates whether the CLI caused changes on the target.
   returned: always
   type: bool
 """
