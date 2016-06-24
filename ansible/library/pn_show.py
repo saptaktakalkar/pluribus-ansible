@@ -10,6 +10,16 @@ description:
   - Execute show command in the nodes and returns the results
     read from the device.
 options:
+  pn_cliusername:
+    description:
+      - Login username
+    required: true
+    type: str
+  pn_clipassword:
+    description:
+      - Login password
+    required: true
+    type: str
   pn_showcommand:
     description:
       - The C(pn_showcommand) takes a CLI command as value which
