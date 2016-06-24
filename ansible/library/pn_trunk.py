@@ -147,11 +147,11 @@ options:
 
 EXAMPLES = """
 - name: create trunk 
-  pn_trunk: pn_trunkcommand='trunk-create' pn_trunkname='trunk-1' pn_trunkports='10...14' pn_trunkspeed='40g' pn_trunkedge=True pn_quiet=True
+  pn_trunk: pn_cliusername=admin pn_clipassword=admin pn_trunkcommand='trunk-create' pn_trunkname='trunk-1' pn_trunkports='10...14' pn_trunkspeed='40g' pn_trunkedge=True pn_quiet=True
 - name: modify trunk 
-  pn_trunk: pn_trunkcommand='trunk-modify' pn_trunkname='trunk-1' pn_trunkspeed='10g' pn_trunklacpmode='passive' pn_trunkedge=True pn_quiet=True
+  pn_trunk: pn_cliusername=admin pn_clipassword=admin pn_trunkcommand='trunk-modify' pn_trunkname='trunk-1' pn_trunkspeed='10g' pn_trunklacpmode='passive' pn_trunkedge=True pn_quiet=True
 - name: delete trunk 
-  pn_trunk: pn_trunkcommand='trunk-delete' pn_trunkname='trunk-1' pn_quiet=True
+  pn_trunk: pn_cliusername=admin pn_clipassword=admin pn_trunkcommand='trunk-delete' pn_trunkname='trunk-1' pn_quiet=True
 """
 
 RETURN = """
