@@ -60,6 +60,11 @@ stderr:
   description: the set of error responses from the show command.
   returned: on error
   type: list
+  
+changed:
+  description: Indicates whether the CLI caused any change.
+  returned: always(False)
+  type: bool
 """
 
 
@@ -70,21 +75,24 @@ import json
 def main():
 	module = AnsibleModule(
 		argument_spec = dict(
+			pn_cliusername = dict(required=True, type='str'),
+                        pn_clipassword = dict(required=True, type='str'),
 			pn_showcommand = dict(required=True, type='str'),
 			pn_showoptions = dict(default=' '),
 			pn_quiet = dict(default=True, type='bool')
-			),
-		supports_check_mode=True
+			)
 	)
-
+	
+        cliusername = module.params['pn_cliusername']
+        clipassword = module.params['pn_clipassword']
 	command = module.params['pn_showcommand']
 	options = module.params['pn_showoptions']
 	quiet = module.params['pn_quiet']
 
 	if quiet==True:
-		show = '/usr/bin/cli --quiet ' + command 
-	else:
-		show = '/usr/bin/cli ' + command 
+		show = '/usr/bin/cli --quiet --user ' + cliusername + ':' + clipassword + ' '
+        else:
+                show = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
 
 
 	if options != ' ':
@@ -100,7 +108,7 @@ def main():
 		showcmd = show,
 		stderr	= err.strip("\r\n"),
 		stdout 	= out.strip("\r\n"),
-		changed	= True
+		changed	= False
 	)
 
 from ansible.module_utils.basic import *
