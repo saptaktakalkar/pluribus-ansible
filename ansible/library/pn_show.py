@@ -42,14 +42,14 @@ options:
 
 EXAMPLES = """
 - name: run the vlan-show CLI command
-  pn_show: pn_showcommand='vlan-show' pn_quiet=True
+  pn_show: pn_cliusername=admin pn_clipassword=admin pn_showcommand='vlan-show' pn_quiet=True
 
 
 - name: run the vlag-show CLI command
-  pn_show: pn_showcommand='vlag-show' pn_quiet=False
+  pn_show: pn_cliusername=admin pn_clipassword=admin pn_showcommand='vlag-show' pn_quiet=False
 
 - name: run the cluster-show command
-  pn_show: pn_showcommand='cluster-show' pn_showoptions='layout vertical' pn_quiet=True
+  pn_show: pn_cliusername=admin pn_clipassword=admin pn_showcommand='cluster-show' pn_showoptions='layout vertical' pn_quiet=True
 """
 
 RETURN = """
