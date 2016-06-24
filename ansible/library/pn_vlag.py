@@ -93,16 +93,16 @@ options:
 
 EXAMPLES = """
 - name: create a VLAG
-  pn_vlag: pn_vlagcommand='vlag-create' pn_vlagname='vlag-1' pn_vlaglport='spine01' pn_vlagpeerport='spine02' pn_vlagmode='active-active' pn_quiet=True
+  pn_vlag: pn_cliusername=admin pn_clipassword=admin pn_vlagcommand='vlag-create' pn_vlagname='vlag-1' pn_vlaglport='spine01' pn_vlagpeerport='spine02' pn_vlagmode='active-active' pn_quiet=True
 
 - name: create a VLAG 
-  pn_vlag: pn_vlagcommand='vlag-create' pn_vlagname={{ item.name }} pn_vlaglport={{ item.self }} pn_vlagpeerport={{ item.peer }} pn_vlagmode='active-active' pn_quiet=True
+  pn_vlag: pn_cliusername=admin pn_clipassword=admin pn_vlagcommand='vlag-create' pn_vlagname={{ item.name }} pn_vlaglport={{ item.self }} pn_vlagpeerport={{ item.peer }} pn_vlagmode='active-active' pn_quiet=True
   with_items: 
   - { name: 'spine-vlag', self: 'spine01', peer: 'spine02' }
   - { name: 'leaf-vlag', self: 'leaf01', peer: 'leaf02' }
 
 - name: delete VLAGs
-  pn_vlag: pn_vlagcommand='vlag-delete' pn_vlagname={{ item }} pn_quiet=True
+  pn_vlag: pn_cliusername=admin pn_clipassword=admin pn_vlagcommand='vlag-delete' pn_vlagname={{ item }} pn_quiet=True
   with_items:
     - vlag-1
     - spine-vlag
@@ -125,7 +125,7 @@ stderr:
   returned: on error
   type: list
 changed:
-  description: Indicates whether the CLI caused changes.
+  description: Indicates whether the CLI caused changes on the target.
   returned: always
   type: bool
 """
