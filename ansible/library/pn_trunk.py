@@ -13,6 +13,16 @@ description:
   	- Alphanumeric characters
   	- Special characters like: _ 
 options:
+  pn_cliusername:
+    description:
+      - Login username
+    required: true
+    type: str
+  pn_clipassword:
+    description:
+      - Login password
+    required: true
+    type: str
   pn_trunkcommand:
     description:
       - The C(pn_trunkcommand) takes the trunk commands as value.
@@ -159,6 +169,10 @@ stderr:
   description: the set of error responses from the trunk command.
   returned: on error
   type: list
+changed:
+  description: Indicates whether the CLI caused changes on the target.
+  returned: always
+  type: bool
 """
 import subprocess
 import shlex
@@ -168,6 +182,8 @@ import json
 def main():
         module = AnsibleModule(
                 argument_spec = dict(
+                        pn_cliusername = dict(required=True, type='str'),
+                        pn_clipassword = dict(required=True, type='str'),
                         pn_trunkcommand = dict(required=True, type='str', choices=['trunk-create', 'trunk-delete', 'trunk-modify']),
                         pn_trunkname = dict(required=True, type='str'),
                         pn_trunkports = dict(type='str'),
@@ -199,6 +215,8 @@ def main():
                         )
         )
 
+        cliusername = module.params['pn_cliusername']
+        clipassword = module.params['pn_clipassword']
         trunkcommand = module.params['pn_trunkcommand']
         trunkname = module.params['pn_trunkname']
         trunkports = module.params['pn_trunkports']
@@ -224,9 +242,9 @@ def main():
         quiet = module.params['pn_quiet']
 
         if quiet==True:
-                cli  = "/usr/bin/cli --quiet "
+                cli  = '/usr/bin/cli --quiet --user ' + cliusername + ':' + clipassword + ' '
         else:
-                cli = "/usr/bin/cli "
+                cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
 
 
         if trunkname:
@@ -310,13 +328,18 @@ def main():
         p = subprocess.Popen(trunkcmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
         out,err = p.communicate();
 
-
-        module.exit_json(
-                trunkcmd = trunk,
-                stdout = out.rstrip("\r\n"),
-                stderr = err.rstrip("\r\n"),
-                changed = True
-        )
+        if out:
+                module.exit_json(
+                        trunkcmd = trunk,
+                        stdout = out.rstrip("\r\n"),
+                        changed = True
+                )
+        if err:
+                module.exit_json(
+                        trunkcmd = trunk,
+                        stderr = err.rstrip("\r\n"),
+                        changed = False
+                )
 
 from ansible.module_utils.basic import *
 
