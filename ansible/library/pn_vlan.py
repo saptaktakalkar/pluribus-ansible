@@ -149,18 +149,18 @@ def main():
 
 	if (vlanid<2 | vlanid>4092):
 		module.fail_json(msg="Invalid vlan ID")
-	vlan = cli + vlancommand + " id " + str(vlanid)
+	vlan = cli + vlancommand + ' id ' + str(vlanid)
 
         if vlanscope:
-                vlan += " scope " + vlanscope
+                vlan += ' scope ' + vlanscope
         if vlandesc:
-                vlan += " description " + vlandesc
+                vlan += ' description ' + vlandesc
         if vlanstats:
-                vlan += " stats " + vlanstats
+                vlan += ' stats ' + vlanstats
         if vlanports:
-                vlan += " ports " + vlanports
+                vlan += ' ports ' + vlanports
         if vlanuntaggedports:
-                vlan += " untagged-ports " + vlanuntaggedports
+                vlan += ' untagged-ports ' + vlanuntaggedports
 
 	vlancmd = shlex.split(vlan)
 	p = subprocess.Popen(vlancmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
