@@ -13,6 +13,16 @@ description:
   	- Alphanumeric characters
   	- Special characters like: _ 
 options:
+  pn_cliusername:
+    description:
+      - Login username
+    required: true
+    type: str
+  pn_clipassword:
+    description:
+      - Login password
+    required: true
+    type: str
   pn_vroutercommand:
     description:
       - The C(pn_vroutercommand) takes the vrouter-create/vrouter-delete/vrouter-modify command as value.
@@ -53,9 +63,10 @@ options:
 
 EXAMPLES = """
 - name: create vrouter 
-  pn_vrouter: pn_routercommand='vrouter-create' pn_vroutername='ansible-vrouter' pn_vroutervnet='ansible-vnet' pn_vrouterstate='enable' pn_vrouterhw_vrrp_id=18 pn_quiet=True
+  pn_vrouter: pn_cliusername=admin pn_clipassword=admin pn_routercommand='vrouter-create' pn_vroutername='ansible-vrouter' pn_vroutervnet='ansible-vnet' pn_vrouterstate='enable' pn_vrouterhw_vrrp_id=18 pn_quiet=True
+
 - name: delete vrouter 
-  pn_vrouter: pn_vroutercommand='vrouter-delete' pn_vroutername='ansible-vrouter' pn_quiet=True
+  pn_vrouter: pn_cliusername=admin pn_clipassword=admin pn_vroutercommand='vrouter-delete' pn_vroutername='ansible-vrouter' pn_quiet=True
 """
 
 RETURN = """
@@ -73,6 +84,10 @@ stderr:
   description: the set of error responses from the vrouter command.
   returned: on error
   type: list
+changed:
+  description: Indicates whether the CLI caused changes on the target.
+  returned: always
+  type: bool
 """
 import subprocess
 import shlex
@@ -82,6 +97,8 @@ import json
 def main():
         module = AnsibleModule(
                 argument_spec = dict(
+                        pn_cliusername = dict(required=True, type='str'),
+                        pn_clipassword = dict(required=True, type='str'),
                         pn_vroutercommand = dict(required=True, type='str', choices=['vrouter-create', 'vrouter-delete', 'vrouter-modify']),
                         pn_vroutername = dict(required=True, type='str'),
                         pn_vroutervnet = dict(type='str'),
@@ -97,6 +114,8 @@ def main():
                         )
         )
 
+        cliusername = module.params['pn_cliusername']
+        clipassword = module.params['pn_clipassword']
         vroutercommand = module.params['pn_vroutercommand']
         vroutername = module.params['pn_vroutername']
         vroutervnet = module.params['pn_vroutervnet']
@@ -106,9 +125,9 @@ def main():
         quiet = module.params['pn_quiet']
 
         if quiet==True:
-                cli  = "/usr/bin/cli --quiet "
+                cli  = '/usr/bin/cli --quiet --user ' + cliusername + ':' + clipassword + ' '
         else:
-                cli = "/usr/bin/cli "
+                cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
 
 
         if vroutername:
@@ -131,13 +150,19 @@ def main():
         p = subprocess.Popen(vroutercmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
         out,err = p.communicate();
 
+        if out:
+                module.exit_json(
+                        vroutercmd	= vrouter,
+                        stdout = out.rstrip("\r\n"),
+                        changed = True
+                )
 
-        module.exit_json(
-                vroutercmd = vrouter,
-                stdout = out.rstrip("\r\n"),
-                stderr = err.rstrip("\r\n"),
-                changed = True
-        )
+	if err:
+                module.exit_json(
+                        vroutercmd	= vrouter,
+                        stderr = err.rstrip("\r\n"),
+                        changed = False
+                )
 
 from ansible.module_utils.basic import *
 
