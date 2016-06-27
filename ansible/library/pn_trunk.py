@@ -268,7 +268,7 @@ def main():
 		trunk += ' lacp-mode ' + trunklacpmode
 
 	if trunklacppriority:
-		trunk += ' lacp - priority ' + trunklacppriority
+		trunk += ' lacp-priority ' + trunklacppriority
 
 	if trunklacptimeout:
 		trunk += ' lacp-timeout ' + trunklacptimeout
