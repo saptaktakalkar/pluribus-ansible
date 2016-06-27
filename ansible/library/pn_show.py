@@ -72,7 +72,7 @@ stderr:
   type: list
   
 changed:
-  description: Indicates whether the CLI caused any change.
+  description: Indicates whether the CLI caused any change on the target.
   returned: always(False)
   type: bool
 """
@@ -100,9 +100,9 @@ def main():
 	quiet = module.params['pn_quiet']
 
 	if quiet==True:
-		show = '/usr/bin/cli --quiet --user ' + cliusername + ':' + clipassword + ' '
+		show = '/usr/bin/cli --quiet --user ' + cliusername + ':' + clipassword + ' ' + command
         else:
-                show = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
+                show = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' ' + command
 
 
 	if options != ' ':
