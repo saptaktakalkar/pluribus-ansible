@@ -1,11 +1,17 @@
 ---
 - name: PN-CLI VLAN Delete
-  hosts: testswitches
-  user: root
+  hosts: newswitches
+  user: pluribus
   
 
   tasks:
   - name: Delete VLAN 
-    pn_vlan: pn_vlancommand='vlan-delete' pn_vlanid=140 pn_quiet=True
+    pn_vlan: pn_cliusername=network-admin pn_clipassword=test123 pn_vlancommand=vlan-delete pn_vlanid={{ item }} pn_quiet=True
+#     pn_cliusername: network-admin
+#     pn_clipassword: test123 
+#     pn_vlancommand: vlan-delete 
+#     pn_vlanid: 202 
+#     pn_quiet: True
+    with_sequence: start=202 end=210
     register: cmd_output
   - debug: var=cmd_output 

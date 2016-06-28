@@ -1,11 +1,10 @@
 ---
 - name: PN-CLI Cluster Create
-  hosts: testswitches
-  user: root
-  
-
+  hosts: spine1
+  user: pluribus
+  gather_facts: False
   tasks:
   - name: Create Cluster 
-    pn_cluster: pn_clustercommand='cluster-create' pn_clustername='ansible-cluster' pn_clusternode1='spine01' pn_clusternode2='spine02' pn_clustervalidate=True pn_quiet=True
+    pn_cluster: pn_cliusername=network-admin pn_clipassword=test123 pn_clustercommand=cluster-create pn_clustername=ansible-cluster pn_clusternode1=ONVL-Spine1 pn_clusternode2=onvl-spine2 pn_quiet=True
     register: cmd_output
   - debug: var=cmd_output 

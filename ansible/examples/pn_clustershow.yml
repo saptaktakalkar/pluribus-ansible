@@ -1,0 +1,10 @@
+---
+- name: PN-CLI Cluster show command
+  hosts: newswitches[0]
+  user: pluribus
+  gather_facts: False
+  tasks:
+  - name: Test CLI cluster-show command
+    pn_show: pn_cliusername=network-admin pn_clipassword=test123 pn_showcommand=cluster-show pn_showoptions=format name pn_quiet: True
+    register: cmd_output
+  - debug: var=cmd_output

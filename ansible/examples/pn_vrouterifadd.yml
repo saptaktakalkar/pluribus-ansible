@@ -1,0 +1,10 @@
+---
+- name: PN-CLI vrouter interface add
+  hosts: newswitches
+  user: pluribus  
+
+  tasks:
+  - name: Add vrouter interface 
+    pn_vrouterif: pn_cliusername=network-admin pn_clipassword=test123 pn_vrouterifcommand=vrouter-interface-add pn_vrouterifname=ansible-vrouter pn_vrouterifvlan=201 pn_vrouterifip=104.104.104.1/24 pn_vrouterif_interface=data pn_quiet=True
+    register: cmd_output
+  - debug: var=cmd_output 

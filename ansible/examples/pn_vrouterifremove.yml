@@ -1,0 +1,10 @@
+---
+- name: PN-CLI vrouter-interface-remove
+  hosts: newswitches
+  user: pluribus  
+
+  tasks:
+  - name: Remove vrouter interface 
+    pn_vrouterif: pn_cliusername=network-admin pn_clipassword=test123 pn_vrouterifcommand=vrouter-interface-remove pn_vrouterifname=ansible-vrouter pn_vrouterifnics=eth1.201 pn_quiet=True
+    register: cmd_output
+  - debug: var=cmd_output 

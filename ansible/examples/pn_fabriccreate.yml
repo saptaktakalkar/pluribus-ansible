@@ -1,0 +1,13 @@
+--- 
+- hosts: spine1
+  name: "PN-CLI Fabric create Test"
+  gather_facts: True
+  tasks: 
+    - name: "Test Fabric create CLI command"
+      pn_show: pn_cliusername=network-admin pn_clipassword=test123 pn_showcommand=fabric-create name opennetvisorlinux pn_quiet=True
+      register: cmd_output
+    - debug: var=cmd_output  
+  user: pluribus
+
+
+    
