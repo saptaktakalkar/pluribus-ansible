@@ -1,6 +1,6 @@
 # pn_vlan
 
-Execute CLI show commands
+Module for CLI vlan configurations. Supports `vlan-create`, `vlan-delete` and `vlan-modify` commands with options. 
 
 | parameter      | required       | default      |choices       |comments                                                    |
 |----------------|----------------|--------------|--------------|------------------------------------------------------------|
@@ -33,7 +33,9 @@ Execute CLI show commands
 
 ## Examples
 
-Create VLAN with id = 254 and scope = local
+
+# vlan-create
+YAML Playbook for **_creating_** a vlan configuration using `pn_vlan` module
 ```
 ---
 - name: Playbook for VLAN Create
@@ -47,7 +49,7 @@ Create VLAN with id = 254 and scope = local
   
 ```
 
-Create 3 VLANs with different IDs and scope
+YAML Playbook for **_creating_** 3 vlan configurations using `pn_vlan` module
 ```
 ---
 - name: Playbook for VLAN Create
@@ -64,7 +66,8 @@ Create 3 VLANs with different IDs and scope
   - debug: var=cmd_output
   
 ```
-Delete all the created VLANs
+# vlan-delete
+YAML Playbook for **_deleting_** a vlan configurations using `pn_vlan` module
 
 ```
 ---
