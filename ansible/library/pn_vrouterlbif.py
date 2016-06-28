@@ -4,41 +4,42 @@
 
 DOCUMENTATION = """
 ---
-module: pn_cluster
+module: pn_vrouterlbif
 author: "Pluribus Networks"
-short_description: CLI command to create/delete a cluster
+short_description: CLI command to add/remove/modify vrouter-loopback-interface
 description:
-  - Execute cluster-create or cluster-delete command. 
-  - Requires cluster name:
-  	- Alphanumeric characters
-  	- Special characters like: _ 
+  - Execute vrouter-loopback-interface command to add/remove/modify vrouter loopback interface. 
 options:
-  pn_clustercommand:
-    description:
-      - The C(pn_clustercommand) takes the cluster-create/cluster-delete command as value.
-    required: true
-    choices: cluster-create, cluster-delete
-    type: str
-  pn_clustername:
-    description:
-      - The C(pn_clustername) takes a valid name for cluster configuration.
+  pn_cliusername: 
+    description: 
+      - Login username.
     required: true
     type: str
-  pn_clusternode1:
+  pn_clipassword
     description:
-      - name for cluster-node 1
-    required_if: cluster-create 
+      - Login password.
+    required: true
     type: str
-  pn_clusternode2:
+  pn_vrouterlbcommand:
     description:
-      - name for cluster-node 2
-    required_if: cluster-create
+      - The C(pn_vrouterlbcommand) takes the vrouter-loopback-interface-add/remove/modify command as value.
+    required: true
+    choices: vrouter-loopback-interface-add, vrouter-loopback-interface-remove, vrouter-loopback-interface-modify 
     type: str
-  pn_clustervalidate:
+  pn_vrouterlbname:
     description:
-      - validate the cluster link
-    required: false
-    choices: validate, no-validate
+      - The C(pn_vrouterlbname) takes a valid name for service configuration.
+    required: true
+    type: str
+  pn_vrouterlbindex:
+    description:
+      - loopback index from 1 to 255
+    required_if: vrouter-loopback-interface-add/remove 
+    type: int
+  pn_vrouterlbip:
+    description:
+      - loopback IP address
+    required_if: vrouter-loopback-interface-add
     type: str
   pn_quiet:
     description:
@@ -49,17 +50,17 @@ options:
 """
 
 EXAMPLES = """
-- name: create spine cluster 
-  pn_cluster: pn_clustercommand='cluster-create' pn_clustername='spine-cluster' pn_clusternode1='spine01' pn_clusternode2='spine02' pn_clustervalidate=True pn_quiet=True
-- name: delete spine cluster 
-  pn_cluster: pn_clustercommand='cluster-delete' pn_clustername='spine-cluster' pn_quiet=True
+- name: add vrouter-loopback-interface
+  pn_vrouterlbif: pn_cliusername=<username> pn_clipassword=<password> pn_vrouterlbcommand='vrouter-loopback-interface-add' pn_vrouterlbname='self' pn_clusternode1='spine01' pn_clusternode2='spine02' pn_clustervalidate=True pn_quiet=True
+- name: remove vrouter-loopback-interface
+  pn_vrouterlbif: pn_cliusername=<username> pn_clipassword=<password> pn_vrouterlbcommand='vrouter-loopback-interface-remove' pn_vrouterlbname='self' pn_quiet=True
 """
 
 RETURN = """
-clustercmd:
+vrouterlbcmd:
   description: the CLI command run on the target node(s).
 stdout:
-  description: the set of responses from the cluster command.
+  description: the set of responses from the vrouterlb command.
   returned: always
   type: list
 stdout_lines:
@@ -67,9 +68,13 @@ stdout_lines:
   returned: always
   type: list
 stderr:
-  description: the set of error responses from the cluster command.
+  description: the set of error responses from the vrouterlb command.
   returned: on error
   type: list
+changed:
+  description: Indicates whether the CLI caused changes on the target.
+  returned: always
+  type: bool
 """
 import subprocess
 import shlex
@@ -79,6 +84,8 @@ import json
 def main():
         module = AnsibleModule(
                 argument_spec = dict(
+                        pn_cliusername = dict(required=True, type='str'),
+                        pn_clipassword = dict(required=True, type='str'),
                         pn_vrouterlbcommand = dict(required=True, type='str', choices=['vrouter-create', 'vrouter-delete', 'vrouter-modify']),
                         pn_vrouterlbname = dict(required=True, type='str'),
                         pn_vrouterlbindex = dict(required=False, type='int'),
@@ -89,10 +96,11 @@ def main():
                         [ "pn_vrouterlbcommand", "vrouter-loopback-interface-add", ["pn_vrouterlbname", "pn_vrouterlbindex", "pn_vrouterlbip"] ],
                         [ "pn_vrouterlbcommand", "vrouter-loopback-interface-remove", ["pn_vrouterlbname", "pn_vrouterlbindex"] ],
 			[ "pn_vrouterlbcommand", "vrouter-loopback-interface-modify", ["pn_vrouterlbname"]]
-                        ),
-		supports_check_mode = True
+                        )
         )
 
+        cliusername = module.params['pn_cliusername']
+        clipassword = module.params['pn_clipassword']
         vrouterlbcommand = module.params['pn_vrouterlbcommand']
         vrouterlbname = module.params['pn_vrouterlbname']
         vrouterlbindex = module.params['pn_vrouterlbindex']
@@ -100,9 +108,9 @@ def main():
         quiet = module.params['pn_quiet']
 
         if quiet==True:
-                cli  = "/usr/bin/cli --quiet "
+                cli  = '/usr/bin/cli --quiet --user ' + cliusername + ':' + clipassword + ' '
         else:
-                cli = "/usr/bin/cli "
+                cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
 
 
         if vrouterlbname:
@@ -119,13 +127,20 @@ def main():
         p = subprocess.Popen(vrouterlbcmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
         out,err = p.communicate();
 
+	if out:
+                module.exit_json(
+                        vrouterlbcmd = vrouterlb,
+                        stdout = out.rstrip("\r\n"),
+                        changed = True
+                )
+        
+        if err:
+                module.exit_json(
+                        vrouterlbcmd = vrouterlb,
+                        stderr = err.rstrip("\r\n"),
+                        changed = False
+                )
 
-        module.exit_json(
-                vrouterlbcmd = vrouterlb,
-                stdout = out.rstrip("\r\n"),
-                stderr = err.rstrip("\r\n")
-#                changed = True
-        )
 
 from ansible.module_utils.basic import *
 
