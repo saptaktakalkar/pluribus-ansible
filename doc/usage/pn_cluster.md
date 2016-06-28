@@ -4,8 +4,8 @@ Module for CLI cluster configurations. Supports `cluster-create`, `cluster-delet
 
 | parameter       | required       | default      |choices       |comments                                                    |
 |-----------------|----------------|--------------|--------------|------------------------------------------------------------|
-|pn_cliusername  | yes            |              |              | Login username                                              |
-|pn_clipassword  | yes            |              |              | Login password                                              |
+|pn_cliusername   | yes            |              |              | Login username                                             |
+|pn_clipassword   | yes            |              |              | Login password                                             |
 |pn_clustercommand| yes            |              | cluster-create, cluster-delete, cluster-modify | Create, delete or modify cluster configuration|
 |pn_clustername   | yes            |              |              | The Cluster name                                              |
 |pn_clusternode1  | conditional    |              |              | Name for cluster-node-1              |
