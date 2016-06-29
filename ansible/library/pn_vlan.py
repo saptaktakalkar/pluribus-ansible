@@ -1,6 +1,10 @@
 #!/usr/bin/python
 # Test PN CLI vlan-create/vlan-delete
 
+import subprocess
+import shlex
+from ansible.module_utils.basic import *
+
 DOCUMENTATION = """
 ---
 module: pn_vlan
@@ -9,7 +13,7 @@ short_description: CLI command to create/delete a vlan.
 description:
   - Execute vlan-create or vlan-delete command. 
   - Requires vlan id:
-  	- id should be in the range 2...4092.
+    - id should be in the range 2...4092.
   - If vlan-create, scope is required. Scope can be fabric/local. 
   - Can provide options for vlan-create.
 options:
@@ -71,16 +75,21 @@ options:
 
 EXAMPLES = """
 - name: create a VLAN
-  pn_vlan: pn_cliusername=admin pn_clipassword=admin pn_vlancommand='vlan-create' pn_vlanid=1854 pn_vlanscope='local' pn_quiet=True
-
-- name: create a VLAN 
-  pn_vlan: pn_cliusername=admin pn_clipassword=admin pn_vlancommand='vlan-create' pn_vlanid=220 pn_vlanscope='fabric' pn_vlandesc='ansible-vlan' pn_vlanports={{ "10,11,12" }} pn_quiet=True
+  pn_vlan:
+    pn_cliusername: admin
+    pn_clipassword: admin
+    pn_vlancommand: 'vlan-create'
+    pn_vlanid: 1854
+    pn_vlanscope: 'local'
+    pn_quiet: True
 
 - name: delete VLANs
-  pn_vlan: pn_cliusername=admin pn_clipassword=admin pn_vlancommand='vlan-delete' pn_vlanid={{ item }} pn_quiet=True
-  with_items:
-    - 1854
-    - 220
+  pn_vlan:
+    pn_cliusername: admin
+    pn_clipassword: admin
+    pn_vlancommand: 'vlan-delete'
+    pn_vlanid: 1854
+    pn_quiet: True
 """
 
 RETURN = """
@@ -105,84 +114,82 @@ changed:
 """
 
 
-import subprocess
-import shlex
-import json
-
-
 def main():
-	module = AnsibleModule(
-		argument_spec = dict(
-			pn_cliusername = dict(required=True, type='str'),
-                        pn_clipassword = dict(required=True, type='str'),
-                        pn_vlancommand = dict(required=True, type='str', choices=['vlan-create', 'vlan-delete']),
-			pn_vlanid = dict(required=True, type='int'),
-			pn_vlanscope = dict(type='str', choices=['fabric', 'local']),
-			pn_vlandesc = dict(required=False, type='str'),
-                        pn_vlanstats = dict(required=False, type='str', choices=['stats', 'no-stats']),
-                        pn_vlanports = dict(required=False, type='str'),
-                        pn_vlanuntaggedports = dict(required=False, type='str'),
-			pn_quiet = dict(default=True, type='bool')
-			),
-		required_if = (
-			[ "pn_vlancommand", "vlan-create", [ "pn_vlanid", "pn_vlanscope" ] ],
-                        [ "pn_vlancommand", "vlan-delete", [ "pn_vlanid" ] ]
-                        )
-	)
+    module = AnsibleModule(
+        argument_spec=dict(
+            pn_cliusername=dict(required=True, type='str'),
+            pn_clipassword=dict(required=True, type='str'),
+            pn_vlancommand=dict(required=True, type='str',
+                                choices=['vlan-create', 'vlan-delete']),
+            pn_vlanid=dict(required=True, type='int'),
+            pn_vlanscope=dict(type='str', choices=['fabric', 'local']),
+            pn_vlandesc=dict(required=False, type='str'),
+            pn_vlanstats=dict(required=False, type='str',
+                              choices=['stats', 'no-stats']),
+            pn_vlanports=dict(required=False, type='str'),
+            pn_vlanuntaggedports=dict(required=False, type='str'),
+            pn_quiet=dict(default=True, type='bool')
+        ),
+        required_if=(
+            ["pn_vlancommand", "vlan-create", ["pn_vlanid", "pn_vlanscope"]],
+            ["pn_vlancommand", "vlan-delete", ["pn_vlanid"]]
+        )
+    )
 
-	cliusername = module.params['pn_cliusername']
-        clipassword = module.params['pn_clipassword']
-        vlancommand = module.params['pn_vlancommand']
-	vlanid = module.params['pn_vlanid']
-	vlanscope = module.params['pn_vlanscope']
-        vlandesc = module.params['pn_vlandesc']
-        vlanstats = module.params['pn_vlanstats']
-        vlanports = module.params['pn_vlanports']
-        vlanuntaggedports = module.params['pn_vlanuntaggedports']
-	quiet = module.params['pn_quiet']
+    cliusername = module.params['pn_cliusername']
+    clipassword = module.params['pn_clipassword']
+    vlancommand = module.params['pn_vlancommand']
+    vlanid = module.params['pn_vlanid']
+    vlanscope = module.params['pn_vlanscope']
+    vlandesc = module.params['pn_vlandesc']
+    vlanstats = module.params['pn_vlanstats']
+    vlanports = module.params['pn_vlanports']
+    vlanuntaggedports = module.params['pn_vlanuntaggedports']
+    quiet = module.params['pn_quiet']
 
-	if quiet==True:
-		cli  = '/usr/bin/cli --quiet --user ' + cliusername + ':' + clipassword + ' '
-	else:
-		cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
+    if quiet is True:
+        cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
+               clipassword + ' ')
+    else:
+        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
 
+    if vlanid < 2 | vlanid > 4092:
+        module.fail_json(msg="Invalid vlan ID")
 
-	if (vlanid<2 | vlanid>4092):
-		module.fail_json(msg="Invalid vlan ID")
-	vlan = cli + vlancommand + ' id ' + str(vlanid)
+    vlan = cli + vlancommand + ' id ' + str(vlanid)
 
-        if vlanscope:
-                vlan += ' scope ' + vlanscope
-        if vlandesc:
-                vlan += ' description ' + vlandesc
-        if vlanstats:
-                vlan += ' stats ' + vlanstats
-        if vlanports:
-                vlan += ' ports ' + vlanports
-        if vlanuntaggedports:
-                vlan += ' untagged-ports ' + vlanuntaggedports
+    if vlanscope:
+        vlan += ' scope ' + vlanscope
 
-	vlancmd = shlex.split(vlan)
-	p = subprocess.Popen(vlancmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
+    if vlandesc:
+        vlan += ' description ' + vlandesc
 
-	out,err = p.communicate();
-	
-        if out:
-                module.exit_json(
-                        vlancmd	= vlan,
-                        stdout = out.rstrip("\r\n"),
-                        changed = True
-                )
-                
-	if err:
-                module.exit_json(
-                        vlancmd	= vlan,
-                        stderr = err.rstrip("\r\n"),
-                        changed = False
-                )
-	
+    if vlanstats:
+        vlan += ' stats ' + vlanstats
 
-from ansible.module_utils.basic import *
+    if vlanports:
+        vlan += ' ports ' + vlanports
+
+    if vlanuntaggedports:
+        vlan += ' untagged-ports ' + vlanuntaggedports
+
+    vlancmd = shlex.split(vlan)
+    response = subprocess.Popen(vlancmd, stderr=subprocess.PIPE,
+                                stdout=subprocess.PIPE, universal_newlines=True)
+    out, err = response.communicate()
+
+    if err:
+        module.exit_json(
+            vlancmd=vlan,
+            stderr=err.rstrip("\r\n"),
+            changed=False
+        )
+    else:
+        module.exit_json(
+            vlancmd=vlan,
+            stdout=out.rstrip("\r\n"),
+            changed=True
+        )
 
 if __name__ == '__main__':
-	main()
+    main()

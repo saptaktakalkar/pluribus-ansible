@@ -1,6 +1,9 @@
 #!/usr/bin/python
 # Test PN CLI cluster-create/cluster-delete
 
+import subprocess
+import shlex
+from ansible.module_utils.basic import *
 
 DOCUMENTATION = """
 ---
@@ -10,8 +13,8 @@ short_description: CLI command to create/delete a cluster
 description:
   - Execute cluster-create or cluster-delete command. 
   - Requires cluster name:
-  	- Alphanumeric characters
-  	- Special characters like: _ 
+    - Alphanumeric characters
+    - Special characters like: _
 options:
   pn_cliusername:
     description:
@@ -25,7 +28,8 @@ options:
     type: str
   pn_clustercommand:
     description:
-      - The C(pn_clustercommand) takes the cluster-create/cluster-delete command as value.
+      - The C(pn_clustercommand) takes the cluster-create/cluster-delete command
+      as value.
     required: true
     choices: cluster-create, cluster-delete
     type: str
@@ -59,10 +63,24 @@ options:
 """
 
 EXAMPLES = """
-- name: create spine cluster 
-  pn_cluster: pn_cliusername=admin pn_clipassword=admin pn_clustercommand='cluster-create' pn_clustername='spine-cluster' pn_clusternode1='spine01' pn_clusternode2='spine02' pn_clustervalidate=True pn_quiet=True
-- name: delete spine cluster 
-  pn_cluster: pn_cliusername=admin pn_clipassword=admin pn_clustercommand='cluster-delete' pn_clustername='spine-cluster' pn_quiet=True
+- name: create spine cluster
+  pn_cluster:
+    pn_cliusername: admin
+    pn_clipassword: admin
+    pn_clustercommand: 'cluster-create'
+    pn_clustername: 'spine-cluster'
+    pn_clusternode1: 'spine01'
+    pn_clusternode2: 'spine02'
+    pn_clustervalidate: True
+    pn_quiet: True
+
+- name: delete spine cluster
+  pn_cluster:
+    pn_cliusername: admin
+    pn_clipassword: admin
+    pn_clustercommand: 'cluster-delete'
+    pn_clustername: 'spine-cluster'
+    pn_quiet: True
 """
 
 RETURN = """
@@ -85,75 +103,78 @@ changed:
   returned: always
   type: bool
 """
-import subprocess
-import shlex
-import json
 
 
 def main():
-        module = AnsibleModule(
-                argument_spec = dict(
-                        pn_cliusername = dict(required=True, type='str'),
-                        pn_clipassword = dict(required=True, type='str'),
-                        pn_clustercommand = dict(required=True, type='str', choices=['cluster-create', 'cluster-delete']),
-                        pn_clustername = dict(required=True, type='str'),
-                        pn_clusternode1 = dict(type='str'),
-                        pn_clusternode2 = dict(type='str'),
-                        pn_clustervalidate = dict(required=False, type='str', choices=['validate', 'no-validate']),
-                        pn_quiet = dict(default=True, type='bool')
-                        ),
-                required_if = (
-                        [ "pn_clustercommand", "cluster-create", ["pn_clustername", "pn_clusternode1", "pn_clusternode2" ] ],
-                        [ "pn_clustercommand", "cluster-delete", ["pn_clustername"] ]
-                        )
+    module = AnsibleModule(
+        argument_spec=dict(
+            pn_cliusername=dict(required=True, type='str'),
+            pn_clipassword=dict(required=True, type='str'),
+            pn_clustercommand=dict(required=True, type='str',
+                                   choices=['cluster-create',
+                                            'cluster-delete']),
+            pn_clustername=dict(required=True, type='str'),
+            pn_clusternode1=dict(type='str'),
+            pn_clusternode2=dict(type='str'),
+            pn_clustervalidate=dict(required=False, type='str',
+                                    choices=['validate', 'no-validate']),
+            pn_quiet=dict(default=True, type='bool')
+        ),
+        required_if=(
+            ["pn_clustercommand", "cluster-create",
+             ["pn_clustername", "pn_clusternode1", "pn_clusternode2"]],
+            ["pn_clustercommand", "cluster-delete", ["pn_clustername"]]
         )
-        
-        cliusername = module.params['pn_cliusername']
-        clipassword = module.params['pn_clipassword']
-        clustercommand = module.params['pn_clustercommand']
-        clustername = module.params['pn_clustername']
-        clusternode1 = module.params['pn_clusternode1']
-        clusternode2 = module.params['pn_clusternode2']
-        clustervalidate = module.params['pn_clustervalidate']
-        quiet = module.params['pn_quiet']
+    )
 
-        if quiet==True:
-                cli  = '/usr/bin/cli --quiet --user ' + cliusername + ':' + clipassword + ' '
-        else:
-                cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
+    cliusername = module.params['pn_cliusername']
+    clipassword = module.params['pn_clipassword']
+    clustercommand = module.params['pn_clustercommand']
+    clustername = module.params['pn_clustername']
+    clusternode1 = module.params['pn_clusternode1']
+    clusternode2 = module.params['pn_clusternode2']
+    clustervalidate = module.params['pn_clustervalidate']
+    quiet = module.params['pn_quiet']
 
+    if quiet is True:
+        cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
+               clipassword + ' ')
+    else:
+        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
 
-        if clustername:
-                cluster = cli + clustercommand + ' name ' + clustername
+    cluster = cli
 
-        if clusternode1:
-                cluster += ' cluster-node-1 ' + clusternode1
+    if clustername:
+        cluster += clustercommand + ' name ' + clustername
 
-        if clusternode2:
-                cluster += ' cluster-node-2 ' + clusternode2
+    if clusternode1:
+        cluster += ' cluster-node-1 ' + clusternode1
 
-        if clustervalidate:
-                cluster += " " + clustervalidate
+    if clusternode2:
+        cluster += ' cluster-node-2 ' + clusternode2
 
-        clustercmd = shlex.split(cluster)
+    if clustervalidate:
+        cluster += ' ' + clustervalidate
 
-        p = subprocess.Popen(clustercmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
-        out,err = p.communicate();
+    clustercmd = shlex.split(cluster)
+    response = subprocess.Popen(clustercmd, stderr=subprocess.PIPE,
+                                stdout=subprocess.PIPE, universal_newlines=True)
+    out, err = response.communicate()
 
-        if out:
-                module.exit_json(
-                        clustercmd = cluster,
-                        stdout = out.rstrip("\r\n"),
-                        changed = True
-                )
-        
-        if err:
-                module.exit_json(
-                        clustercmd = cluster,
-                        stderr = err.rstrip("\r\n"),
-                        changed = False
-                )
-from ansible.module_utils.basic import *
+    if out:
+        module.exit_json(
+            clustercmd=cluster,
+            stdout=out.rstrip("\r\n"),
+            changed=True
+        )
+
+    if err:
+        module.exit_json(
+            clustercmd=cluster,
+            stderr=err.rstrip("\r\n"),
+            changed=False
+        )
+
 
 if __name__ == '__main__':
-        main()
+    main()

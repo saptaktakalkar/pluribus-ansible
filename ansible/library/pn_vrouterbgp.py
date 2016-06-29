@@ -1,6 +1,10 @@
 #!/usr/bin/python
 # Test PN-CLI vrouter-bgp commands
 
+import subprocess
+import shlex
+from ansible.module_utils.basic import *
+
 DOCUMENTATION = """
 ---
 module: pn_vrouterbgp
@@ -8,7 +12,7 @@ author: "Pluribus Networks"
 short_description: CLI command to add/remove/modify vrouter-bgp
 description:
   - Execute vrouter-bgp-add, vrouter-bgp-remove, vrouter-bgp-modify command. 
-  - Add/remove/modify Border Gateway Protocol neighbor to a vrouter
+  - Add/remove/modify Border Gateway Protocol neighbor for a vrouter
 options:
   pn_cliusername:
     description:
@@ -22,7 +26,7 @@ options:
     type: str
   pn_vrouterbgp_command:
     description:
-      - The C(pn_vrouterbgp_command) takes the vrouter-bgp-add/vrouter-bgp-remove/vrouter-bgp-modify command as value.
+      - The C(pn_vrouterbgp_command) takes the vrouter-bgp command as value.
     required: true
     choices: vrouter-bgp-add, vrouter-bgp-remove, vrouter-bgp-modify
     type: str
@@ -141,10 +145,23 @@ options:
 
 EXAMPLES = """
 - name: add vrouter-bgp 
-  pn_vrouterbgp: pn_cliusername=admin pn_clipassword=admin pn_vrouterbgp_command='vrouter-bgp-add' pn_vrouterbgp_name='ansible-vrouter' pn_vrouterbgp_neighbor=104.104.104.1 pn_vrouterbgp_remote_as=1800 pn_quiet=True
+  pn_vrouterbgp:
+    pn_cliusername: admin
+    pn_clipassword: admin
+    pn_vrouterbgp_command: 'vrouter-bgp-add'
+    pn_vrouterbgp_name: 'ansible-vrouter'
+    pn_vrouterbgp_neighbor: 104.104.104.1
+    pn_vrouterbgp_remote_as: 1800
+    pn_quiet: True
 
 - name: remove vrouter-bgp 
-  pn_vrouterbgp: pn_cliusername=admin pn_clipassword=admin pn_vrouterbgp_command='vrouter-delete' pn_vrouterbgp_name='ansible-vrouter' pn_vrouterbgp_neighbor=104.104.104.1 pn_quiet=True
+  pn_vrouterbgp:
+    pn_cliusername: admin
+    pn_clipassword: admin
+    pn_vrouterbgp_command: 'vrouter-delete'
+    pn_vrouterbgp_name: 'ansible-vrouter'
+    pn_vrouterbgp_neighbor: 104.104.104.1
+    pn_quiet: True
 """
 
 RETURN = """
@@ -168,176 +185,183 @@ changed:
   type: bool
 """
 
-import subprocess
-import shlex
-import json
 
 def main():
-        module = AnsibleModule(
-                argument_spec = dict(
-			pn_cliusername = dict(required=True, type='str'),
-			pn_clipassword = dict(required=True, type='str'),
-                        pn_vrouterbgp_command = dict(required=True, type='str', choices=['vrouter-bgp-add', 'vrouter-bgp-remove', 'vrouter-bgp-modify']),
-                        pn_vrouterbgp_name = dict(required=True, type='str'),
-                        pn_vrouterbgp_neighbor = dict(required=False, type='str'),
-                        pn_vrouterbgp_remote_as = dict(required=False, type='int'), 
-			pn_vrouterbgp_nexthop = dict(required=False, type='bool'),
-			pn_vrouterbgp_password = dict(required=False, type='str'),
-			pn_vrouterbgp_ebgp = dict(required=False, type='int'),
-			pn_vrouterbgp_prefixlistin = dict(required=False, type='str'),
-			pn_vrouterbgp_prefixlistout = dict(required=False, type='str'),
-			pn_vrouterbgp_reflector = dict(required=False, type='bool'),
-			pn_vrouterbgp_capability = dict(required=False, type='bool'),
-			pn_vrouterbgp_softreconfig = dict(required=False, type='bool'),
-			pn_vrouterbgp_maxprefix = dict(required=False, type='int'),
-			pn_vrouterbgp_maxprefixwarn = dict(required=False, type='bool'),
-			pn_vrouterbgp_bfd = dict(required=False, type='bool'),
-			pn_vrouterbgp_multiprotocol = dict(required=False, type='bool', choices=['ipv4-unicast', 'ipv6-unicast']),
-			pn_vrouterbgp_weight = dict(required=False, type='int'),
-			pn_vrouterbgp_default = dict(required=False, type='bool'),
-			pn_vrouterbgp_keepalive = dict(required=False, type='int'),
-			pn_vrouterbgp_holdtime = dict(required=False, type='int'),
-			pn_vrouterbgp_routemapin = dict(required=False, type='str'),
-			pn_vrouterbgp_routemapout = dict(required=False, type='str'),
-			pn_quiet = dict(default=True, type='bool')
-                        ),
-                required_if = (
-                        [ "pn_vrouterbgp_command", "vrouter-bgp-add", [ "pn_vrouterbgp_name", "pn_vrouterbgp_neighbor", "pn_vrouterbgp_remote_as" ] ],
-                        [ "pn_vrouterbgp_command", "vrouter-bgp-remove", [ "pn_vrouterbgp_name", "pn_vrouterbgp_neighbor" ] ],
-			[ "pn_vrouterbgp_command", "vrouter-bgp-modify", [ "pn_vrouterbgp_name", "pn_vrouterbgp_neighbor" ] ]
-                        )
+    module = AnsibleModule(
+        argument_spec=dict(
+            pn_cliusername=dict(required=True, type='str'),
+            pn_clipassword=dict(required=True, type='str'),
+            pn_vrouterbgp_command=dict(required=True, type='str',
+                                       choices=['vrouter-bgp-add',
+                                                'vrouter-bgp-remove',
+                                                'vrouter-bgp-modify']),
+            pn_vrouterbgp_name=dict(required=True, type='str'),
+            pn_vrouterbgp_neighbor=dict(required=False, type='str'),
+            pn_vrouterbgp_remote_as=dict(required=False, type='int'),
+            pn_vrouterbgp_nexthop=dict(required=False, type='bool'),
+            pn_vrouterbgp_password=dict(required=False, type='str'),
+            pn_vrouterbgp_ebgp=dict(required=False, type='int'),
+            pn_vrouterbgp_prefixlistin=dict(required=False, type='str'),
+            pn_vrouterbgp_prefixlistout=dict(required=False, type='str'),
+            pn_vrouterbgp_reflector=dict(required=False, type='bool'),
+            pn_vrouterbgp_capability=dict(required=False, type='bool'),
+            pn_vrouterbgp_softreconfig=dict(required=False, type='bool'),
+            pn_vrouterbgp_maxprefix=dict(required=False, type='int'),
+            pn_vrouterbgp_maxprefixwarn=dict(required=False, type='bool'),
+            pn_vrouterbgp_bfd=dict(required=False, type='bool'),
+            pn_vrouterbgp_multiprotocol=dict(required=False, type='bool',
+                                             choices=['ipv4-unicast',
+                                                      'ipv6-unicast']),
+            pn_vrouterbgp_weight=dict(required=False, type='int'),
+            pn_vrouterbgp_default=dict(required=False, type='bool'),
+            pn_vrouterbgp_keepalive=dict(required=False, type='int'),
+            pn_vrouterbgp_holdtime=dict(required=False, type='int'),
+            pn_vrouterbgp_routemapin=dict(required=False, type='str'),
+            pn_vrouterbgp_routemapout=dict(required=False, type='str'),
+            pn_quiet=dict(default=True, type='bool')
+        ),
+        required_if=(
+            ["pn_vrouterbgp_command", "vrouter-bgp-add",
+             ["pn_vrouterbgp_name", "pn_vrouterbgp_neighbor",
+              "pn_vrouterbgp_remote_as"]],
+            ["pn_vrouterbgp_command", "vrouter-bgp-remove",
+             ["pn_vrouterbgp_name", "pn_vrouterbgp_neighbor"]],
+            ["pn_vrouterbgp_command", "vrouter-bgp-modify",
+             ["pn_vrouterbgp_name", "pn_vrouterbgp_neighbor"]]
+        )
+    )
+
+    cliusername = module.params['pn_cliusername']
+    clipassword = module.params['pn_clipassword']
+    vrouterbgp_command = module.params['pn_vrouterbgp_command']
+    vrouterbgp_name = module.params['pn_vrouterbgp_name']
+    vrouterbgp_neighbor = module.params['pn_vrouterbgp_neighbor']
+    vrouterbgp_remote_as = module.params['pn_vrouterbgp_remote_as']
+    vrouterbgp_nexthop = module.params['pn_vrouterbgp_nexthop']
+    vrouterbgp_password = module.params['pn_vrouterbgp_password']
+    vrouterbgp_ebgp = module.params['pn_vrouterbgp_ebgp']
+    vrouterbgp_prefixlistin = module.params['pn_vrouterbgp_prefixlistin']
+    vrouterbgp_prefixlistout = module.params['pn_vrouterbgp_prefixlistout']
+    vrouterbgp_reflector = module.params['pn_vrouterbgp_reflector']
+    vrouterbgp_capability = module.params['pn_vrouterbgp_capability']
+    vrouterbgp_softreconfig = module.params['pn_vrouterbgp_softreconfig']
+    vrouterbgp_maxprefix = module.params['pn_vrouterbgp_maxprefix']
+    vrouterbgp_maxprefixwarn = module.params['pn_vrouterbgp_maxprefixwarn']
+    vrouterbgp_bfd = module.params['pn_vrouterbgp_bfd']
+    vrouterbgp_multiprotocol = module.params['pn_vrouterbgp_multiprotocol']
+    vrouterbgp_weight = module.params['pn_vrouterbgp_weight']
+    vrouterbgp_default = module.params['pn_vrouterbgp_default']
+    vrouterbgp_keepalive = module.params['pn_vrouterbgp_keepalive']
+    vrouterbgp_holdtime = module.params['pn_vrouterbgp_holdtime']
+    vrouterbgp_routemapin = module.params['pn_vrouterbgp_routemapin']
+    vrouterbgp_routemapout = module.params['pn_vrouterbgp_routemapout']
+    quiet = module.params['pn_quiet']
+
+    if quiet is True:
+        cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
+               clipassword + ' ')
+    else:
+        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
+
+    vrouterbgp = cli
+
+    if vrouterbgp_name:
+        vrouterbgp = (cli + vrouterbgp_command + ' vrouter-name ' +
+                      vrouterbgp_name)
+
+    if vrouterbgp_neighbor:
+        vrouterbgp += ' neighbor ' + vrouterbgp_neighbor
+
+    if vrouterbgp_remote_as:
+        vrouterbgp += ' remote-as ' + str(vrouterbgp_remote_as)
+
+    if vrouterbgp_nexthop is True:
+        vrouterbgp += ' next-hop-self '
+    if vrouterbgp_nexthop is False:
+        vrouterbgp += ' no-next-hop-self '
+
+    if vrouterbgp_password:
+        vrouterbgp += ' password ' + vrouterbgp_password
+
+    if vrouterbgp_ebgp:
+        vrouterbgp += ' ebgp-multihop ' + str(vrouterbgp_ebgp)
+
+    if vrouterbgp_prefixlistin:
+        vrouterbgp += ' prefix-list-in ' + vrouterbgp_prefixlistin
+
+    if vrouterbgp_prefixlistout:
+        vrouterbgp += ' prefix-list-out ' + vrouterbgp_prefixlistout
+
+    if vrouterbgp_reflector is True:
+        vrouterbgp += ' route-reflector-client '
+    if vrouterbgp_reflector is False:
+        vrouterbgp += ' no-route-reflector-client '
+
+    if vrouterbgp_capability is True:
+        vrouterbgp += ' override-capability '
+    if vrouterbgp_capability is False:
+        vrouterbgp += ' no-override-capability '
+
+    if vrouterbgp_softreconfig is True:
+        vrouterbgp += ' soft-reconfig-inbound '
+    if vrouterbgp_softreconfig is False:
+        vrouterbgp += ' no-soft-reconfig-inbound '
+
+    if vrouterbgp_maxprefix:
+        vrouterbgp += ' max-prefix ' + str(vrouterbgp_maxprefix)
+
+    if vrouterbgp_maxprefixwarn is True:
+        vrouterbgp += ' max-prefix-warn-only '
+    if vrouterbgp_maxprefixwarn is False:
+        vrouterbgp += ' no-max-prefix-warn-only '
+
+    if vrouterbgp_bfd is True:
+        vrouterbgp += ' bfd '
+    if vrouterbgp_bfd is False:
+        vrouterbgp += ' no-bfd '
+
+    if vrouterbgp_multiprotocol:
+        vrouterbgp += ' multi-protocol ' + vrouterbgp_multiprotocol
+
+    if vrouterbgp_weight:
+        vrouterbgp += ' weight ' + vrouterbgp_weight
+
+    if vrouterbgp_default is True:
+        vrouterbgp += ' default-originate '
+    if vrouterbgp_default is False:
+        vrouterbgp += ' no-default-originate '
+
+    if vrouterbgp_keepalive:
+        vrouterbgp += (' neighbor-keepalive-interval ' +
+                       str(vrouterbgp_keepalive))
+
+    if vrouterbgp_holdtime:
+        vrouterbgp += ' neighbor-holdtime ' + str(vrouterbgp_holdtime)
+
+    if vrouterbgp_routemapin:
+        vrouterbgp += ' route-map-in ' + vrouterbgp_routemapin
+
+    if vrouterbgp_routemapout:
+        vrouterbgp += ' route-map-out ' + vrouterbgp_routemapout
+
+    vrouterbgpcmd = shlex.split(vrouterbgp)
+    response = subprocess.Popen(vrouterbgpcmd, stderr=subprocess.PIPE,
+                                stdout=subprocess.PIPE, universal_newlines=True)
+    out, err = response.communicate()
+
+    if out:
+        module.exit_json(
+            vrouterbgpcmd=vrouterbgp,
+            stdout=out.rstrip("\r\n"),
+            changed=True
         )
 
-	cliusername = module.params['pn_cliusername']
-	clipassword = module.params['pn_clipassword']
-	vrouterbgp_command = module.params['pn_vrouterbgp_command']
-	vrouterbgp_name = module.params['pn_vrouterbgp_name']
-	vrouterbgp_neighbor = module.params['pn_vrouterbgp_neighbor']
-	vrouterbgp_remote_as = module.params['pn_vrouterbgp_remote_as']
-	vrouterbgp_nexthop = module.params['pn_vrouterbgp_nexthop']
-	vrouterbgp_password = module.params['pn_vrouterbgp_password']
-	vrouterbgp_ebgp = module.params['pn_vrouterbgp_ebgp']
-	vrouterbgp_prefixlistin = module.params['pn_vrouterbgp_prefixlistin']
-	vrouterbgp_prefixlistout = module.params['pn_vrouterbgp_prefixlistout']
-	vrouterbgp_reflector = module.params['pn_vrouterbgp_reflector']
-	vrouterbgp_capability = module.params['pn_vrouterbgp_capability']
-	vrouterbgp_softreconfig = module.params['pn_vrouterbgp_softreconfig']
-	vrouterbgp_maxprefix = module.params['pn_vrouterbgp_maxprefix']
-	vrouterbgp_maxprefixwarn = module.params['pn_vrouterbgp_maxprefixwarn']
-	vrouterbgp_bfd = module.params['pn_vrouterbgp_bfd']
-	vrouterbgp_multiprotocol = module.params['pn_vrouterbgp_multiprotocol']
-	vrouterbgp_weight = module.params['pn_vrouterbgp_weight']
-	vrouterbgp_default = module.params['pn_vrouterbgp_default']
-	vrouterbgp_keepalive = module.params['pn_vrouterbgp_keepalive']
-	vrouterbgp_holdtime = module.params['pn_vrouterbgp_holdtime']
-	vrouterbgp_routemapin = module.params['pn_vrouterbgp_routemapin']
-	vrouterbgp_routemapout = module.params['pn_vrouterbgp_routemapout']
-	quiet = module.params['pn_quiet']
-
-        if quiet==True:
-                cli  = '/usr/bin/cli --quiet --user ' + cliusername + ':' + clipassword + ' '
-        else:
-                cli = '/usr/bin/cli --quiet --user ' + cliusername + ':' + clipassword + ' '
-
-
-        if vrouterbgp_name:
-                vrouterbgp = cli + vrouterbgp_command + ' vrouter-name ' + vrouterbgp_name
-
-        if vrouterbgp_neighbor:
-                vrouterbgp += ' neighbor ' + vrouterbgp_neighbor
-
-        if vrouterbgp_remote_as:
-		vrouterbgp += ' remote-as ' + str(vrouterbgp_remote_as)
-
-	if vrouterbgp_nexthop == True:
-		vrouterbgp += ' next-hop-self '
-        if vrouterbgp_nexthop == False:
-		vrouterbgp += ' no-next-hop-self '
- 
-        if vrouterbgp_password:
-                vrouterbgp += ' password ' + vrouterbgp_password
-
-        if vrouterbgp_ebgp:
-                vrouterbgp += ' ebgp-multihop ' + str(vrouterbgp_ebgp)
-
-	if vrouterbgp_prefixlistin:
-		vrouterbgp += ' prefix-list-in ' + vrouterbgp_prefixlistin
-
-        if vrouterbgp_prefixlistout:
-                vrouterbgp += ' prefix-list-out ' + vrouterbgp_prefixlistout
-
-        if vrouterbgp_reflector == True:
-                vrouterbgp += ' route-reflector-client '
-	if vrouterbgp_reflector == False:
-		vroutebgp += ' no-route-reflector-client '
-
-        if vrouterbgp_capability == True:
-                vrouterbgp += ' override-capability ' 
-	if vrouterbgp_capability == False:
-		vrouterbgp += ' no-override-capability '
-
-        if vrouterbgp_softreconfig == True:
-                vrouterbgp += ' soft-reconfig-inbound ' 
-        if vrouterbgp_softreconfig == False:
-                vrouterbgp += ' no-soft-reconfig-inbound '
-
-        if vrouterbgp_maxprefix:
-                vrouterbgp += ' max-prefix ' + str(vrouterbgp_maxprefix)
-
-        if vrouterbgp_maxprefixwarn == True:
-                vrouterbgp += ' max-prefix-warn-only '
-	if vrouterbgp_maxprefixwarn == False:
-		vrouterbgp += ' no-max-prefix-warn-only '
-
-        if vrouterbgp_bfd == True:
-                vrouterbgp += ' bfd '
-	if vrouterbgp_bfd == False:
-                vrouterbgp += ' no-bfd '           
- 
-
-        if vrouterbgp_multiprotocol:
-                vrouterbgp += ' multi-protocol ' + vrouterbgp_multiprotocol
-
-        if vrouterbgp_weight:
-                vrouterbgp += ' weight ' + vrouterbgp_weight
-	
-	if vrouterbgp_default == True:
-		vrouterbgp += ' default-originate '
-	if vrouterbgp_default == False:
-                vrouterbgp += ' no-default-originate '
- 
-	if vrouterbgp_keepalive:
-		vrouterbgp += ' neighbor-keepalive-interval ' + str(vrouterbgp_keepalive)
-
-	if vrouterbgp_holdtime:
-		vrouterbgp += ' neighbor-holdtime ' + str(vrouterbgp_holdtime)
-
-	if vrouterbgp_routemapin:
-		vrouterbgp += ' route-map-in ' + vrouterbgp_routemapin
-
-	if vrouterbgp_routemapout:
-		vrouterbgp += ' route-map-out ' + vrouterbgp_routemapout
-
-        vrouterbgpcmd = shlex.split(vrouterbgp)
-
-        p = subprocess.Popen(vrouterbgpcmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
-        out,err = p.communicate();
-
-	if out:
-        	module.exit_json(
-                	vrouterbgpcmd = vrouterbgp,
-               		stdout = out.rstrip("\r\n"),
-                	changed = True
-        	)
-
-	if err:
-		module.exit_json(
-			vrouterbgpcmd = vrouterbgp,
-			stderr = err.rstrip("\r\n"),
-			changed = False
-		)
-
-from ansible.module_utils.basic import *
+    if err:
+        module.exit_json(
+            vrouterbgpcmd=vrouterbgp,
+            stderr=err.rstrip("\r\n"),
+            changed=False
+        )
 
 if __name__ == '__main__':
-        main()
+    main()

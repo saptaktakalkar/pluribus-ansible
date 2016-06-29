@@ -1,16 +1,20 @@
 #!/usr/bin/python
 # Test PN CLI vlag-create/vlag-delete
 
+import subprocess
+import shlex
+from ansible.module_utils.basic import *
+
 DOCUMENTATION = """
 ---
 module: pn_vlag
 author: "Pluribus Networks"
 short_description: CLI command to create/delete vlag.
 description:
-  - Execute vlag-create or vlag-delete command. 
+  - Execute vlag-create or vlag-delete command.
   - Requires vlagname:
-  	- Alphanumeric characters
-  	- Special characters like: _
+    - Alphanumeric characters
+    - Special characters like: _
 options:
   pn_cliusername:
     description:
@@ -78,7 +82,7 @@ options:
     choices: individual, bundled
     type: str
   pn_vlagfallbacktimeout:
-    description: 
+    description:
       - LACP fallback timeout
     required: False
     coices: 30...60 seconds. Defaut is 50 seconds.
@@ -93,20 +97,23 @@ options:
 
 EXAMPLES = """
 - name: create a VLAG
-  pn_vlag: pn_cliusername=admin pn_clipassword=admin pn_vlagcommand='vlag-create' pn_vlagname='vlag-1' pn_vlaglport='spine01' pn_vlagpeerport='spine02' pn_vlagmode='active-active' pn_quiet=True
-
-- name: create a VLAG 
-  pn_vlag: pn_cliusername=admin pn_clipassword=admin pn_vlagcommand='vlag-create' pn_vlagname={{ item.name }} pn_vlaglport={{ item.self }} pn_vlagpeerport={{ item.peer }} pn_vlagmode='active-active' pn_quiet=True
-  with_items: 
-  - { name: 'spine-vlag', self: 'spine01', peer: 'spine02' }
-  - { name: 'leaf-vlag', self: 'leaf01', peer: 'leaf02' }
+  pn_vlag:
+    pn_cliusername: admin
+    pn_clipassword: admin
+    pn_vlagcommand: 'vlag-create'
+    pn_vlagname: 'vlag-1'
+    pn_vlaglport: 'spine01'
+    pn_vlagpeerport: 'spine02'
+    pn_vlagmode: 'active-active'
+    pn_quiet: True
 
 - name: delete VLAGs
-  pn_vlag: pn_cliusername=admin pn_clipassword=admin pn_vlagcommand='vlag-delete' pn_vlagname={{ item }} pn_quiet=True
-  with_items:
-    - vlag-1
-    - spine-vlag
-    - leaf-vlag
+  pn_vlag:
+    pn_cliusername: admin
+    pn_clipassword: admin
+    pn_vlagcommand: 'vlag-delete'
+    pn_vlagname: vlag-1
+    pn_quiet: True
 """
 
 RETURN = """
@@ -131,107 +138,107 @@ changed:
 """
 
 
-import subprocess
-import shlex
-import json
-
-
 def main():
-	module = AnsibleModule(
-		argument_spec = dict(
-			pn_cliusername = dict(required=True, type='str'),
-                        pn_clipassword = dict(required=True, type='str'),
-                        pn_vlagcommand = dict(required=True, type='str', choices=['vlag-create', 'vlag-delete']),
-			pn_vlagname = dict(required=True, type='str'),
-			pn_vlaglport = dict(type='str'),
-			pn_vlagpeerport = dict(type='str'),
-			pn_vlagmode = dict(required=False, type='str', choices=['active-standby', 'active-active']),
-			pn_vlagpeerswitch = dict(required=False, type='str'),
-			pn_vlagfailover = dict(required=False, type='str', choices=['failover-move-L2', 'failover-ignore-L2']),
-			pn_vlaglacpmode = dict(required=False, type='str', choices=['off', 'passive', 'active']),
-			pn_vlaglacptimeout = dict(required=False, type='str', choices=['slow', 'fast']),
-			pn_vlagfallback = dict(required=False, type='str', choices=['individual', 'bundled']),
-			pn_vlagfallbacktimeout = dict(required=False, type='str']),
-			pn_quiet = dict(default=True, type='bool')
-			),
-		required_if = (
-			[ "pn_vlagcommand", "vlag-create", [ "pn_vlagname", "pn_vlaglport", "pn_vlagpeerport" ] ],
-			[ "pn_vlagcommand", "vlag-delete", [ "pn_vlagname" ] ]
-			)
-	)
+    module = AnsibleModule(
+        argument_spec=dict(
+            pn_cliusername=dict(required=True, type='str'),
+            pn_clipassword=dict(required=True, type='str'),
+            pn_vlagcommand=dict(required=True, type='str',
+                                choices=['vlag-create', 'vlag-delete']),
+            pn_vlagname=dict(required=True, type='str'),
+            pn_vlaglport=dict(type='str'),
+            pn_vlagpeerport=dict(type='str'),
+            pn_vlagmode=dict(required=False, type='str',
+                             choices=['active-standby', 'active-active']),
+            pn_vlagpeerswitch=dict(required=False, type='str'),
+            pn_vlagfailover=dict(required=False, type='str',
+                                 choices=['failover-move-L2',
+                                          'failover-ignore-L2']),
+            pn_vlaglacpmode=dict(required=False, type='str',
+                                 choices=['off', 'passive', 'active']),
+            pn_vlaglacptimeout=dict(required=False, type='str',
+                                    choices=['slow', 'fast']),
+            pn_vlagfallback=dict(required=False, type='str',
+                                 choices=['individual', 'bundled']),
+            pn_vlagfallbacktimeout=dict(required=False, type='str'),
+            pn_quiet=dict(default=True, type='bool')
+        ),
+        required_if=(
+            ["pn_vlagcommand", "vlag-create",
+             ["pn_vlagname", "pn_vlaglport", "pn_vlagpeerport"]],
+            ["pn_vlagcommand", "vlag-delete", ["pn_vlagname"]]
+        )
+    )
 
-	cliusername = module.params['pn_cliusername']
-        clipassword = module.params['pn_clipassword']
-        vlagcommand = module.params['pn_vlagcommand']
-	vlagname = module.params['pn_vlagname']
-	vlaglport = module.params['pn_vlaglport']
-	vlagpeerport = module.params['pn_vlagpeerport']
-	vlagmode = module.params['pn_vlagmode']
-	vlagpeerswitch = module.params['pn_vlagpeerswitch']
-	vlagfailover = module.params['pn_vlagfailover']
-	vlaglacpmode = module.params['pn_vlaglacpmode']
-	vlaglacptimeout = module.params['pn_vlaglacptimeout']
-	vlagfallback = module.params['pn_vlagfallback']
-	vlagfallbacktimeout = module.params['pn_vlagfallbacktimeout']
-	quiet = module.params['pn_quiet'] 
+    cliusername = module.params['pn_cliusername']
+    clipassword = module.params['pn_clipassword']
+    vlagcommand = module.params['pn_vlagcommand']
+    vlagname = module.params['pn_vlagname']
+    vlaglport = module.params['pn_vlaglport']
+    vlagpeerport = module.params['pn_vlagpeerport']
+    vlagmode = module.params['pn_vlagmode']
+    vlagpeerswitch = module.params['pn_vlagpeerswitch']
+    vlagfailover = module.params['pn_vlagfailover']
+    vlaglacpmode = module.params['pn_vlaglacpmode']
+    vlaglacptimeout = module.params['pn_vlaglacptimeout']
+    vlagfallback = module.params['pn_vlagfallback']
+    vlagfallbacktimeout = module.params['pn_vlagfallbacktimeout']
+    quiet = module.params['pn_quiet']
 
-	if quiet==True:
-		cli = '/usr/bin/cli --quiet --user ' + cliusername + ':' + clipassword + ' ' 
-	else:
-		cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '  
+    if quiet is True:
+        cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
+               clipassword + ' ')
+    else:
+        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
 
+    vlag = cli
+    if vlagname:
+        vlag += vlagcommand + ' name ' + vlagname
 
-	if vlagname:
-		vlag += cli + vlagcommand + ' name ' + vlagname
-		
-	if vlaglport: 
-		vlag += ' port ' + str(vlaglport)
+    if vlaglport:
+        vlag += ' port ' + str(vlaglport)
 
-	if vlagpeerport:
-		vlag += ' peer-port ' + str(vlagpeerport)
+    if vlagpeerport:
+        vlag += ' peer-port ' + str(vlagpeerport)
 
-	if vlagmode:
-		vlag += ' mode ' + vlagmode
-	
-	if vlagpeerswitch:
-		vlag += ' peer-switch' + vlagpeerswitch
+    if vlagmode:
+        vlag += ' mode ' + vlagmode
 
-	if vlagfailover:
-		vlag += ' ' + vlagfailover
-	
-	if vlaglacpmode:
-		vlag += ' lacp-mode ' + vlaglacpmode
-	
-	if vlaglacptomeout:
-		vlag += ' lacp-timeout' + vlaglacptimeout
-	
-	if vlagfallback:
-		vlag += ' lacp-fallback ' + vlagfallback
-	
-	if vlagfallbacktimeout:
-		vlag += ' lacp-fallback-timeout ' + vlagfallbacktimeout
-	
-	vlagcmd = shlex.split(vlag)
-	p = subprocess.Popen(vlagcmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
+    if vlagpeerswitch:
+        vlag += ' peer-switch' + vlagpeerswitch
 
-	out,err = p.communicate();
+    if vlagfailover:
+        vlag += ' ' + vlagfailover
 
-        if out:
-                module.exit_json(
-                        vlagcmd = vlag,
-                        stdout = out.rstrip("\r\n"),
-                        changed = True
-                )
+    if vlaglacpmode:
+        vlag += ' lacp-mode ' + vlaglacpmode
 
-	if err:
-                module.exit_json(
-                        vlagcmd = vlag,
-                        stderr = err.rstrip("\r\n"),
-                        changed = False
-                )       
-        
+    if vlaglacptomeout:
+        vlag += ' lacp-timeout' + vlaglacptimeout
 
-from ansible.module_utils.basic import *
+    if vlagfallback:
+        vlag += ' lacp-fallback ' + vlagfallback
+
+    if vlagfallbacktimeout:
+        vlag += ' lacp-fallback-timeout ' + vlagfallbacktimeout
+
+    vlagcmd = shlex.split(vlag)
+    response = subprocess.Popen(vlagcmd, stderr=subprocess.PIPE,
+                                stdout=subprocess.PIPE, universal_newlines=True)
+    out, err = response.communicate()
+
+    if out:
+        module.exit_json(
+            vlagcmd=vlag,
+            stdout=out.rstrip("\r\n"),
+            changed=True
+        )
+    if err:
+        module.exit_json(
+            vlagcmd=vlag,
+            stderr=err.rstrip("\r\n"),
+            changed=False
+        )
 
 if __name__ == '__main__':
-	main()
+    main()

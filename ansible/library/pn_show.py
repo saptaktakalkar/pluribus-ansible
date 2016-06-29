@@ -1,6 +1,10 @@
 #!/usr/bin/python
 # Test PN CLI show
 
+import subprocess
+import shlex
+from ansible.module_utils.basic import *
+
 DOCUMENTATION = """
 ---
 module: pn_show
@@ -42,35 +46,44 @@ options:
 
 EXAMPLES = """
 - name: run the vlan-show CLI command
-  pn_show: pn_cliusername=admin pn_clipassword=admin pn_showcommand='vlan-show' pn_quiet=True
-
+  pn_show:
+    pn_cliusername: admin
+    pn_clipassword: admin
+    pn_showcommand: 'vlan-show'
+    pn_quiet: True
 
 - name: run the vlag-show CLI command
-  pn_show: pn_cliusername=admin pn_clipassword=admin pn_showcommand='vlag-show' pn_quiet=False
+  pn_show:
+    pn_cliusername: admin
+    pn_clipassword: admin
+    pn_showcommand: 'vlag-show'
+    pn_showoptions: 'format id,name,cluster,mode'
+    pn_quiet: False
 
 - name: run the cluster-show command
-  pn_show: pn_cliusername=admin pn_clipassword=admin pn_showcommand='cluster-show' pn_showoptions='layout vertical' pn_quiet=True
+  pn_show:
+    pn_cliusername: admin
+    pn_clipassword: admin
+    pn_showcommand: 'cluster-show'
+    pn_showoptions: 'layout vertical'
+    pn_quiet: True
 """
 
 RETURN = """
 showcmd:
   description: the CLI command run on the target node(s).
-
 stdout:
   description: the set of responses from the show command.
   returned: always
   type: list
-
 stdout_lines:
   description: the value of stdout split into a list.
   returned: always
   type: list
-
 stderr:
   description: the set of error responses from the show command.
   returned: on error
   type: list
-  
 changed:
   description: Indicates whether the CLI caused any change on the target.
   returned: always(False)
@@ -78,50 +91,51 @@ changed:
 """
 
 
-import subprocess
-import shlex
-import json
-
 def main():
-	module = AnsibleModule(
-		argument_spec = dict(
-			pn_cliusername = dict(required=True, type='str'),
-                        pn_clipassword = dict(required=True, type='str'),
-			pn_showcommand = dict(required=True, type='str'),
-			pn_showoptions = dict(default=' '),
-			pn_quiet = dict(default=True, type='bool')
-			)
-	)
-	
-        cliusername = module.params['pn_cliusername']
-        clipassword = module.params['pn_clipassword']
-	command = module.params['pn_showcommand']
-	options = module.params['pn_showoptions']
-	quiet = module.params['pn_quiet']
+    module = AnsibleModule(
+        argument_spec=dict(
+            pn_cliusername=dict(required=True, type='str'),
+            pn_clipassword=dict(required=True, type='str'),
+            pn_showcommand=dict(required=True, type='str'),
+            pn_showoptions=dict(default=' '),
+            pn_quiet=dict(default=True, type='bool')
+        )
+    )
 
-	if quiet==True:
-		show = '/usr/bin/cli --quiet --user ' + cliusername + ':' + clipassword + ' ' + command
-        else:
-                show = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' ' + command
+    cliusername = module.params['pn_cliusername']
+    clipassword = module.params['pn_clipassword']
+    command = module.params['pn_showcommand']
+    options = module.params['pn_showoptions']
+    quiet = module.params['pn_quiet']
 
+    if quiet is True:
+        show = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
+                clipassword + ' ' + command)
+    else:
+        show = ('/usr/bin/cli --user ' + cliusername + ':' +
+                clipassword + ' ' + command)
 
-	if options != ' ':
-		show += ' ' + options
+    if options != ' ':
+        show += ' ' + options
 
-	showcmd = shlex.split(show)
-	p = subprocess.Popen(showcmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
+    showcmd = shlex.split(show)
+    response = subprocess.Popen(showcmd, stderr=subprocess.PIPE,
+                                stdout=subprocess.PIPE, universal_newlines=True)
+    out, err = response.communicate()
 
-	out,err = p.communicate();
+    if out:
+        module.exit_json(
+            showcmd=show,
+            stdout=out.strip("\r\n"),
+            changed=False
+        )
 
-
-	module.exit_json(
-		showcmd = show,
-		stderr	= err.strip("\r\n"),
-		stdout 	= out.strip("\r\n"),
-		changed	= False
-	)
-
-from ansible.module_utils.basic import *
+    if err:
+        module.exit_json(
+            showcmd=show,
+            stderr=err.strip("\r\n"),
+            changed=False
+        )
 
 if __name__ == '__main__':
-	main()
+    main()
