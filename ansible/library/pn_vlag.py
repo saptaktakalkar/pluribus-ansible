@@ -213,7 +213,7 @@ def main():
     if vlaglacpmode:
         vlag += ' lacp-mode ' + vlaglacpmode
 
-    if vlaglacptomeout:
+    if vlaglacptimeout:
         vlag += ' lacp-timeout' + vlaglacptimeout
 
     if vlagfallback:
