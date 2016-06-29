@@ -1,9 +1,11 @@
 # pn_vlan
 
-Execute CLI show commands
+Module for CLI vlan configurations. Supports `vlan-create`, `vlan-delete` and `vlan-modify` commands with options. 
 
 | parameter      | required       | default      |choices       |comments                                                    |
 |----------------|----------------|--------------|--------------|------------------------------------------------------------|
+|pn_cliusername  | yes            |              |              | Login username                                             |
+|pn_clipassword  | yes            |              |              | Login password                                             |
 |pn_vlancommand  | yes            |              | vlan-create, vlan-delete, vlan-modify | Create, delete or modify VLAN configuration                                                            |
 |pn_vlanid       | yes            |              |              | Range: 2 - 4092                                               |
 |pn_vlanscope    | conditional    |              | fabric, local| Scope. Required for vlan-create                                                      |
@@ -31,7 +33,9 @@ Execute CLI show commands
 
 ## Examples
 
-Create VLAN with id = 254 and scope = local
+
+# vlan-create
+YAML Playbook for **_creating_** a vlan configuration using `pn_vlan` module
 ```
 ---
 - name: Playbook for VLAN Create
@@ -39,13 +43,13 @@ Create VLAN with id = 254 and scope = local
   user: root
   tasks:
   - name: Create VLAN
-    pn_vlan: pn_vlancommand='vlan-create' pn_vlanid=254 pn_vlanscope='local' pn_vlandesc='ansible-vlan' pn_quiet=True 
+    pn_vlan: pn_cliusername=<username> pn_clipassword=<password> pn_vlancommand='vlan-create' pn_vlanid=254 pn_vlanscope='local' pn_vlandesc='ansible-vlan' pn_quiet=True 
     register: cmd_output
   - debug: var=cmd_output
   
 ```
 
-Create 3 VLANs with different IDs and scope
+YAML Playbook for **_creating_** 3 vlan configurations using `pn_vlan` module
 ```
 ---
 - name: Playbook for VLAN Create
@@ -53,7 +57,7 @@ Create 3 VLANs with different IDs and scope
   user: root
   tasks:
   - name: Create VLANs 
-    pn_vlan: pn_vlancommand='vlan-create' pn_vlanid={{ item.id }} pn_vlanscope={{ item.scope }} pn_quiet=True 
+    pn_vlan: pn_cliusername=<username> pn_clipassword=<password> pn_vlancommand='vlan-create' pn_vlanid={{ item.id }} pn_vlanscope={{ item.scope }} pn_quiet=True 
     with_items:
     - { id: '201', scope: 'fabric' }
     - { id: '1024', scope: 'local' }
@@ -62,7 +66,8 @@ Create 3 VLANs with different IDs and scope
   - debug: var=cmd_output
   
 ```
-Delete all the created VLANs
+# vlan-delete
+YAML Playbook for **_deleting_** a vlan configurations using `pn_vlan` module
 
 ```
 ---
@@ -71,7 +76,7 @@ Delete all the created VLANs
   user: root
   tasks:
   - name: Delete VLANs
-    pn_vlan: pn_vlancommand='vlan-delete' pn_vlanid={{ item }} pn_quiet=True 
+    pn_vlan: pn_cliusername=<username> pn_clipassword=<password> pn_vlancommand='vlan-delete' pn_vlanid={{ item }} pn_quiet=True 
     with_items:
     - 254
     - 201

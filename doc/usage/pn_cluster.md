@@ -4,6 +4,8 @@ Module for CLI cluster configurations. Supports `cluster-create`, `cluster-delet
 
 | parameter       | required       | default      |choices       |comments                                                    |
 |-----------------|----------------|--------------|--------------|------------------------------------------------------------|
+|pn_cliusername   | yes            |              |              | Login username                                             |
+|pn_clipassword   | yes            |              |              | Login password                                             |
 |pn_clustercommand| yes            |              | cluster-create, cluster-delete, cluster-modify | Create, delete or modify cluster configuration|
 |pn_clustername   | yes            |              |              | The Cluster name                                              |
 |pn_clusternode1  | conditional    |              |              | Name for cluster-node-1              |
@@ -22,10 +24,12 @@ Module for CLI cluster configurations. Supports `cluster-create`, `cluster-delet
   tasks:
   - name: "PN cluster command"
     pn_cluster: 
+     pn_cliusername: <username> 
+     pn_clipassword: <password>
      pn_clustercommand: <cluster-create/delete/modify> 
      pn_clustername: <cluster name>  
-     [pn_clusternode1 cluster-node-1] 
-     [pn_clusternode2 cluster-node-2] 
+     [pn_clusternode1: cluster-node-1] 
+     [pn_clusternode2: cluster-node-2] 
      [pn_clustervalidate validate|no-validate] 
      pn_quiet: <True/False>
   
@@ -44,6 +48,8 @@ YAML Playbook for **_creating_** a Cluster configuration using `pn_cluster` modu
   tasks:
   - name: "Create spine cluster"
     pn_cluster: 
+      pn_cliusername: <username> 
+      pn_clipassword: <password>
       pn_clustercommand: cluster-create 
       pn_clustername: spine-cluster 
       pn_clusternode1: spine01 
@@ -67,7 +73,9 @@ YAML Playbook for **_deleting_** a Cluster Configuration using `pn_cluster` modu
   user: root
   tasks:
   - name: "Delete spine cluster"
-    pn_cluster: 
+    pn_cluster:
+      pn_cliusername: <username> 
+      pn_clipassword: <password>
       pn_clustercommand: cluster-delete 
       pn_clustername: spine-cluster 
       pn_quiet: True

@@ -39,9 +39,9 @@ For a complete installation guide, please refer: [Ansible-Installation](https://
  
  Some example playbooks:
  
- - [pn_vlan_show.yml](ansible/examples/pn_vlan_show.yml)
- - [pn_vlan_stats_show.yml](ansible/examples/pn_vlan_stats_show.yml)
- - [pn_vlan_stats_settings_show.yml](ansible/examples/pn_vlan_stats_settings_show.yml)
+ - [pn_vlanshow.yml](ansible/examples/pn_vlanshow.yml)
+ - [pn_vlanstatsshow.yml](ansible/examples/pn_vlanstatsshow.yml)
+ - [pn_vlanstatssettingsshow.yml](ansible/examples/pn_vlanstatssettingsshow.yml)
  - [pn_vlancreate.yml](ansible/examples/pn_vlancreate.yml)
  - [pn_vlandelete.yml](ansible/examples/pn_vlandelete.yml)
  - [pn_vlagcreate.yml](ansible/examples/pn_vlagcreate.yml)
