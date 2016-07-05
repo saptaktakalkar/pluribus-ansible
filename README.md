@@ -1,15 +1,15 @@
 #Pluribus Networks - Ansible
  
 # Index
-  + [Ansible](#Ansible)
-  + [Getting Started](#Getting Started)
-    - [Installation](#Installation)
-    - [Control Machine Requirements](##Control Machine Requirements)
-    - [Managed Node Requirements](##Managed Node Requirements)
-  + [Inventory](#Inventory)
-  + [Configuration File](#Configuration File)
-  + [Modules](#Modules)
-  + [Playbooks](#Playbooks)
+  + [Ansible](#ansible)
+  + [Getting Started](#getting-started)
+    - [Installation](#installation)
+    - [Control Machine Requirements](#control-machine-requirements)
+    - [Managed Node Requirements](#managed-node-requirements)
+  + [Inventory](#inventory)
+  + [Configuration File](#configuration-ile)
+  + [Modules](#modules)
+  + [Playbooks](#playbooks)
 
 #Ansible
  Ansible is an open source IT automation tool for configuration management, provisioning and application deployment. Ansible is agentless and does not require a software agent to be installed on the target nodes. It uses SSH for secured communication with the target nodes. The Pluribus Networks Ansible library provides support for using Ansible to deploy, configure and manage devices running Netvisor OS. This repository contains modules developed for Netvisor OS CLI to perform specific tasks on devices running Netvisor OS. These modules run CLI commands for installing Netvisor OS, configuring, retrieving information/device statistics, modifying configuration settings on the target nodes. 
