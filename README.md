@@ -1,31 +1,74 @@
 #Pluribus Networks - Ansible
+ 
+# Index
+  + [Ansible](#Ansible)
+  + [Getting Started](#Getting Started)
+    - [Installation](#Installation)
+    - [Control Machine Requirements](##Control Machine Requirements)
+    - [Managed Node Requirements](##Managed Node Requirements)
+  + [Inventory](#Inventory)
+  + [Configuration File](#Configuration File)
+  + [Modules](#Modules)
+  + [Playbooks](#Playbooks)
 
 #Ansible
- Ansible is an open source IT automation tool for configuration management, provisioning and application deployment. Ansible is agentless and does not require a software agent to be installed on the target nodes, it uses SSH for secured communication with the target nodes. The Pluribus Networks Ansible library provides support for using Ansible to deploy, configure and manage devices running Netvisor OS. This repository contains modules developed for Netvisor OS CLI to perform specific tasks on devices running Netvisor OS. These modules run CLI commands for installing Netvisor OS, configuring, retrieving information/device statistics, modifying configuration settings on the target nodes. 
+ Ansible is an open source IT automation tool for configuration management, provisioning and application deployment. Ansible is agentless and does not require a software agent to be installed on the target nodes. It uses SSH for secured communication with the target nodes. The Pluribus Networks Ansible library provides support for using Ansible to deploy, configure and manage devices running Netvisor OS. This repository contains modules developed for Netvisor OS CLI to perform specific tasks on devices running Netvisor OS. These modules run CLI commands for installing Netvisor OS, configuring, retrieving information/device statistics, modifying configuration settings on the target nodes. 
 
-#Getting started
+#Getting Started
+
+##Installation
  Ansible by default manages machines over the SSH protocol. Ansible is installed on a control machine that manages one or more nodes. Managed nodes do not require any agent software. 
- 
+
 ##Control Machine Requirements 
-  The Ansible control machine requires the following software:
-  - SSH
-  - Python 2.6 or later
-  - Ansible 1.8 or later release 
+ The host you want to use as the control machine requires Python 2.6 or later. This control machine can be a desktop/laptop/workstation running a Linux based OS or any version of BSD. 
+ The Ansible control machine requires the following software:
+ 
+ * SSH
+ * Python 2.6 or later
+ * Ansible 1.8 or later release
+   
+ The steps for installing Ansible on Debian/Ubuntu is outlined here. 
+ To get the latest version of Ansible:
+```
+  $ sudo apt-add-repository ppa:ansible/ansible -y                     
+  $ sudo apt-get update && sudo apt-get install ansible -y
+```
+ To install Ansible on other platforms, please refer: [Ansible-Installation](https://docs.ansible.com/ansible/intro_installation.html)
 
 ##Managed Node Requirements
-  The following software are requied on managed nodes:
-  - SSH for communication
-  - Python 2.6 or later
+ Communication with managed nodes is over SSH. By default it uses sftp, but you can switch to scp in ansible.cfg
+ As with the control machine, the managed nodes require Python 2.6 or later. (For nodes running Python 2.5 or lesser version, you may need python-simplejson)
 
-For a complete installation guide, please refer: [Ansible-Installation](https://docs.ansible.com/ansible/intro_installation.html)
+#Inventory
+ Ansible can work against multiple nodes in the infrastructure simultaneously. This is done by selecting a group of nodes in the Ansible's inventory file which is by default saved at /etc/ansible/hosts on the control machine. This file (see [hosts](ansible/hosts))is configurable.
+```
+ mail.example.com
+
+ [webservers]
+ foo.example.com
+ bar.example.com
+
+ [dbservers]
+ serverone.example.com
+ servertwo.example.com
+ serverthree.example.com
+``` 
+ Group names are enclosed in brackets and are used to classify systems based on purpose. 
+ A node can be a part of multiple groups or none.
+ Please refer: [Ansible-Inventory](https://docs.ansible.com/ansible/intro_inventory.html) for more on this.
+
+#Configuration File
+ The ansible.cfg file is used to configure certain settings in ansible. The default settings should be sufficient for most of the purposes.
+ 
+ If you installed ansible from a package manager, the ansible.cfg will be present in /etc/ansible directory. 
+ If you installed ansible from pip or other source or if its not present, you can create one to override default settings.
+ Please refer: [Ansible-Configuration](http://docs.ansible.com/ansible/intro_configuration.html) for more on this.
 
 #Modules
- Modules are library plugins that do the actual work. Modules get called and executed in playbook tasks. Modules are placed in ./library location. Modules return JSON format data. Documentation for each module can be accessed from the commandline using:
- ```
- ansible-doc <module> 
- ```
+ Modules are library plugins that do the actual work. Modules get called and executed in playbook tasks. Modules are placed in ./library location. Modules return output in JSON format.
  
  Pluribus Networks CLI modules:
+ 
  - [pn_show](ansible/library/pn_show.py): To execute CLI show commands
  - [pn_vlan](ansible/library/pn_vlan.py): To create/delete/modify VLANs
  - [pn_vlag](ansible/library/pn_vlag.py): To create/delete/modify VLAGs
@@ -49,8 +92,6 @@ For a complete installation guide, please refer: [Ansible-Installation](https://
  - [pn_clustercreate.yml](ansible/examples/pn_clustecreate.yml)
  - [pn_clusterdelete.yml](ansible/examples/pn_clusterdelete.yml)
 
-[YAML Lint](http://www.yamllint.com/) (online) helps you debug YAML syntax if you are having problems
+[YAML Lint](http://www.yamllint.com/) (online) helps you debug YAML syntax.
  
-#Inventory
- Ansible can work against multiple nodes in the infrastructure simultaneously. This is done by selecting a group of nodes in the Ansible's inventory file located at /etc/ansible/hosts on the control machine. This file (see [hosts](ansible/hosts))is configurable. Please refer: [Ansible-Inventory](https://docs.ansible.com/ansible/intro_inventory.html) for more on this.
 
