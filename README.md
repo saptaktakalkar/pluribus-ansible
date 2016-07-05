@@ -65,7 +65,8 @@
  Please refer: [Ansible-Configuration](http://docs.ansible.com/ansible/intro_configuration.html) for more on this.
 
 #Modules
- Modules are library plugins that do the actual work. Modules get called and executed in playbook tasks. Modules are placed in ./library location. Modules return output in JSON format.
+ Ansible modules reusable, standalone scripts that do the actual work. Modules get called and executed in playbook tasks.
+ Modules return information to ansible in JSON format. Modules can be placed in different places where ansible looks for modules. As a convenience, we place them under library directory in our ansible project directory.
  
  Pluribus Networks CLI modules:
  
