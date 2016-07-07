@@ -19,7 +19,6 @@
 
 import subprocess
 import shlex
-from ansible.module_utils.basic import *
 
 DOCUMENTATION = """
 ---
@@ -206,6 +205,8 @@ def main():
             stdout=out.rstrip("\r\n"),
             changed=True
         )
+
+from ansible.module_utils.basic import AnsibleModule
 
 if __name__ == '__main__':
     main()
