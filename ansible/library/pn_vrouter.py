@@ -19,7 +19,6 @@
 
 import subprocess
 import shlex
-from ansible.module_utils.basic import *
 
 DOCUMENTATION = """
 ---
@@ -199,6 +198,7 @@ def main():
             changed=False
         )
 
+from ansible.module_utils.basic import AnsibleModule
 
 if __name__ == '__main__':
     main()
