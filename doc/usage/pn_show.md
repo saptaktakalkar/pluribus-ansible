@@ -2,6 +2,12 @@
 
 Execute CLI show commands
 
+ - [Options](#options)
+ - [Usage](#usage)
+ - [Examples](#examples)
+
+## Options
+
 | parameter      | required       | default      |choices       |comments                                                    |
 |----------------|----------------|--------------|--------------|------------------------------------------------------------|
 |pn_cliusername  | yes            |              |              | Login username                                             |
@@ -9,9 +15,6 @@ Execute CLI show commands
 |pn_showcommand  | yes            |              |vlan-show, vlag-show, cluster-show...| CLI Show commands                   |
 |pn_showoptions  | no             |              |              | 'format' followed by fields                                |
 |pn_quiet        | no             | True         |              | --quiet                                                           |
-
-1. [Usage](#usage)
-2. [Examples](#examples)
 
 ## Usage
 
@@ -22,7 +25,12 @@ Execute CLI show commands
   
   tasks:
   - name: PN CLI SHOW command
-    pn_show: pn_cliusername=<username> pn_clipassword=<password> pn_showcommand=<CLI show command> pn_showoptions='format <options>' pn_quiet=<True/False>
+    pn_show: >
+      pn_cliusername=<username> 
+      pn_clipassword=<password> 
+      pn_showcommand=<CLI show command> 
+      pn_showoptions='format <options>' 
+      pn_quiet=<True/False>
   
 ```
 
@@ -36,7 +44,12 @@ View VLAN configurations of a given host(s)
   user: root
   tasks:
   - name: Test VLAN Show CLI command
-    pn_show: pn_cliusername=<username> pn_clipassword=<password> pn_showcommand='vlan-show' pn_showoptions='format switch,id,scope,description' pn_quiet=True 
+    pn_show: >
+      pn_cliusername=<username> 
+      pn_clipassword=<password> 
+      pn_showcommand='vlan-show' 
+      pn_showoptions='format switch,id,scope,description' 
+      pn_quiet=True 
     register: cmd_output
   - debug: var=cmd_output
   
