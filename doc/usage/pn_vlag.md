@@ -1,6 +1,6 @@
 # pn_vlag
 
-Execute CLI show commands
+ Module for CLI vlag configurations. Supports vlag-create, vlag-delete and vlag-modify commands with options.
 
  - [Options](#options)
  - [Usage](#usage)
