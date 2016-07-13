@@ -2,6 +2,12 @@
 
 Execute CLI show commands
 
+ - [Options](#options)
+ - [Usage](#usage)
+ - [Examples](#examples)
+ 
+## Options
+
 | parameter       | required       | default      |choices       |comments                                                    |
 |-----------------|----------------|--------------|--------------|------------------------------------------------------------|
 |pn_vlagcommand   | yes            |              | vlag-create, vlag-delete, vlag-modify | Create, delete or modify virtual link aggregation|
@@ -17,8 +23,6 @@ Execute CLI show commands
 |pn_vlagfallbacktimeout | no       | 50           | 30...60 seconds | The LACP fallback timeout                               |
 |pn_quiet         | no             | true         |              | --quiet                                                    |
 
-1. [Usage](#usage)
-2. [Examples](#examples)
 
 ## Usage
 
@@ -29,7 +33,19 @@ Execute CLI show commands
   
   tasks:
   - name: PN VLAG command
-    pn_vlag: pn_vlagcommand=<vlag-create/delete/modify> pn_vlagname=<name>  [pn_vlaglport] [pn_vlagpeerport] [pn_vlagmode] [pn_vlagpeerswitch] [pn_vlagfailover] [pn_vlaglacpmode] [pn_vlaglacptimeout] [pn_vlagfallback] [pn_vlagfallbacktimeout] pn_quiet=<True/False>
+    pn_vlag: >
+      pn_vlagcommand=<vlag-create/delete/modify> 
+      pn_vlagname=<name>  
+      [pn_vlaglport] 
+      [pn_vlagpeerport] 
+      [pn_vlagmode] 
+      [pn_vlagpeerswitch] 
+      [pn_vlagfailover] 
+      [pn_vlaglacpmode] 
+      [pn_vlaglacptimeout] 
+      [pn_vlagfallback] 
+      [pn_vlagfallbacktimeout] 
+      [pn_quiet=<True/False>]
   
 ```
 
@@ -39,14 +55,18 @@ Create VLAGs
 ```
 ---
 - name: Playbook for VLAG Create
-  hosts: switches
+  hosts: spine
   user: root
   tasks:
   - name: Create VLAG
-    pn_vlag: pn_vlagcommand='vlag-create' pn_vlagname={{ item.name }} pn_vlaglport={{ item.self }} pn_vlagpeerport={{ item.peer }} pn_vlagmode='active-active' pn_quiet=True
-    with_items: 
-    - { name: 'spine-vlag', self: 'spine01', peer: 'spine02' }
-    - { name: 'leaf-vlag', self: 'leaf01', peer: 'leaf02' }
+    pn_vlag: >
+      pn_vlagcommand=vlag-create 
+      pn_vlagname=spine-to-leaf1 
+      pn_vlaglport=spine1-to-leaf1
+      pn_vlagswitch=spine1
+      pn_vlagpeerport=spine2-toleaf1 
+      pn_vlagmode=active-active 
+      pn_quiet=True
     register: cmd_output
   - debug: var=cmd_output
   
@@ -57,14 +77,11 @@ Delete VLAGs
 ```
 ---
 - name: Playbook for VLAG Delete
-  hosts: switches
+  hosts: spine
   user: root
   tasks:
   - name: Delete VLAGs
-    pn_vlag: pn_vlagcommand='vlag-delete' pn_vlagname={{ item }} pn_quiet=True 
-    with_items:
-    - spine-vlag
-    - leaf-vlag
+    pn_vlag: pn_vlagcommand='vlag-delete' pn_vlagname=spine-to-leaf1 pn_quiet=True
     register: cmd_output
   - debug: var=cmd_output
   
