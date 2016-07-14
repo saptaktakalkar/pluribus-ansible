@@ -81,7 +81,7 @@ Ansible also has a comprehensive official documentation which is [amazing](#http
   - `templates`:
 
 # Modules
-  Ansible modules are reusable piece of code that can be invoked using the ansible API or through the Ansible playbook. Although Ansible modules can be written in any language, Python is the preferred choice because of its numerous advantages. The Ansible module should be capable of handling different arguments, return statuses, errors and failures. This can be achieved by the **AnsibleModule** boilerplate which provides an efficient way to handle arguments and return statuses.
+  Ansible modules are reusable piece of code that can be invoked using the ansible API or through the Ansible playbook. Although Ansible modules can be written in any language, Python is the preferred choice. The Ansible module should be capable of handling different arguments, return statuses, errors and failures. This can be achieved by the **AnsibleModule** boilerplate which provides an efficient way to handle arguments and return statuses.
 
 ## AnsibleModule boilerplate
   All you need to do is import `ansible.module_utils.basic`
