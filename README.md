@@ -83,15 +83,15 @@
  
  Some example playbooks:
  
- - [pn_vlanshow.yml](ansible/examples/pn_vlanshow.yml)
- - [pn_vlanstatsshow.yml](ansible/examples/pn_vlanstatsshow.yml)
- - [pn_vlanstatssettingsshow.yml](ansible/examples/pn_vlanstatssettingsshow.yml)
- - [pn_vlancreate.yml](ansible/examples/pn_vlancreate.yml)
- - [pn_vlandelete.yml](ansible/examples/pn_vlandelete.yml)
- - [pn_vlagcreate.yml](ansible/examples/pn_vlagcreate.yml)
- - [pn_vlagdelete.yml](ansible/examples/pn_vlagdelete.yml)
- - [pn_clustercreate.yml](ansible/examples/pn_clustecreate.yml)
- - [pn_clusterdelete.yml](ansible/examples/pn_clusterdelete.yml)
+ - [pn_vlanshow.yml](ansible/roles/examples/pn_vlanshow.yml)
+ - [pn_vlanstatsshow.yml](ansible/roles/examples/pn_vlanstatsshow.yml)
+ - [pn_vlanstatssettingsshow.yml](ansible/roles/examples/pn_vlanstatssettingsshow.yml)
+ - [pn_vlancreate.yml](ansible/roles/examples/pn_vlancreate.yml)
+ - [pn_vlandelete.yml](ansible/roles/examples/pn_vlandelete.yml)
+ - [pn_vlagcreate.yml](ansible/roles/examples/pn_vlagcreate.yml)
+ - [pn_vlagdelete.yml](ansible/roles/examples/pn_vlagdelete.yml)
+ - [pn_clustercreate.yml](ansible/roles/examples/pn_clustecreate.yml)
+ - [pn_clusterdelete.yml](ansible/roles/examples/pn_clusterdelete.yml)
 
 [YAML Lint](http://www.yamllint.com/) (online) helps you debug YAML syntax.
  
