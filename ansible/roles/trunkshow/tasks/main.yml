@@ -1,0 +1,19 @@
+--- 
+- name: "Test trunk Show CLI command"
+  pn_show: pn_cliusername=network-admin pn_clipassword=test123 pn_showcommand=trunk-show pn_quiet=True
+  register: cmd_output
+- debug: var=cmd_output  
+
+
+#---
+#- name: PN-CLI VLAN Show Test
+#  hosts: testswitches
+#  user: root
+  
+
+#  tasks:
+#  - name: Test VLAN Show CLI command
+#    pn_show: pn_showcommand='vlan-show' pn_quiet=True 
+#    register: cmd_output
+#  - debug: var=cmd_output 
+    

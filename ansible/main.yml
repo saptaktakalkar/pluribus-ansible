@@ -1,0 +1,8 @@
+---
+- name: Main playbook... Calling different roles
+  hosts: pokemon
+  user: root
+
+  roles:
+    - vlanshow
+    - vlagshow

@@ -138,6 +138,13 @@ def main():
                                 stdout=subprocess.PIPE, universal_newlines=True)
     out, err = response.communicate()
 
+    if err:
+        module.exit_json(
+            showcmd=show,
+            stderr=err.strip("\r\n"),
+            changed=False
+        )
+
     if out:
         module.exit_json(
             showcmd=show,
@@ -145,10 +152,10 @@ def main():
             changed=False
         )
 
-    if err:
+    else:
         module.exit_json(
             showcmd=show,
-            stderr=err.strip("\r\n"),
+            msg="Nothing to display!!!",
             changed=False
         )
 
