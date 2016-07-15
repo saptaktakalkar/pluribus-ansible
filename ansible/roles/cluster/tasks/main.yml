@@ -1,5 +1,4 @@
 ---
-- name: Create Cluster 
-  pn_cluster: pn_cliusername=network-admin pn_clipassword=test123 pn_clustercommand=cluster-create pn_clustername=ansible-cluster pn_clusternode1=ONVL-Spine1 pn_clusternode2=onvl-spine2 pn_quiet=True
-  register: cmd_output
-- debug: var=cmd_output 
+- include: clustershow.yml
+- include: clustercreate.yml
+- include: clusterdelete.yml

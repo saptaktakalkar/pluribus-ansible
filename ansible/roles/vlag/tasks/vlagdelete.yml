@@ -1,0 +1,5 @@
+---
+- name: Delete VLAG 
+  pn_vlag: pn_cliusername=network-admin pn_clipassword=test123 pn_vlagcommand=vlag-delete pn_vlagname=ansible-vlag pn_quiet=True
+  register: cmd_output
+- debug: var=cmd_output 

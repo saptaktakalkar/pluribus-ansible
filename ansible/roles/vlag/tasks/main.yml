@@ -1,5 +1,5 @@
 ---
-- name: Create VLAG 
-  pn_vlag: pn_cliusername=network-admin pn_clipassword=test123 pn_vlagcommand=vlag-create pn_vlagname=ansible-vlag3 pn_vlaglport=52 pn_vlagpeerport=71 pn_vlagmode=active-active pn_quiet=True
-  register: cmd_output
-- debug: var=cmd_output 
+- include: vlagshow.yml
+- include: vlagcreate.yml
+- include: vlagdelete.yml
+

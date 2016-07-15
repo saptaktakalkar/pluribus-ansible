@@ -1,0 +1,6 @@
+---
+- name: Create VLAN 
+  pn_vlan: pn_cliusername=network-admin pn_clipassword=test123 pn_vlancommand=vlan-create pn_vlanid={{ item }} pn_vlanscope=fabric pn_quiet=True
+  with_sequence: start=303 end=304
+  register: cmd_output
+- debug: var=cmd_output 

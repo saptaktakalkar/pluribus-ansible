@@ -1,5 +1,4 @@
 ---
-- name: Create trunk 
-  pn_trunk: pn_cliusername=network-admin pn_clipassword=test123 pn_trunkcommand=trunk-create pn_trunkname=ansible-trunk pn_trunkports='1,2' pn_trunkspeed=40g pn_trunkdesc=ansible-test-trunk pn_quiet=True
-  register: cmd_output
-- debug: var=cmd_output 
+- include: trunkshow.yml
+- include: trunkcreate.yml
+- include: trunkdelete.yml

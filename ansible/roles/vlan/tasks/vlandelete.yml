@@ -1,0 +1,6 @@
+---
+- name: Delete VLAN 
+  pn_vlan: pn_cliusername=network-admin pn_clipassword=test123 pn_vlancommand=vlan-delete pn_vlanid={{ item }} pn_quiet=True
+  with_sequence: start=302 end=303
+  register: cmd_output
+- debug: var=cmd_output 

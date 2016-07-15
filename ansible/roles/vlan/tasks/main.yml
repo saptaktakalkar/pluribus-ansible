@@ -1,5 +1,6 @@
 ---
-- name: Create VLAN 
-  pn_vlan: pn_cliusername=network-admin pn_clipassword=test123 pn_vlancommand='vlan-creeete' pn_vlanid=303 pn_vlanscope=local pn_quiet=True
-  register: cmd_output
-- debug: var=cmd_output 
+- include: vlanshow.yml
+- include: vlancreate.yml
+- include: vlanshow.yml
+- include: vlandelete.yml
+- include: vlanshow.yml
