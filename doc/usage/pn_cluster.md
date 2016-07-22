@@ -1,6 +1,6 @@
 # pn_cluster
 
-Module for CLI cluster configurations. Supports `cluster-create`, `cluster-delete` and `cluster-modify` commands with options. 
+Module for CLI cluster configurations. Supports `cluster-create`  and `cluster-delete` commands with options. 
 
  - [Synopsis](#synopsis)
  - [Options](#options)
@@ -28,11 +28,11 @@ Module for CLI cluster configurations. Supports `cluster-create`, `cluster-delet
 |pn_cliusername   | yes            |              |              | Login username                                             |
 |pn_clipassword   | yes            |              |              | Login password                                             |
 |pn_cliswitch     | no             |              |              | Target switch to run command on.
-|pn_command       | yes            |              | cluster-create, cluster-delete, cluster-modify | Create, delete or modify cluster configuration|
-|pn_name          | yes            |              |              | The Cluster name                                              |
-|pn_cluster_node1 | conditional    |              |              | Name for cluster-node-1              |
-|pn_cluster_node2 | conditional    |              |              | Name for cluster-node-2     |
-|pn_validate      | no             |              |validate, no-validate | Validate the cluster link                            |
+|pn_command       | yes            |              | cluster-create, cluster-delete| Create or delete cluster configuration|
+|pn_name          | yes            |              |              | Specify the name of the cluster.                                             |
+|pn_cluster_node1 | conditional    |              |              | Specify the name of the first switch in the cluster.              |
+|pn_cluster_node2 | conditional    |              |              | Specify the name of the second switch in the cluster.    |
+|pn_validate      | no             |              |validate, no-validate | Validate the inter-switch links and state of the switches in the cluster. |
 |pn_quiet         | no             | true         |              | Enable/disable system information.                           |
 
 
@@ -48,7 +48,7 @@ Module for CLI cluster configurations. Supports `cluster-create`, `cluster-delet
     pn_cluster: > 
      pn_cliusername=<username> 
      pn_clipassword=<password>
-     pn_command=<cluster-create/delete/modify> 
+     pn_command=<cluster-create/delete> 
      pn_name=<cluster name>  
      [pn_cluster_node1=<cluster-node-1>] 
      [pn_cluster_node2=<cluster-node-2>] 
@@ -82,9 +82,8 @@ YAML Playbook for **_creating_** a Cluster configuration using `pn_cluster` modu
   - debug: var=cmd_output
   
 ```
-```
-ansible-cm$ ansible-playbook pn_clustercreate.yml -k
-```
+
+
 # cluster-delete
 YAML Playbook for **_deleting_** a Cluster Configuration using `pn_cluster` module
 
