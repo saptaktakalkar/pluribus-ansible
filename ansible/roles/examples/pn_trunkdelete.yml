@@ -6,6 +6,5 @@
 
   tasks:
   - name: Delete trunk 
-    pn_trunk: pn_cliusername=network-admin pn_clipassword=test123 pn_trunkcommand=trunk-delete pn_trunkname=ansible-trunk pn_quiet=True
+    pn_trunk: pn_cliusername=network-admin pn_clipassword=test123 pn_command=trunk-delete pn_name=spine1-to-leaf pn_quiet=True
     register: cmd_output
-  - debug: var=cmd_output 
