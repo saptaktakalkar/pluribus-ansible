@@ -1,5 +1,5 @@
 ---
-- name: Test CLI cluster-show command
-  pn_show: pn_cliusername=network-admin pn_clipassword=test123 pn_showcommand=cluster-show pn_showoptions=format name pn_quiet=True
+- name: CLI cluster-show command
+  pn_show: pn_cliusername=network-admin pn_clipassword=test123 pn_command=cluster-show 
   register: cmd_output
 - debug: var=cmd_output
