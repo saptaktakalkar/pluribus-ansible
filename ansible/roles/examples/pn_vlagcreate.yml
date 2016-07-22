@@ -1,11 +1,11 @@
 ---
 - name: PN-CLI VLAG Create
-  hosts: newswitches
+  hosts: spine[0]
   user: pluribus
   
 
   tasks:
   - name: Create VLAG 
-    pn_vlag: pn_cliusername=network-admin pn_clipassword=test123 pn_vlagcommand=vlag-create pn_vlagname=ansible-vlag3 pn_vlaglport=52 pn_vlagpeerport=71 pn_vlagmode=active-active pn_quiet=True
+    pn_vlag: pn_cliusername=network-admin pn_clipassword=test123 pn_command=vlag-create pn_name=spine-to-leaf pn_port=spine1-to-leaf pn_peer_port=spine2-to-leaf pn_mode=active-active pn_peer_switch=onvlspine2
     register: cmd_output
   - debug: var=cmd_output 
