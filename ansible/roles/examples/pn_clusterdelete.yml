@@ -1,10 +1,10 @@
 ---
 - name: PN-CLI Cluster delete
-  hosts: newswitches
+  hosts: spine[0]
   user: pluribus
 
   tasks: 
   - name: Delete cluster
-    pn_cluster: pn_cliusername=network-admin pn_clipassword=test123 pn_clustercommand=cluster-delete pn_clustername=ansible-cluster pn_quiet=True
+    pn_cluster: pn_cliusername=network-admin pn_clipassword=test123 pn_command=cluster-delete pn_name=spinecluster pn_quiet=True
     register: cmd_output
   - debug: var=cmd_output
