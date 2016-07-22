@@ -1,22 +1,10 @@
 ---
 - name: PN-CLI VLAN Create
-  hosts: testswitches
+  hosts: spine[0]
   user: root
-  gather_facts: False
 
   tasks:
   - name: Create VLAN 
-    pn_vlan: pn_cliusername=network-admin pn_clipassword=test123 pn_vlancommand='vlan-creeete' pn_vlanid=303 pn_vlanscope=local pn_quiet=True
-#     pn_cliusername: network-admin
-#     pn_clipassword: test123
-#     pn_vlancommand: vlan-create 
-#     pn_vlanid: {{ item }} 
-#     pn_vlanscope: fabric 
-#     pn_vlandesc: test-vlan 
-#     pn_vlanstats: stats
-#     pn_vlanports:  "10,11,12"  
-#     pn_vlanuntaggedports:
-#     pn_quiet: True
-#    with_sequence: start=202 end=210
+    pn_vlan: pn_cliusername=network-admin pn_clipassword=test123 pn_command=vlan-create pn_vlanid=303 pn_scope=fabric pn_quiet=True
     register: cmd_output
-#  - debug: var=cmd_output 
+  - debug: var=cmd_output 
