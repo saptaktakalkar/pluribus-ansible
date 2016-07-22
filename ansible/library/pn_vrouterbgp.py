@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN-CLI vrouter-bgp-add/remove/modify """
+""" PN-CLI vrouter-bgp-add/vrouter-bgp-remove/vrouter-bgp-modify """
 
 import subprocess
 import shlex
@@ -10,8 +10,10 @@ module: pn_vrouterbgp
 author: "Pluribus Networks"
 short_description: CLI command to add/remove/modify vrouter-bgp
 description:
-  - Execute vrouter-bgp-add, vrouter-bgp-remove, vrouter-bgp-modify command. 
-  - Add/remove/modify Border Gateway Protocol neighbor for a vrouter
+  - Execute vrouter-bgp-add, vrouter-bgp-remove, vrouter-bgp-modify command.
+  - Each fabric, cluster, standalone switch, or virtual network (VNET) can
+    provide its tenants with a vRouter service that forwards traffic between
+    networks and implements Layer 4 protocols.
 options:
   pn_cliusername:
     description:
@@ -23,148 +25,138 @@ options:
       - Login password
     required: true
     type: str
-  pn_vrouterbgp_command:
+  pn_cliswitch:
     description:
-      - The C(pn_vrouterbgp_command) takes the vrouter-bgp command as value.
+    - Target switch to run the cli on.
+    required: False
+    type: str
+  pn_command:
+    description:
+      - The C(pn_command) takes the vrouter-bgp command as value.
     required: true
     choices: vrouter-bgp-add, vrouter-bgp-remove, vrouter-bgp-modify
     type: str
-  pn_vrouterbgp_name:
+  pn_vrouter_name:
     description:
-      - name for service config
+      - Specify a name for the vRouter service.
     required: true
     type: str
-  pn_vrouterbgp_neighbor:
+  pn_neighbor:
     description:
-      - IP address for the BGP neighbor
-    required_if: vrouter-bgp-add 
-    type: str
-  pn_vrouterbgp_remote_as:
-    description:
-      - BGP remote AS from 1 to 4294967295
+      - Specify a neighbor IP address to use for BGP.
     required_if: vrouter-bgp-add
-    type: int
-  pn_vrouterbgp_nexthop:
-    description:
-      - BGP next hop is self or not
-    required: false
-    type: bool
-  pn_vrouterbgp_password: 
-    description: 
-      - password for MD5 BGP
-    required: false
     type: str
-  pn_vrouterbgp_ebgp:
-    description: 
-      - value for external BGP from 1 to 255
-    required: false
-    type: int
-  pn_vrouterbgp_prefixlistin:
+  pn_remote_as:
     description:
-      - prefixes used for filtering  
-    required: false
+      - Specify the remote Autonomous System(AS) number. This value is between
+        1 and 4294967295.
+    required_if: vrouter-bgp-add
     type: str
-  pn_vrouterbgp_prefixlistout:
-    description: 
-      - prefixes used for filtering outgoing packets
-    required: false
+  pn_next_hop_self:
+    description:
+      - Specify if the next-hop is the same router or not.
+    type: bool
+  pn_password:
+    description:
+      - Specify a password, if desired.
     type: str
-  pn_vrouterbgp_reflector:
-    description: 
-      - set as route reflector client
-    required: false
-    type: bool
-  pn_vrouterbgp_capability:
+  pn_ebgp:
     description:
-      - override capability
-    required: false
-    type: bool
-  pn_vrouterbgp_softreconfig:
-    description:
-      - soft reset to reconfigure inbound traffic
-    required: false
-    type: bool
-  pn_vrouterbgp_maxprefix:
-    description:
-      - maximum number of prefixes
-    required: false
+      - Specify a value for external BGP to accept or attempt BGP connections
+        to external peers, not directly connected, on the network. This is a
+        value between 1 and 255.
     type: int
-  pn_vrouterbgp_maxprefixwarn:
+  pn_prefix_listin:
     description:
-      - warn if maximum number of preifixes is exceeded
-    required: false
-    type: bool
-  pn_vrouterbgp_bfd:
-    description:
-      - BFD protocol support for fault detection
-    required: false
-    type: bool
-  pn_vrouterbgp_multiprotocol:
-    description:
-      - multi-protocol features
-    required: false
-    type: bool
-  pn_vrouterbgp_weight:
-    description:
-      - default weight value between 0 and 65535 for the neighbor's routes
-    required: false
-    type: int
-  pn_vrouterbgp_default:
-    description:
-      - announce default routes to the neighbor or not
-    required: false
-    type: bool
-  pn_vrouterbgp_keepalive:
-    description:
-      - BGP keepalive interval in seconds
-    required: false
-    type: int
-  pn_vrouterbgp_holdtime:
-    description:
-      - BGP holdtime in seconds
-    required: false
-    type: int
-  pn_vrouterbgp_routemapin:
-    description:
-      - route map in for nbr
-    required: false
+      - Specify the prefix list to filter traffic inbound.
     type: str
-  pn_vrouterbgp_routemapout:
+  pn_prefix_listout:
     description:
-      - route map out for nbr
-    required: false
+      - Specify the prefix list to filter traffic outbound.
+    type: str
+  pn_route_reflector:
+    description:
+      - Specify if a route reflector client is used.
+    type: bool
+  pn_override_capability:
+    description:
+      - Specify if you want to override capability.
+    type: bool
+  pn_soft_reconfig:
+    description:
+      - Specify if you want a soft reconfiguration of inbound traffic.
+    type: bool
+  pn_max_prefix:
+    description:
+      - Specify the maximum number of prefixes.
+    type: int
+  pn_max_prefix_warn:
+    description:
+      - Specify if you want a warning message when the maximum number of
+        prefixes is exceeded.
+    type: bool
+  pn_bfd:
+    description:
+      - Specify if you want BFD protocol support for fault detection.
+    type: bool
+  pn_multiprotocol:
+    description:
+      - Specify a multi-protocol for BGP.
+    choices: ipv4-unicast, ipv6-unicast
+    type: str
+  pn_weight:
+    description:
+      - Specify a default weight value between 0 and 65535 for the neighbor
+        routes.
+    type: int
+  pn_default_originate:
+    description:
+      - Specify if you want announce default routes to the neighbor or not.
+    type: bool
+  pn_keepalive:
+    description:
+      - Specify BGP neighbor keepalive interval in seconds.
+    type: str
+  pn_holdtime:
+    description:
+      - Specify BGP neighbor holdtime in seconds.
+    type: str
+  pn_route_mapin:
+    description:
+      - Specify inbound route map for neighbor.
+    type: str
+  pn_route_mapout:
+    description:
+      - Specify outbound route map for neighbor.
     type: str
   pn_quiet:
     description:
-      - The C(pn_quiet) option to enable or disable the system bootup message
+      - Enable/disable system information.
     required: false
     type: bool
     default: true
 """
 
 EXAMPLES = """
-- name: add vrouter-bgp 
+- name: add vrouter-bgp
   pn_vrouterbgp:
     pn_cliusername: admin
     pn_clipassword: admin
-    pn_vrouterbgp_command: 'vrouter-bgp-add'
-    pn_vrouterbgp_name: 'ansible-vrouter'
-    pn_vrouterbgp_neighbor: 104.104.104.1
-    pn_vrouterbgp_remote_as: 1800
-    pn_quiet: True
+    pn_command: 'vrouter-bgp-add'
+    pn_vrouter_name: 'ansible-vrouter'
+    pn_neighbor: 104.104.104.1
+    pn_remote_as: 1800
 
-- name: remove vrouter-bgp 
+- name: remove vrouter-bgp
   pn_vrouterbgp:
     pn_cliusername: admin
     pn_clipassword: admin
-    pn_vrouterbgp_command: 'vrouter-delete'
-    pn_vrouterbgp_name: 'ansible-vrouter'
-    pn_vrouterbgp_neighbor: 104.104.104.1
-    pn_quiet: True
+    pn_command: 'vrouter-delete'
+    pn_name: 'ansible-vrouter'
 """
 
 RETURN = """
-vrouterbgpcmd:
+command:
   description: the CLI command run on the target node(s).
 stdout:
   description: the set of responses from the vrouterbpg command.
@@ -186,76 +178,81 @@ changed:
 
 
 def main():
-    """ This section is for arguments parsing """
+    """ This portion is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str'),
-            pn_clipassword=dict(required=True, type='str'),
-            pn_vrouterbgp_command=dict(required=True, type='str',
-                                       choices=['vrouter-bgp-add',
-                                                'vrouter-bgp-remove',
-                                                'vrouter-bgp-modify']),
-            pn_vrouterbgp_name=dict(required=True, type='str'),
-            pn_vrouterbgp_neighbor=dict(required=False, type='str'),
-            pn_vrouterbgp_remote_as=dict(required=False, type='int'),
-            pn_vrouterbgp_nexthop=dict(required=False, type='bool'),
-            pn_vrouterbgp_password=dict(required=False, type='str'),
-            pn_vrouterbgp_ebgp=dict(required=False, type='int'),
-            pn_vrouterbgp_prefixlistin=dict(required=False, type='str'),
-            pn_vrouterbgp_prefixlistout=dict(required=False, type='str'),
-            pn_vrouterbgp_reflector=dict(required=False, type='bool'),
-            pn_vrouterbgp_capability=dict(required=False, type='bool'),
-            pn_vrouterbgp_softreconfig=dict(required=False, type='bool'),
-            pn_vrouterbgp_maxprefix=dict(required=False, type='int'),
-            pn_vrouterbgp_maxprefixwarn=dict(required=False, type='bool'),
-            pn_vrouterbgp_bfd=dict(required=False, type='bool'),
-            pn_vrouterbgp_multiprotocol=dict(required=False, type='bool',
-                                             choices=['ipv4-unicast',
-                                                      'ipv6-unicast']),
-            pn_vrouterbgp_weight=dict(required=False, type='int'),
-            pn_vrouterbgp_default=dict(required=False, type='bool'),
-            pn_vrouterbgp_keepalive=dict(required=False, type='int'),
-            pn_vrouterbgp_holdtime=dict(required=False, type='int'),
-            pn_vrouterbgp_routemapin=dict(required=False, type='str'),
-            pn_vrouterbgp_routemapout=dict(required=False, type='str'),
-            pn_quiet=dict(default=True, type='bool')
+            pn_cliusername=dict(required=True, type='str',
+                                aliases=['username']),
+            pn_clipassword=dict(required=True, type='str',
+                                aliases=['password']),
+            pn_cliswitch=dict(required=False, type='str', aliases=['switch']),
+            pn_command=dict(required=True, type='str',
+                            choices=['vrouter-bgp-add', 'vrouter-bgp-remove',
+                                     'vrouter-bgp-modify'],
+                            aliases=['command']),
+            pn_vrouter_name=dict(required=True, type='str',
+                                 aliases=['vrouter_name']),
+            pn_neighbor=dict(type='str', aliases=['neighbor']),
+            pn_remote_as=dict(type='str', aliases=['remote_as']),
+            pn_next_hop_self=dict(type='bool', aliases=['next_hop_self']),
+            pn_password=dict(type='str', aliases=['bgp_password']),
+            pn_ebgp=dict(type='int', aliases=['ebgp']),
+            pn_prefix_listin=dict(type='str', aliases=['prefix_listin']),
+            pn_prefix_listout=dict(type='str', aliases=['prefix_listout']),
+            pn_route_reflector=dict(type='bool', aliases=['route_reflector']),
+            pn_override_capability=dict(type='bool',
+                                        aliases=['override_capability']),
+            pn_soft_reconfig=dict(type='bool', aliases=['soft_reconfig']),
+            pn_max_prefix=dict(type='int', aliases=['max_prefix']),
+            pn_max_prefix_warn=dict(type='bool', aliases=['max_prefix_warn']),
+            pn_bfd=dict(type='bool', aliases=['bfd']),
+            pn_multiprotocol=dict(type='bool',
+                                  choices=['ipv4-unicast', 'ipv6-unicast'],
+                                  aliases=['multiprotocol']),
+            pn_weight=dict(type='int', aliases=['weight']),
+            pn_default_originate=dict(type='bool',
+                                      aliases=['default_originate']),
+            pn_keepalive=dict(type='str', aliases=['keepalive']),
+            pn_holdtime=dict(type='str', aliases=['holdtime']),
+            pn_route_mapin=dict(type='str', aliases=['route_mapin']),
+            pn_route_mapout=dict(type='str', aliases=['route_mapout']),
+            pn_quiet=dict(default=True, type='bool', aliases=['quiet'])
         ),
         required_if=(
-            ["pn_vrouterbgp_command", "vrouter-bgp-add",
-             ["pn_vrouterbgp_name", "pn_vrouterbgp_neighbor",
-              "pn_vrouterbgp_remote_as"]],
-            ["pn_vrouterbgp_command", "vrouter-bgp-remove",
-             ["pn_vrouterbgp_name", "pn_vrouterbgp_neighbor"]],
-            ["pn_vrouterbgp_command", "vrouter-bgp-modify",
-             ["pn_vrouterbgp_name", "pn_vrouterbgp_neighbor"]]
+            ["pn_command", "vrouter-bgp-add",
+             ["pn_vrouter_name", "pn_neighbor", "pn_remote_as"]],
+            ["pn_command", "vrouter-bgp-remove",
+             ["pn_vrouter_name", "pn_neighbor"]],
+            ["pn_command", "vrouter-bgp-modify",
+             ["pn_vrouter_name", "pn_neighbor"]]
         )
     )
 
-    # Accessing the arguments
     cliusername = module.params['pn_cliusername']
     clipassword = module.params['pn_clipassword']
-    vrouterbgp_command = module.params['pn_vrouterbgp_command']
-    vrouterbgp_name = module.params['pn_vrouterbgp_name']
-    vrouterbgp_neighbor = module.params['pn_vrouterbgp_neighbor']
-    vrouterbgp_remote_as = module.params['pn_vrouterbgp_remote_as']
-    vrouterbgp_nexthop = module.params['pn_vrouterbgp_nexthop']
-    vrouterbgp_password = module.params['pn_vrouterbgp_password']
-    vrouterbgp_ebgp = module.params['pn_vrouterbgp_ebgp']
-    vrouterbgp_prefixlistin = module.params['pn_vrouterbgp_prefixlistin']
-    vrouterbgp_prefixlistout = module.params['pn_vrouterbgp_prefixlistout']
-    vrouterbgp_reflector = module.params['pn_vrouterbgp_reflector']
-    vrouterbgp_capability = module.params['pn_vrouterbgp_capability']
-    vrouterbgp_softreconfig = module.params['pn_vrouterbgp_softreconfig']
-    vrouterbgp_maxprefix = module.params['pn_vrouterbgp_maxprefix']
-    vrouterbgp_maxprefixwarn = module.params['pn_vrouterbgp_maxprefixwarn']
-    vrouterbgp_bfd = module.params['pn_vrouterbgp_bfd']
-    vrouterbgp_multiprotocol = module.params['pn_vrouterbgp_multiprotocol']
-    vrouterbgp_weight = module.params['pn_vrouterbgp_weight']
-    vrouterbgp_default = module.params['pn_vrouterbgp_default']
-    vrouterbgp_keepalive = module.params['pn_vrouterbgp_keepalive']
-    vrouterbgp_holdtime = module.params['pn_vrouterbgp_holdtime']
-    vrouterbgp_routemapin = module.params['pn_vrouterbgp_routemapin']
-    vrouterbgp_routemapout = module.params['pn_vrouterbgp_routemapout']
+    cliswitch = module.params['pn_cliswitch']
+    command = module.params['pn_command']
+    vrouter_name = module.params['pn_vrouter_name']
+    neighbor = module.params['pn_neighbor']
+    remote_as = module.params['pn_remote_as']
+    next_hop_self = module.params['pn_next_hop_self']
+    password = module.params['pn_password']
+    ebgp = module.params['pn_ebgp']
+    prefix_listin = module.params['pn_prefix_listin']
+    prefix_listout = module.params['pn_prefix_listout']
+    route_reflector = module.params['pn_route_reflector']
+    override_capability = module.params['pn_override_capability']
+    soft_reconfig = module.params['pn_soft_reconfig']
+    max_prefix = module.params['pn_max_prefix']
+    max_prefix_warn = module.params['pn_max_prefix_warn']
+    bfd = module.params['pn_bfd']
+    multiprotocol = module.params['pn_multiprotocol']
+    weight = module.params['pn_weight']
+    default_originate = module.params['pn_default_originate']
+    keepalive = module.params['pn_keepalive']
+    holdtime = module.params['pn_holdtime']
+    route_mapin = module.params['pn_route_mapin']
+    route_mapout = module.params['pn_route_mapout']
     quiet = module.params['pn_quiet']
 
     # Building the CLI command string
@@ -265,112 +262,115 @@ def main():
     else:
         cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
 
-    vrouterbgp = cli
+    if cliswitch:
+        cli += ' switch ' + cliswitch
 
-    if vrouterbgp_name:
-        vrouterbgp = (cli + vrouterbgp_command + ' vrouter-name ' +
-                      vrouterbgp_name)
+    cli += command + ' vrouter-name ' + vrouter_name
 
-    if vrouterbgp_neighbor:
-        vrouterbgp += ' neighbor ' + vrouterbgp_neighbor
+    if neighbor:
+        cli += ' neighbor ' + neighbor
 
-    if vrouterbgp_remote_as:
-        vrouterbgp += ' remote-as ' + str(vrouterbgp_remote_as)
+    if remote_as:
+        cli += ' remote-as ' + str(remote_as)
 
-    if vrouterbgp_nexthop is True:
-        vrouterbgp += ' next-hop-self '
-    if vrouterbgp_nexthop is False:
-        vrouterbgp += ' no-next-hop-self '
+    if next_hop_self is True:
+        cli += ' next-hop-self '
+    if next_hop_self is False:
+        cli += ' no-next-hop-self '
 
-    if vrouterbgp_password:
-        vrouterbgp += ' password ' + vrouterbgp_password
+    if password:
+        cli += ' password ' + password
 
-    if vrouterbgp_ebgp:
-        vrouterbgp += ' ebgp-multihop ' + str(vrouterbgp_ebgp)
+    if ebgp:
+        cli += ' ebgp-multihop ' + str(ebgp)
 
-    if vrouterbgp_prefixlistin:
-        vrouterbgp += ' prefix-list-in ' + vrouterbgp_prefixlistin
+    if prefix_listin:
+        cli += ' prefix-list-in ' + prefix_listin
 
-    if vrouterbgp_prefixlistout:
-        vrouterbgp += ' prefix-list-out ' + vrouterbgp_prefixlistout
+    if prefix_listout:
+        cli += ' prefix-list-out ' + prefix_listout
 
-    if vrouterbgp_reflector is True:
-        vrouterbgp += ' route-reflector-client '
-    if vrouterbgp_reflector is False:
-        vrouterbgp += ' no-route-reflector-client '
+    if route_reflector is True:
+        cli += ' route-reflector-client '
+    if route_reflector is False:
+        cli += ' no-route-reflector-client '
 
-    if vrouterbgp_capability is True:
-        vrouterbgp += ' override-capability '
-    if vrouterbgp_capability is False:
-        vrouterbgp += ' no-override-capability '
+    if override_capability is True:
+        cli += ' override-capability '
+    if override_capability is False:
+        cli += ' no-override-capability '
 
-    if vrouterbgp_softreconfig is True:
-        vrouterbgp += ' soft-reconfig-inbound '
-    if vrouterbgp_softreconfig is False:
-        vrouterbgp += ' no-soft-reconfig-inbound '
+    if soft_reconfig is True:
+        cli += ' soft-reconfig-inbound '
+    if soft_reconfig is False:
+        cli += ' no-soft-reconfig-inbound '
 
-    if vrouterbgp_maxprefix:
-        vrouterbgp += ' max-prefix ' + str(vrouterbgp_maxprefix)
+    if max_prefix:
+        cli += ' max-prefix ' + str(max_prefix)
 
-    if vrouterbgp_maxprefixwarn is True:
-        vrouterbgp += ' max-prefix-warn-only '
-    if vrouterbgp_maxprefixwarn is False:
-        vrouterbgp += ' no-max-prefix-warn-only '
+    if max_prefix_warn is True:
+        cli += ' max-prefix-warn-only '
+    if max_prefix_warn is False:
+        cli += ' no-max-prefix-warn-only '
 
-    if vrouterbgp_bfd is True:
-        vrouterbgp += ' bfd '
-    if vrouterbgp_bfd is False:
-        vrouterbgp += ' no-bfd '
+    if bfd is True:
+        cli += ' bfd '
+    if bfd is False:
+        cli += ' no-bfd '
 
-    if vrouterbgp_multiprotocol:
-        vrouterbgp += ' multi-protocol ' + vrouterbgp_multiprotocol
+    if multiprotocol:
+        cli += ' multi-protocol ' + multiprotocol
 
-    if vrouterbgp_weight:
-        vrouterbgp += ' weight ' + vrouterbgp_weight
+    if weight:
+        cli += ' weight ' + str(weight)
 
-    if vrouterbgp_default is True:
-        vrouterbgp += ' default-originate '
-    if vrouterbgp_default is False:
-        vrouterbgp += ' no-default-originate '
+    if default_originate is True:
+        cli += ' default-originate '
+    if default_originate is False:
+        cli += ' no-default-originate '
 
-    if vrouterbgp_keepalive:
-        vrouterbgp += (' neighbor-keepalive-interval ' +
-                       str(vrouterbgp_keepalive))
+    if keepalive:
+        cli += ' neighbor-keepalive-interval ' + keepalive
 
-    if vrouterbgp_holdtime:
-        vrouterbgp += ' neighbor-holdtime ' + str(vrouterbgp_holdtime)
+    if holdtime:
+        cli += ' neighbor-holdtime ' + holdtime
 
-    if vrouterbgp_routemapin:
-        vrouterbgp += ' route-map-in ' + vrouterbgp_routemapin
+    if route_mapin:
+        cli += ' route-map-in ' + route_mapin
 
-    if vrouterbgp_routemapout:
-        vrouterbgp += ' route-map-out ' + vrouterbgp_routemapout
+    if route_mapout:
+        cli += ' route-map-out ' + route_mapout
 
     # Run the CLI command
-    vrouterbgpcmd = shlex.split(vrouterbgp)
+    vrouterbgpcmd = shlex.split(cli)
     response = subprocess.Popen(vrouterbgpcmd, stderr=subprocess.PIPE,
                                 stdout=subprocess.PIPE, universal_newlines=True)
 
     # 'out' contains the output
-    # 'err' contains the error messages
+    # 'err' contains the err messages
     out, err = response.communicate()
 
+    # Response in json format
     if err:
         module.exit_json(
-            vrouterbgpcmd=vrouterbgp,
+            command=cli,
             stderr=err.rstrip("\r\n"),
+            rc=1,
             changed=False
         )
 
     else:
         module.exit_json(
-            vrouterbgpcmd=vrouterbgp,
+            command=cli,
             stdout=out.rstrip("\r\n"),
+            rc=0,
             changed=True
         )
 
-# AnsibleModule boilerplate
+
+# Ansible boiler-plate
 from ansible.module_utils.basic import AnsibleModule
 
 if __name__ == '__main__':
     main()
+

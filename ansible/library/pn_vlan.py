@@ -8,13 +8,12 @@ DOCUMENTATION = """
 ---
 module: pn_vlan
 author: "Pluribus Networks"
-short_description: CLI command to create/delete a vlan.
+short_description: CLI command to create/delete a VLAN.
 description:
   - Execute vlan-create or vlan-delete command. 
-  - Requires vlan id:
-    - id should be in the range 2...4092.
-  - If vlan-create, scope is required. Scope can be fabric/local. 
-  - Can provide options for vlan-create.
+  - VLANs are used to isolate network traffic at Layer 2.The VLAN identifiers
+    0 and 4095 are reserved and cannot be used per the IEEE 802.1Q standard.
+    The range of configurable VLAN identifiers is 2 through 4092.
 options:
   pn_cliusername:
     description:
@@ -26,47 +25,53 @@ options:
       - Login password
     required: true
     type: str
-  pn_vlancommand:
+  pn_cliswitch:
     description:
-      - The C(pn_vlancommand) takes the vlan-create/delete command as value.
+    - Target switch to run the cli on.
+    required: False
+    type: str
+  pn_command:
+    description:
+      - The C(pn_command) takes the vlan-create/delete command as value.
     required: true
     choices: vlan-create, vlan-delete
     type: str
   pn_vlanid:
     description:
-      - The VLAN id. ID should be in the range 2...4092.
+      - Specify a VLAN identifier for the VLAN. This is a value between
+        2 and 4092.
     required: true
     type: int
-  pn_vlanscope:
+  pn_scope:
     description:
-      - Scope for the VLAN(fabric/local). Required when creating a vlan.
+      - Specify a scope for the VLAN.
     required_if: vlan-create
     choices: fabric/local
     type: str
-  pn_vlandesc:
+  pn_description:
     description:
-      - Description for the VLAN.
-    required: False
+      - Specify a description for the VLAN.
     type: str
-  pn_vlanstats:
+  pn_stats:
     description:
-      - Enalble/disable stats
-    required: False
+      - Specify if you want to collect statistics for a VLAN. Statistic 
+        collection is enabled by default.
     choices: stats/no-stats
     type: str
-  pn_vlanports:
+  pn_ports:
     description:
-      - List of ports for the VLAN, comma separated.
-    required: False
+      - Specifies the switch network data port number, list of ports, or range
+        of ports. Port numbers must ne in the range of 1 to 64.
     type: str
-  pn_vlanuntaggedports:
+  pn_untagged_ports:
     description:
-      - List of untagged ports for the VLAN, comma separated.
-    required: False
+      - Specifies the ports that should have untagged packets mapped to the 
+        VLAN. Untagged packets are packets that do not contain IEEE 802.1Q VLAN
+        tags. 
     type: str
   pn_quiet:
     description:
-      - The C(pn_quiet) option to enable or disable the system bootup message.
+      - Enable/disable system information.
     required: false
     type: bool
     default: true
@@ -77,35 +82,33 @@ EXAMPLES = """
   pn_vlan:
     pn_cliusername: admin
     pn_clipassword: admin
-    pn_vlancommand: 'vlan-create'
+    pn_command: 'vlan-create'
     pn_vlanid: 1854
-    pn_vlanscope: 'local'
-    pn_quiet: True
+    pn_scope: fabric
 
 - name: delete VLANs
   pn_vlan:
     pn_cliusername: admin
     pn_clipassword: admin
-    pn_vlancommand: 'vlan-delete'
+    pn_command: 'vlan-delete'
     pn_vlanid: 1854
-    pn_quiet: True
 """
 
 RETURN = """
-vlancmd:
+command:
   description: the CLI command run on the target node(s).
 stdout:
   description: the set of responses from the vlan command.
-  returned: always
-  type: list
-stdout_lines:
-  description: the value of stdout split into a list.
   returned: always
   type: list
 stderr:
   description: the set of error responses from the vlan command.
   returned: on error
   type: list
+rc:
+  description: return code of the module.
+  returned: 0 on success, 1 on error
+  type: int
 changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
@@ -117,35 +120,39 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str'),
-            pn_clipassword=dict(required=True, type='str'),
-            pn_vlancommand=dict(required=True, type='str',
-                                choices=['vlan-create', 'vlan-delete']),
-            pn_vlanid=dict(required=True, type='int'),
-            pn_vlanscope=dict(type='str', choices=['fabric', 'local']),
-            pn_vlandesc=dict(required=False, type='str'),
-            pn_vlanstats=dict(required=False, type='str',
-                              choices=['stats', 'no-stats']),
-            pn_vlanports=dict(required=False, type='str'),
-            pn_vlanuntaggedports=dict(required=False, type='str'),
-            pn_quiet=dict(default=True, type='bool')
+            pn_cliusername=dict(required=True, type='str',
+                                aliases=['username']),
+            pn_clipassword=dict(required=True, type='str',
+                                aliases=['password']),
+            pn_command=dict(required=True, type='str',
+                            choices=['vlan-create', 'vlan-delete'],
+                            aliases=['command']),
+            pn_vlanid=dict(required=True, type='int', aliases=['vlanid']),
+            pn_scope=dict(type='str', choices=['fabric', 'local'],
+                          aliases=['scope']),
+            pn_description=dict(type='str', aliases=['description']),
+            pn_stats=dict(type='str', choices=['stats', 'no-stats'],
+                          aliases=['stats']),
+            pn_ports=dict(type='str', aliases=['ports']),
+            pn_untagged_ports=dict(type='str', aliases=['untagged_ports']),
+            pn_quiet=dict(default='True', type='bool', aliases=['quiet'])
         ),
         required_if=(
-            ["pn_vlancommand", "vlan-create", ["pn_vlanid", "pn_vlanscope"]],
-            ["pn_vlancommand", "vlan-delete", ["pn_vlanid"]]
+            ["pn_command", "vlan-create", ["pn_vlanid", "pn_scope"]],
+            ["pn_command", "vlan-delete", ["pn_vlanid"]]
         )
     )
 
     # Accessing the arguments
     cliusername = module.params['pn_cliusername']
     clipassword = module.params['pn_clipassword']
-    vlancommand = module.params['pn_vlancommand']
+    command = module.params['pn_command']
     vlanid = module.params['pn_vlanid']
-    vlanscope = module.params['pn_vlanscope']
-    vlandesc = module.params['pn_vlandesc']
-    vlanstats = module.params['pn_vlanstats']
-    vlanports = module.params['pn_vlanports']
-    vlanuntaggedports = module.params['pn_vlanuntaggedports']
+    scope = module.params['pn_scope']
+    description = module.params['pn_description']
+    stats = module.params['pn_stats']
+    ports = module.params['pn_ports']
+    untagged_ports = module.params['pn_untagged_ports']
     quiet = module.params['pn_quiet']
 
     # Building the CLI command string
@@ -155,25 +162,27 @@ def main():
     else:
         cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
 
-    if vlanid < 2 | vlanid > 4092:
-        module.fail_json(msg="Invalid vlan ID")
+    if vlanid < 2:
+        module.exit_json(msg="Invalid vlan ID", rc=1, changed=False)
+    if vlanid > 4092:
+        module.exit_json(msg="Invalid vlan ID", rc=1, changed=False)
 
-    cli += vlancommand + ' id ' + str(vlanid)
+    cli += command + ' id ' + str(vlanid)
 
-    if vlanscope:
-        cli += ' scope ' + vlanscope
+    if scope:
+        cli += ' scope ' + scope
 
-    if vlandesc:
-        cli += ' description ' + vlandesc
+    if description:
+        cli += ' description ' + description
 
-    if vlanstats:
-        cli += ' stats ' + vlanstats
+    if stats:
+        cli += ' stats ' + stats
 
-    if vlanports:
-        cli += ' ports ' + vlanports
+    if ports:
+        cli += ' ports ' + ports
 
-    if vlanuntaggedports:
-        cli += ' untagged-ports ' + vlanuntaggedports
+    if untagged_ports:
+        cli += ' untagged-ports ' + untagged_ports
 
     # Run the CLI command
     vlancmd = shlex.split(cli)
@@ -184,16 +193,19 @@ def main():
     # 'err' contains the error messages
     out, err = response.communicate()
 
+    # Response in JSON format
     if err:
         module.exit_json(
             command=cli,
             stderr=err.rstrip("\r\n"),
+            rc=1,
             changed=False
         )
     else:
         module.exit_json(
             command=cli,
             stdout=out.rstrip("\r\n"),
+            rc=0,
             changed=True
         )
 

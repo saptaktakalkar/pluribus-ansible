@@ -1,21 +1,5 @@
 #!/usr/bin/python
-# Test PN CLI trunk-create/trunk-delete/trunk-modify
-# 
-# This file is part of Ansible
-#
-# Ansible is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Ansible is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
-#
+""" PN CLI trunk-create/trunk-delete/trunk-modify """
 
 import subprocess
 import shlex
@@ -24,12 +8,11 @@ DOCUMENTATION = """
 ---
 module: pn_trunk
 author: "Pluribus Networks"
-short_description: CLI command to create/delete a trunk
+short_description: CLI command to create/delete/modify a trunk
 description:
-  - Execute trunk-create or trunk-delete command. 
-  - Requires trunk name:
-    - Alphanumeric characters
-    - Special characters like: _
+  - Execute trunk-create or trunk-delete command.
+  - Trunks can be used to aggregate network links at Layer 2 on the local
+    switch. Use this command to create a new trunk.
 options:
   pn_cliusername:
     description:
@@ -41,172 +24,155 @@ options:
       - Login password
     required: true
     type: str
-  pn_trunkcommand:
+  pn_cliswitch:
     description:
-      - The C(pn_trunkcommand) takes the trunk commands as value.
+    - Target switch to run the cli on.
+    required: False
+    type: str
+  pn_command:
+    description:
+      - The C(pn_command) takes the trunk commands as value.
     required: true
     choices: trunk-create, trunk-delete, trunk-modify
     type: str
-  pn_trunkname:
+  pn_name:
     description:
-      - The C(pn_trunkname) takes a valid name for trunk configuration.
+      - Specify the name for the trunk configuration.
     required: true
     type: str
-  pn_trunkports:
+  pn_ports:
     description:
-      - comma separated list of ports for the trunk 
-    required_if: trunk-create 
+      - Specify the port number(s) for the link(s) to aggregate into the trunk.
+    required_if: trunk-create
     type: str
-  pn_trunkspeed:
+  pn_speed:
     description:
-      - physical port speed
+      - Specify the port speed or disable the port.
     required: false
     choices: disable, 10m, 100m, 1g, 2.5g, 10g, 40g
     type: str
-  pn_trunkegress:
+  pn_egress_rate_limit:
     description:
-      - max egress port data rate limit
-    required: false
+      - Specify an egress port data rate limit for the configuration.
     type: str
-  pn_trunkjumbo:
+  pn_jumbo:
     description
-      - jumbo frames on physical port (jumbo|no-jumbo)
-    required: false
-    type: bool  
-  pn_trunklacpmode:
+      - Specify if the port can receive jumbo frames.
+    type: bool
+  pn_lacp_mode:
     description:
-      - LACP mode of physical mode
-    required: false
+      - Specify the LACP mode for the configuration.
     choices: off, passive, active
     type: str
-  pn_trunklacppriority:
+  pn_lacp_priority:
     description
-      - LACP priority from 1 to 65535(defaut: 32768)
-    required: false
-    type: str
-  pn_trunklacptimeout:
+      - Specify the LACP priority. This is a number between 1 and 65535 with a
+        default value of 32768.
+    type: int
+  pn_lacp_timeout:
     description:
-      - LACP timeout(default: slow)
-    required: false
+      - Specify the LACP time out as slow (30 seconds) or fast (4seconds).
+        The default value is slow.
     choices: slow, fast
     type: str
-  pn_trunkfallback:
+  pn_lacp_fallback:
     description:
-      - LACP fallback mode
-    required: false
+      - Specify the LACP fallback mode as bundles or individual.
     choices: bundle, individual
-  pn_trunkfallbacktimeout:
-    description: 
-      - LACP fallback timeout 30..60 seconds(default: 50)
-    required: false
     type: str
-  pn_trunkedge:
+  pn_lacp_fallback_timeout:
     description:
-      - physical port edge switch(edge-switch|no-edge-switch)
-    required: false
-    type: bool
-  pn_trunkpause:
-    description: 
-      - physical port pause(pause|no-pause)
-    required: false
-    type: bool
-  pn_trunkdesc:
-    description:
-      - physical port description
-    required: true
+      - Specify the LACP fallback timeout in seconds. The range is between 30
+        and 60 seconds with a default value of 50 seconds.
     type: str
-  pn_trunkloopback:
+  pn_edge_switch:
+    description:
+      - Specify if the switch is an edge switch.
+    type: bool
+  pn_pause:
+    description:
+      - Specify if pause frames are sent.
+    type: bool
+  pn_description:
+    description:
+      - Specify a description for the trunk configuration.
+    type: str
+  pn_loopback:
     description;
-      - physical port loopback(loopback|no-loopback)
-    required: false
+      - Specify loopback if you want to use loopback.
     type: bool
-  pn_trunkucastlevel:
+  pn_mirror_receive:
     description:
-      - unknown unicast level in % (default 30%)
-    required: false
-    type: str
-  pn_trunkmcastlevel:
-    description:
-      - unknown multicast level in % (default 30%)
-    required: false
-    type: str
-  pn_trunkbcastlevel:
-    description: 
-      - broadcast level in % (default 30%)
-    required: false
-    type: str
-  pn_trunkportmacaddr:
-    description:
-      - physical port MAC address
-    required: false
-    type: str
-  pn_trunkloopvlans:
-    description: 
-      - list of looping vlans
-    required: false
-    type: str
-  pn_trunkrouting:
-    description: 
-      - routing(routing|no-routing)
-    required: false
+      - Specify if the configuration receives mirrored traffic.
     type: bool
-  pn_trunkhost:
-    description: 
-      - host facing port control setting(host-enable|host-disable)
-    required: false
+  pn_unkown_ucast_level:
+    description:
+      - Specify an unkown unicast level in percent. The default value is 100%.
+    type: str
+  pn_unkown_mcast_level:
+    description:
+      - Specify an unkown multicast level in percent. The default value is 100%.
+    type: str
+  pn_broadcast_level:
+    description:
+      - Specify a broadcast level in percent. The default value is 100%.
+    type: str
+  pn_port_macaddr:
+    description:
+      - Specify the MAC address of the port.
+    type: str
+  pn_loopvlans:
+    description:
+      - Specify a list of looping vlans.
+    type: str
+  pn_routing:
+    description:
+      - Specify if the port participates in routing on the network.
+    type: bool
+  pn_host:
+    description:
+      - Host facing port control setting.
     type: bool
   pn_quiet:
     description:
-      - The C(pn_quiet) option to enable or disable the system bootup message
+      - Enable/disable system information.
     required: false
     type: bool
     default: true
 """
 
 EXAMPLES = """
-- name: create trunk 
+- name: create trunk
   pn_trunk:
     pn_cliusername: admin
     pn_clipassword: admin
-    pn_trunkcommand: 'trunk-create'
-    pn_trunkname: 'trunk-1'
-    pn_trunkports: '10...14'
-    pn_trunkspeed: '40g'
-    pn_trunkedge: True
-    pn_quiet: True
-- name: modify trunk 
+    pn_command: 'trunk-create'
+    pn_name: 'spine-to-leaf'
+
+
+- name: delete trunk
   pn_trunk:
     pn_cliusername: admin
     pn_clipassword: admin
-    pn_trunkcommand: 'trunk-modify'
-    pn_trunkname: 'trunk-1' pn_trunkspeed: '10g'
-    pn_trunklacpmode: 'passive'
-    pn_trunkedge: True
-    pn_quiet: True
-- name: delete trunk 
-  pn_trunk:
-    pn_cliusername: admin
-    pn_clipassword: admin
-    pn_trunkcommand: 'trunk-delete'
-    pn_trunkname: 'trunk-1'
-    pn_quiet: True
+    pn_command: 'trunk-delete'
+    pn_name: 'spine-to-leaf'
 """
 
 RETURN = """
-trunkcmd:
+command:
   description: the CLI command run on the target node(s).
 stdout:
   description: the set of responses from the trunk command.
-  returned: always
-  type: list
-stdout_lines:
-  description: the value of stdout split into a list.
   returned: always
   type: list
 stderr:
   description: the set of error responses from the trunk command.
   returned: on error
   type: list
+rc:
+  description: return code of the module.
+  returned: 0 on success, 1 on error
+  type: int
 changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
@@ -215,176 +181,203 @@ changed:
 
 
 def main():
+    """ This portion is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str'),
-            pn_clipassword=dict(required=True, type='str'),
-            pn_trunkcommand=dict(required=True, type='str',
-                                 choices=['trunk-create', 'trunk-delete',
-                                          'trunk-modify']),
-            pn_trunkname=dict(required=True, type='str'),
-            pn_trunkports=dict(type='str'),
-            pn_trunkspeed=dict(required=False, type='str',
-                               choices=['disable', '10m', '100m', '1g', '2.5g',
-                                        '10g', '40g']),
-            pn_trunkegress=dict(required=False, type='str'),
-            pn_trunkjumbo=dict(required=False, type='bool'),
-            pn_trunklacpmode=dict(required=False, type='str',
-                                  choices=['off', 'passive', 'active']),
-            pn_trunklacppriority=dict(required=False, type='str'),
-            pn_trunklacptimeout=dict(required=False, type='str',
-                                     choices=['slow', 'fast']),
-            pn_trunkfallback=dict(required=False, type='str',
-                                  choices=['bundle', 'individual']),
-            pn_trunkfallbacktimeout=dict(required=False, type='str'),
-            pn_trunkedge=dict(required=False, type='bool'),
-            pn_trunkpause=dict(required=False, type='bool'),
-            pn_trunkdesc=dict(required=False, type='str'),
-            pn_trunkloopback=dict(required=False, type='bool'),
-            pn_trunkucastlevel=dict(required=False, type='str'),
-            pn_trunkmcastlevel=dict(required=False, type='str'),
-            pn_trunkbcastlevel=dict(required=False, type='str'),
-            pn_trunkportmacaddr=dict(required=False, type='str'),
-            pn_trunkloopvlans=dict(required=False, type='str'),
-            pn_trunkrouting=dict(required=False, type='bool'),
-            pn_trunkhost=dict(required=False, type='bool'),
-            pn_quiet=dict(default=True, type='bool')
+            pn_cliusername=dict(required=True, type='str',
+                                aliases=['username']),
+            pn_clipassword=dict(required=True, type='str',
+                                aliases=['password']),
+            pn_cliswitch=dict(required=False, type='str', aliases=['switch']),
+            pn_command=dict(required=True, type='str',
+                            choices=['trunk-create', 'trunk-delete',
+                                     'trunk-modify'], aliases=['switch']),
+            pn_name=dict(required=True, type='str', aliases=['name']),
+            pn_ports=dict(type='str', aliases=['ports']),
+            pn_speed=dict(type='str',
+                          choices=['disable', '10m', '100m', '1g', '2.5g',
+                                   '10g', '40g'], aliases=['speed']),
+            pn_egress_rate_limit=dict(type='str',
+                                      aliases=['egress_rate_limit']),
+            pn_jumbo=dict(type='bool', aliases=['jumbo']),
+            pn_lacp_mode=dict(type='str', choices=['off', 'passive', 'active'],
+                              aliases=['lacp_mode']),
+            pn_lacp_priority=dict(type='int', aliases=['lacp_priority']),
+            pn_lacp_timeout=dict(type='str', choices=['slow', 'fast'],
+                                 aliases=['lacp_timeout']),
+            pn_lacp_fallback=dict(type='str', choices=['bundle', 'individual'],
+                                  aliases=['lacp_fallback']),
+            pn_lacp_fallback_timeout=dict(type='str',
+                                          aliases=['lacp_fallback_timeout']),
+            pn_edge_switch=dict(type='bool', aliases=['edge_switch']),
+            pn_pause=dict(type='bool', aliases=['pause']),
+            pn_description=dict(type='str', aliases=['description']),
+            pn_loopback=dict(type='bool', aliases=['loopback']),
+            pn_mirror_receive=dict(type='bool', aliases=['mirror_receive']),
+            pn_unknown_ucast_level=dict(type='str',
+                                        aliases=['unkown_ucast_level']),
+            pn_unknown_mcast_level=dict(type='str',
+                                        aliases=['unkown_mcast_level']),
+            pn_broadcast_level=dict(type='str', aliases=['broadcast_level']),
+            pn_port_macaddr=dict(type='str', aliases=['port_macaddr']),
+            pn_loopvlans=dict(type='str', aliases=['loopvlans']),
+            pn_routing=dict(type='bool', aliases=['routing']),
+            pn_host=dict(type='bool', aliases=['host']),
+            pn_quiet=dict(default=True, type='bool', aliases=['quiet'])
         ),
         required_if=(
-            ["pn_trunkcommand", "trunk-create",
-             ["pn_trunkname", "pn_trunkports"]],
-            ["pn_trunkcommand", "trunk-delete", ["pn_trunkname"]],
-            ["pn_trunkcommand", "trunk-modify", ["pn_trunkname"]]
+            ["pn_command", "trunk-create", ["pn_name", "pn_ports"]],
+            ["pn_command", "trunk-delete", ["pn_name"]],
+            ["pn_command", "trunk-modify", ["pn_name"]]
         )
     )
 
     cliusername = module.params['pn_cliusername']
     clipassword = module.params['pn_clipassword']
-    trunkcommand = module.params['pn_trunkcommand']
-    trunkname = module.params['pn_trunkname']
-    trunkports = module.params['pn_trunkports']
-    trunkspeed = module.params['pn_trunkspeed']
-    trunkegress = module.params['pn_trunkegress']
-    trunkjumbo = module.params['pn_trunkjumbo']
-    trunklacpmode = module.params['pn_trunklacpmode']
-    trunklacppriority = module.params['pn_trunklacppriority']
-    trunklacptimeout = module.params['pn_trunklacptimeout']
-    trunkfallback = module.params['pn_trunkfallback']
-    trunkfallbacktimeout = module.params['pn_trunkfallbacktimeout']
-    trunkedge = module.params['pn_trunkedge']
-    trunkpause = module.params['pn_trunkpause']
-    trunkdesc = module.params['pn_trunkdesc']
-    trunkloopback = module.params['pn_trunkloopback']
-    trunkucastlevel = module.params['pn_trunkucastlevel']
-    trunkmcastlevel = module.params['pn_trunkmcastlevel']
-    trunkbcastlevel = module.params['pn_trunkbcastlevel']
-    trunkportmacaddr = module.params['pn_trunkportmacaddr']
-    trunkloopvlans = module.params['pn_trunkloopvlans']
-    trunkrouting = module.params['pn_trunkrouting']
-    trunkhost = module.params['pn_trunkhost']
+    cliswitch = module.params['pn_cliswitch']
+    command = module.params['pn_command']
+    name = module.params['pn_name']
+    ports = module.params['pn_ports']
+    speed = module.params['pn_speed']
+    egress_rate_limit = module.params['pn_egress_rate_limit']
+    jumbo = module.params['pn_jumbo']
+    lacp_mode = module.params['pn_lacp_mode']
+    lacp_priority = module.params['pn_lacp_priority']
+    lacp_timeout = module.params['pn_lacp_timeout']
+    lacp_fallback = module.params['pn_lacp_fallback']
+    lacp_fallback_timeout = module.params['pn_lacp_fallback_timeout']
+    edge_switch = module.params['pn_edge_switch']
+    pause = module.params['pn_pause']
+    description = module.params['pn_description']
+    loopback = module.params['pn_loopback']
+    mirror_receive = module.params['pn_mirror_receive']
+    unknown_ucast_level = module.params['pn_unknown_ucast_level']
+    unknown_mcast_level = module.params['pn_unknown_mcast_level']
+    broadcast_level = module.params['pn_broadcast_level']
+    port_macaddr = module.params['pn_port_macaddr']
+    loopvlans = module.params['pn_loopvlans']
+    routing = module.params['pn_routing']
+    host = module.params['pn_host']
     quiet = module.params['pn_quiet']
 
+    # Building the CLI command string
     if quiet is True:
         cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
                clipassword + ' ')
     else:
         cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
 
-    trunk = cli
-    if trunkname:
-        trunk += trunkcommand + ' name ' + trunkname
+    if cliswitch:
+        cli += ' switch ' + cliswitch
 
-    if trunkports:
-        trunk += ' ports ' + trunkports
+    cli += ' ' + command + ' name ' + name
 
-    if trunkspeed:
-        trunk += ' speed ' + trunkspeed
+    if ports:
+        cli += ' ports ' + ports
 
-    if trunkegress:
-        trunk += ' egress-rate-limit ' + trunkegress
+    if speed:
+        cli += ' speed ' + speed
 
-    if trunkjumbo is True:
-        trunk += ' jumbo '
-    if trunkjumbo is False:
-        trunk += ' no-jumbo '
+    if egress_rate_limit:
+        cli += ' egress-rate-limit ' + egress_rate_limit
 
-    if trunklacpmode:
-        trunk += ' lacp-mode ' + trunklacpmode
+    if jumbo is True:
+        cli += ' jumbo '
+    if jumbo is False:
+        cli += ' no-jumbo '
 
-    if trunklacppriority:
-        trunk += ' lacp-priority ' + trunklacppriority
+    if lacp_mode:
+        cli += ' lacp-mode ' + lacp_mode
 
-    if trunklacptimeout:
-        trunk += ' lacp-timeout ' + trunklacptimeout
+    if lacp_priority:
+        cli += ' lacp-priority ' + lacp_priority
 
-    if trunkfallback:
-        trunk += ' lacp-fallback ' + trunkfallback
+    if lacp_timeout:
+        cli += ' lacp-timeout ' + lacp_timeout
 
-    if trunkfallbacktimeout:
-        trunkfallbacktimeout += ' lacp-fallback-timeout ' + trunkfallbacktimeout
+    if lacp_fallback:
+        cli += ' lacp-fallback ' + lacp_fallback
 
-    if trunkedge is True:
-        trunk += ' edge-switch '
-    if trunkedge is False:
-        trunk += ' no-edge-switch '
+    if lacp_fallback_timeout:
+        cli += ' lacp-fallback-timeout ' + lacp_fallback_timeout
 
-    if trunkpause is True:
-        trunk += ' pause '
-    if trunkpause is False:
-        trunk += ' no-pause '
+    if edge_switch is True:
+        cli += ' edge-switch '
+    if edge_switch is False:
+        cli += ' no-edge-switch '
 
-    if trunkdesc:
-        trunk += ' description ' + trunkdesc
+    if pause is True:
+        cli += ' pause '
+    if pause is False:
+        cli += ' no-pause '
 
-    if trunkloopback is True:
-        trunk += ' loopback '
-    if trunkloopback is False:
-        trunk += ' no-loopback '
+    if description:
+        cli += ' description ' + description
 
-    if trunkucastlevel:
-        trunk += ' unknown-ucast-level ' + trunkucastlevel
+    if loopback is True:
+        cli += ' loopback '
+    if loopback is False:
+        cli += ' no-loopback '
 
-    if trunkmcastlevel:
-        trunk += ' unknown-mcast-level ' + trunkmcastlevel
+    if mirror_receive is True:
+        cli += ' mirror-receive-only '
+    if mirror_receive is False:
+        cli += ' no-mirror-receive-only '
 
-    if trunkbcastlevel:
-        trunk += ' broadcast-level ' + trunkbcastlevel
+    if unknown_ucast_level:
+        cli += ' unknown-ucast-level ' + unknown_ucast_level
 
-    if trunkportmacaddr:
-        trunk += ' port-mac-address ' + trunkportmacaddr
+    if unknown_mcast_level:
+        cli += ' unknown-mcast-level ' + unknown_mcast_level
 
-    if trunkloopvlans:
-        trunk += ' loopvlans ' + trunkloopvlans
+    if broadcast_level:
+        cli += ' broadcast-level ' + broadcast_level
 
-    if trunkrouting is True:
-        trunk += ' routing '
-    if trunkrouting is False:
-        trunk += ' no-routing '
+    if port_macaddr:
+        cli += ' port-mac-address ' + port_macaddr
 
-    if trunkhost is True:
-        trunk += ' host-enable '
-    if trunkhost is False:
-        trunk += ' host-disable '
+    if loopvlans:
+        cli += ' loopvlans ' + loopvlans
 
-    trunkcmd = shlex.split(trunk)
+    if routing is True:
+        cli += ' routing '
+    if routing is False:
+        cli += ' no-routing '
+
+    if host is True:
+        cli += ' host-enable '
+    if host is False:
+        cli += ' host-disable '
+
+    # Run the CLI command
+    trunkcmd = shlex.split(cli)
     response = subprocess.Popen(trunkcmd, stderr=subprocess.PIPE,
                                 stdout=subprocess.PIPE, universal_newlines=True)
+
+    # 'out' contains the output
+    # 'err' contains the err messages
     out, err = response.communicate()
 
-    if out:
-        module.exit_json(
-            trunkcmd=trunk,
-            stdout=out.rstrip("\r\n"),
-            changed=True
-        )
+    # Response in json format
     if err:
         module.exit_json(
-            trunkcmd=trunk,
+            command=cli,
             stderr=err.rstrip("\r\n"),
+            rc=0,
             changed=False
         )
 
+    else:
+        module.exit_json(
+            command=cli,
+            stdout=out.rstrip("\r\n"),
+            rc=1,
+            changed=True
+        )
+
+# Ansible boiler-plate
 from ansible.module_utils.basic import AnsibleModule
 
 if __name__ == '__main__':
     main()
+

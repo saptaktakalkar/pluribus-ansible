@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN-CLI vrouter-interface-add/delete/modify commands """
+""" PN-CLI vrouter-interface-add/remove/modify """
 
 import subprocess
 import shlex
@@ -12,7 +12,8 @@ short_description: CLI command to add/remove/modify vrouter-interface
 description:
   - Execute vrouter-interface-add, vrouter-interface-remove,
     vrouter-interface-modify command.
-  - Add/remove/modify interface for a vrouter
+  - You configure interfaces to vRouter services on a fabric, cluster,
+    standalone switch or virtula network(VNET).
 options:
   pn_cliusername:
     description:
@@ -24,97 +25,95 @@ options:
       - Login password
     required: true
     type: str
-  pn_vrouterifcommand:
+  pn_cliswitch:
     description:
-      - The C(pn_vrouterifcommand) takes the vrouter-interface command as value.
+    - Target switch to run the cli on.
+    required: False
+    type: str
+  pn_command:
+    description:
+      - The C(pn_command) takes the vrouter-interface command as value.
     required: true
     choices: vrouter-interface-add, vrouter-interface-remove,
              vrouter-interface-modify
     type: str
-  pn_vrouterifname:
+  pn_vrouter_name:
     description:
-      - name for service config
+      - Specify the name of the vRouter interface.
     required: true
     type: str
-  pn_vrouterifvlan:
+  pn_vlan:
     description:
-      - interface VLAN
-    required_if: vrouter-interface-add 
+      - interface Specify the VLAN identifier. This is a value between 1 and
+        4092.
     type: int
-  pn_vrouterifip:
+  pn_interface_ip:
     description:
-      - IP address
-    required: false
+      - Specify the IP address of the interface.
     type: str
-  pn_vrouterifnetmask:
+  pn_netmask:
     description:
-      - netmask
-    required: false
+      - Specify the netmask.
     type: str
-  pn_vrouterifassign: 
-    description: 
-      - type of IP address assignment
-    required: false
-    type: str
-  pn_vrouterifvxlan:
-    description: 
-      - interface vxlan
-    required: false
-    type: str
-  pn_vrouterif_interface:
+  pn_assignment:
     description:
-      - interface type
-    required: false
+      - Specify the DHCP method for IP address assignment.
+    choices: none, dhcp, dhcpv6, autov6
     type: str
-  pn_vrouterifalias:
-    description: 
-      - alias name
-    required: false
+  pn_vxlan:
+    description:
+      - Specify the VXLAN identifier. This is a value between 1 and 16777215.
     type: str
-  pn_vrouterifexclusive:
-    description: 
-      - exclusive interface
-    required: false
+  pn__interface:
+    description:
+      - Specify if the interface is management, data or span interface.
+    choices: mgmt, data, span
+    type: str
+  pn_alias:
+    description:
+      - Specify an alias for the interface.
+    type: str
+  pn_exclusive:
+    description:
+      - Specify if the interface is exclusive to the configuration. Exclusive
+        means that other configurations cannot use the interface. Exclusive is
+        specified when you configure the interface as span interface and allows
+        higher throughput through the interface.
     type: bool
-  pn_vrouterifnic:
+  pn_nic:
     description:
-      - NIC config
-    required: false
+      - Specify if the NIC is enabled or not
     type: bool
-  pn_vrouterifvrrpid:
+  pn_vrrpid:
     description:
-      - ID assigned to VRRP
-    required: false
+      - Specify the ID for the VRRP interface. The IDs on both vRouters must be
+        the same IS number.
     type: int
-  pn_vrouterifvrrp_primary:
+  pn_vrrp_primary:
     description:
-      - VRRP Primary interface
-    required: false
+      - Specifies the primary interface for VRRP failover.
     type: str
-  pn_vrouterifvrrp_priority:
+  pn_vrrp_priority:
     description:
-      - VRRP priority for interface
-    required: false
+      - Speicfies the priority for the VRRP interface. This is a value between
+         1 (lowest) and 255 (highest).
     type: int
-  pn_vrouterifvrrp_advint:
+  pn_vrrp_adv_int:
     description:
-      - VRRP advertisement intervals(ms,min 10, max 40950, default 1000)
-    required: false
+      - Specify a VRRP advertisement interval in milliseconds. The range is
+        from 30 to 40950 with a default value of 1000.
     type: str
-  pn_vrouterifl3port:
+  pn_l3port:
     description:
-      - Layer 3 port
-    required: false
+      - Specify a Layer 3 port for the interface.
     type: str
-  pn_vrouterifsecmacs:
+  pn_secondary_macs:
     description:
-      - secondary MAC addresses
-    required: false
+      - Specify a secondary MAC address for the interface.
     type: str
-  pn_vrouterifnicstr:
+  pn_nic_str:
     description:
-      - virtual NIC assigned to the interface
-    required: false
+      - Specify the type of NIC. Used for vrouter-interface remove/modify.
     type: str
   pn_quiet:
     description:
@@ -125,23 +124,21 @@ options:
 """
 
 EXAMPLES = """
-- name: add vrouter-interface 
+- name: add vrouter-interface
   pn_vrouterif:
     pn_cliusername: admin
     pn_clipassword: admin
-    pn_vrouterifcommand: 'vrouter-interface-add'
-    pn_vrouterifname: 'ansible-vrouter'
-    pn_vrouterifvlan: 104
-    pn_quiet: True
+    pn_command: 'vrouter-interface-add'
+    pn_vrouter_name: 'ansible-vrouter'
+    pn_vlan: 104
 
-- name: remove vrouter-interface 
-  pn_vrouterif: 
+- name: remove vrouter-interface
+  pn_vrouterif:
     pn_cliusername: admin
     pn_clipassword: admin
-    pn_vrouterifcommand: 'vrouter-interface-remove'
-    pn_vrouterifname: 'ansible-vrouter'
-    pn_vrouterifnicstr: 'eth-104'
-    pn_quiet: True
+    pn_command: 'vrouter-interface-remove'
+    pn_vrouter_name: 'ansible-vrouter'
+    pn_nic_str: 'eth-104'
 """
 
 RETURN = """
@@ -151,14 +148,14 @@ stdout:
   description: the set of responses from the vrouterif command.
   returned: always
   type: list
-stdout_lines:
-  description: the value of stdout split into a list.
-  returned: always
-  type: list
 stderr:
   description: the set of error responses from the vrouterif command.
   returned: on error
   type: list
+rc:
+  description: return code of the module.
+  returned: 0 on success, 1 on error
+  type: int
 changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
@@ -167,68 +164,73 @@ changed:
 
 
 def main():
-    """ This section is for argument parsing """
+    """ This portion is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str'),
-            pn_clipassword=dict(required=True, type='str'),
-            pn_vrouterifcommand=dict(required=True, type='str',
-                                     choices=['vrouter-interface-add',
-                                              'vrouter-interface-remove',
-                                              'vrouter-interface-modify']),
-            pn_vrouterifname=dict(required=True, type='str'),
-            pn_vrouterifvlan=dict(required=False, type='int'),
-            pn_vrouterifip=dict(required=False, type='str'),
-            pn_vrouterifnetmask=dict(required=False, type='str'),
-            pn_vrouterifassign=dict(required=False, type='str',
-                                    choices=['none', 'dhcp', 'dhcpv6',
-                                             'autov6']),
-            pn_vrouterifvxlan=dict(required=False, type='str'),
-            pn_vrouterif_interface=dict(required=False, type='str',
-                                        choices=['mgmt', 'data', 'span']),
-            pn_vrouterifalias=dict(required=False, type='str'),
-            pn_vrouterifexclusive=dict(required=False, type='bool'),
-            pn_vrouterifnic=dict(required=False, type='bool'),
-            pn_vrouterifvrrpid=dict(required=False, type='int'),
-            pn_vrouterifvrrp_primary=dict(required=False, type='str'),
-            pn_vrouterifvrrp_priority=dict(required=False, type='int'),
-            pn_vrouterifvrrp_advint=dict(required=False, type='str'),
-            pn_vrouterifl3port=dict(required=False, type='str'),
-            pn_vrouterifsecmacs=dict(required=False, type='str'),
-            pn_vrouterifnicstr=dict(required=False, type='str'),
-            pn_quiet=dict(default=True, type='bool')
+            pn_cliusername=dict(required=True, type='str',
+                                aliases=['username']),
+            pn_clipassword=dict(required=True, type='str',
+                                aliases=['password']),
+            pn_cliswitch=dict(required=False, type='str', aliases=['switch']),
+            pn_command=dict(required=True, type='str',
+                            choices=['vrouter-interface-add',
+                                     'vrouter-interface-remove',
+                                     'vrouter-interface-modify'],
+                            aliases=['command']),
+            pn_vrouter_name=dict(required=True, type='str',
+                                 aliases=['vrouter_name']),
+            pn_vlan=dict(type='int', aliases=['vlan']),
+            pn_interface_ip=dict(type='str', aliases=['interface_ip']),
+            pn_netmask=dict(type='str', aliases=['netmask']),
+            pn_assignment=dict(type='str',
+                               choices=['none', 'dhcp', 'dhcpv6', 'autov6'],
+                               aliases=['assignment']),
+            pn_vxlan=dict(type='str', aliases=['vxlan']),
+            pn_interface=dict(type='str', choices=['mgmt', 'data', 'span'],
+                              aliases=['interface']),
+            pn_alias=dict(type='str', aliases=['alias']),
+            pn_exclusive=dict(type='bool', aliases=['exclusive']),
+            pn_nic=dict(type='bool', aliases=['nic']),
+            pn_vrrpid=dict(type='int', aliases=['vrrpid']),
+            pn_vrrp_primary=dict(type='str', aliases=['vrrp_primary']),
+            pn_vrrp_priority=dict(type='int', aliases=['vrrp_priority']),
+            pn_vrrp_adv_int=dict(type='str', aliases=['vrrp_adv_int']),
+            pn_l3port=dict(type='str', aliases=['l3_port']),
+            pn_secondary_macs=dict(type='str', aliases=['secondary_macs']),
+            pn_nic_str=dict(type='str', aliases=['nic_str']),
+            pn_quiet=dict(default=True, type='bool', aliases=['quiet'])
         ),
         required_if=(
-            ["pn_vrouterifcommand", "vrouter-interface-add",
-             ["pn_vrouterifname", "pn_vrouterifvlan"]],
-            ["pn_vrouterifcommand", "vrouter-interface-remove",
-             ["pn_vrouterifname", "pn_vrouterifnicstr"]],
-            ["pn_vrouterifcommand", "vrouter-interface-modify",
-             ["pn_vrouterifname", "pn_vrouterifnicstr"]]
-        )
+            ["pn_command", "vrouter-interface-add",
+             ["pn_vrouter_name", "pn_vlan"]],
+            ["pn_command", "vrouter-interface-remove",
+             ["pn_vrouter_name", "pn_nic_str"]],
+            ["pn_command", "vrouter-interface-modify",
+             ["pn_vrouter_name", "pn_nic_str"]]
+        ),
     )
 
-    # Accessing the arguments
     cliusername = module.params['pn_cliusername']
     clipassword = module.params['pn_clipassword']
-    vrouterifcommand = module.params['pn_vrouterifcommand']
-    vrouterifname = module.params['pn_vrouterifname']
-    vrouterifvlan = module.params['pn_vrouterifvlan']
-    vrouterifip = module.params['pn_vrouterifip']
-    vrouterifnetmask = module.params['pn_vrouterifnetmask']
-    vrouterifassign = module.params['pn_vrouterifassign']
-    vrouterifvxlan = module.params['pn_vrouterifvxlan']
-    vrouterif_interface = module.params['pn_vrouterif_interface']
-    vrouterifalias = module.params['pn_vrouterifalias']
-    vrouterifexclusive = module.params['pn_vrouterifexclusive']
-    vrouterifnic = module.params['pn_vrouterifnic']
-    vrouterifvrrpid = module.params['pn_vrouterifvrrpid']
-    vrouterifvrrp_primary = module.params['pn_vrouterifvrrp_primary']
-    vrouterifvrrp_priority = module.params['pn_vrouterifvrrp_priority']
-    vrouterifvrrp_advint = module.params['pn_vrouterifvrrp_advint']
-    vrouterifl3port = module.params['pn_vrouterifl3port']
-    vrouterifsecmacs = module.params['pn_vrouterifsecmacs']
-    vrouterifnicstr = module.params['pn_vrouterifnicstr']
+    cliswitch = module.params['pn_cliswitch']
+    command = module.params['pn_command']
+    vrouter_name = module.params['pn_vrouter_name']
+    vlan = module.params['pn_vlan']
+    interface_ip = module.params['pn_interface_ip']
+    netmask = module.params['pn_netmask']
+    assignment = module.params['pn_assignment']
+    vxlan = module.params['pn_vxlan']
+    interface = module.params['pn_interface']
+    alias = module.params['pn_alias']
+    exclusive = module.params['pn_exclusive']
+    nic = module.params['pn_nic']
+    vrrpid = module.params['pn_vrrpid']
+    vrrp_primary = module.params['pn_vrrp_primary']
+    vrrp_priority = module.params['pn_vrrp_priority']
+    vrrp_adv_int = module.params['pn_vrrp_adv_int']
+    l3port = module.params['pn_l3port']
+    secondary_macs = module.params['pn_secondary_macs']
+    nic_str = module.params['pn_nic_str']
     quiet = module.params['pn_quiet']
 
     # Building the CLI command string
@@ -238,88 +240,92 @@ def main():
     else:
         cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
 
-    vrouterif = cli
-    if vrouterifname:
-        vrouterif = cli + vrouterifcommand + ' vrouter-name ' + vrouterifname
+    if cliswitch:
+        cli += ' switch ' + cliswitch
 
-    if vrouterifvlan:
-        vrouterif += ' vlan ' + str(vrouterifvlan)
+    cli += ' ' + command + ' vrouter-name ' + vrouter_name
 
-    if vrouterifip:
-        vrouterif += ' ip ' + vrouterifip
+    if vlan:
+        cli += ' vlan ' + str(vlan)
 
-    if vrouterifnetmask:
-        vrouterif += ' netmask ' + vrouterifnetmask
+    if interface_ip:
+        cli += ' ip ' + interface_ip
 
-    if vrouterifassign:
-        vrouterif += ' assignment ' + vrouterifassign
+    if netmask:
+        cli += ' netmask ' + netmask
 
-    if vrouterifvxlan:
-        vrouterif += ' vxlan ' + vrouterifvxlan
+    if assignment:
+        cli += ' assignment ' + assignment
 
-    if vrouterif_interface:
-        vrouterif += ' if ' + vrouterif_interface
+    if vxlan:
+        cli += ' vxlan ' + vxlan
 
-    if vrouterifalias:
-        vrouterif += ' alias-on ' + vrouterifalias
+    if interface:
+        cli += ' if ' + interface
 
-    if vrouterifexclusive is True:
-        vrouterif += ' exclusive '
-    if vrouterifexclusive is False:
-        vrouterif += ' no-exclusive '
+    if alias:
+        cli += ' alias-on ' + alias
 
-    if vrouterifnic is True:
-        vrouterif += ' nic-enable '
-    if vrouterifnic is False:
-        vrouterif += ' nic-disable '
+    if exclusive is True:
+        cli += ' exclusive '
+    if exclusive is False:
+        cli += ' no-exclusive '
 
-    if vrouterifvrrpid:
-        vrouterif += ' vrrp-id ' + str(vrouterifvrrpid)
+    if nic is True:
+        cli += ' nic-enable '
+    if nic is False:
+        cli += ' nic-disable '
 
-    if vrouterifvrrp_primary:
-        vrouterif += ' vrrp-primary ' + vrouterifvrrp_primary
+    if vrrpid:
+        cli += ' vrrp-id ' + str(vrrpid)
 
-    if vrouterifvrrp_priority:
-        vrouterif += ' vrrp-priority ' + str(vrouterifvrrp_priority)
+    if vrrp_primary:
+        cli += ' vrrp-primary ' + vrrp_primary
 
-    if vrouterifvrrp_advint:
-        vrouterif += ' vrrp-adv-int ' + vrouterifvrrp_advint
+    if vrrp_priority:
+        cli += ' vrrp-priority ' + str(vrrp_priority)
 
-    if vrouterifl3port:
-        vrouterif += ' l3-port ' + vrouterifl3port
+    if vrrp_adv_int:
+        cli += ' vrrp-adv-int ' + vrrp_adv_int
 
-    if vrouterifsecmacs:
-        vrouterif += ' secondary-macs ' + vrouterifsecmacs
+    if l3port:
+        cli += ' l3-port ' + l3port
 
-    if vrouterifnicstr:
-        vrouterif += ' nic ' + vrouterifnicstr
+    if secondary_macs:
+        cli += ' secondary-macs ' + secondary_macs
+
+    if nic_str:
+        cli += ' nic ' + nic_str
 
     # Run the CLI command
-    vrouterifcmd = shlex.split(vrouterif)
+    vrouterifcmd = shlex.split(cli)
     response = subprocess.Popen(vrouterifcmd, stderr=subprocess.PIPE,
                                 stdout=subprocess.PIPE, universal_newlines=True)
 
     # 'out' contains the output
-    # 'err' contains the error messages
+    # 'err' contains the err messages
     out, err = response.communicate()
 
     # Response in JSON format
     if err:
         module.exit_json(
-            vrouterifcmd=vrouterif,
+            command=cli,
             stderr=err.rstrip("\r\n"),
+            rc=1,
             changed=False
         )
 
     else:
         module.exit_json(
-            vrouterifcmd=vrouterif,
+            command=cli,
             stdout=out.rstrip("\r\n"),
+            rc=0,
             changed=True
         )
 
-# AnsibleModule boilerplate
+# Ansible boiler-plate
 from ansible.module_utils.basic import AnsibleModule
 
 if __name__ == '__main__':
     main()
+

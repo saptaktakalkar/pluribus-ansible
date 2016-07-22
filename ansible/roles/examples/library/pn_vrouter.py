@@ -10,10 +10,13 @@ module: pn_vrouter
 author: "Pluribus Networks"
 short_description: CLI command to create/delete/modify a vrouter
 description:
-  - Execute vrouter-create, vrouter-delete, vrouter-modify command. 
-  - Requires vrouter name:
-    - Alphanumeric characters
-    - Special characters like: _
+  - Execute vrouter-create, vrouter-delete, vrouter-modify command.
+  - Each fabric, cluster, standalone switch, or virtual network (VNET) can
+    provide its tenants with a virtual router (vRouter) service that forwards
+    traffic between networks and implements Layer 3 protocols.
+  - C(vrouter-create) creates a new vRouter service.
+  - C(vrouter-delete) deletes a vRouter service.
+  - C(vrouter-modify) modifies a vRouter service.
 options:
   pn_cliusername:
     description:
@@ -25,36 +28,57 @@ options:
       - Login password
     required: true
     type: str
-  pn_vroutercommand:
+  pn_cliswitch:
     description:
-      - The C(pn_vroutercommand) takes the v-router command as value.
+      - Target switch to run the CLI on.
+    required: False
+    type: str
+  pn_command:
+    description:
+      - The C(pn_command) takes the v-router command as value.
     required: true
     choices: vrouter-create, vrouter-delete, vrouter-modify
     type: str
-  pn_vroutername:
+  pn_name:
     description:
-      - name for service configuration.
+      - Specify the name of the vRouter.
     required: true
     type: str
-  pn_vroutervnet:
+  pn_vnet:
     description:
-      - vnet assigned to the service
-    required_if: vrouter-create 
-    type: str
-  pn_vrouterstate:
-    description:
-      - state of service
+      - Specify the name of the VNET.
     required_if: vrouter-create
     type: str
-  pn_vrouterhw_vrrp_id:
+  pn_service_type:
     description:
-      - vrrp id assigned to the hardware vrouter
-    required_if: vrouter_create
+      - Specify if the vRouter is a dedicated or shared VNET service.
+    choices: dedicated, shared
+    type: str
+  pn_service_state:
+    description:
+      -  Specify to enable or disable vRouter service.
+    choices: enable, disable
+    type: str
+  pn_router_type:
+    description:
+      - Specify if the vRouter uses software or hardware.
+      - Note that if you specify hardware as router type, you cannot assign IP
+        addresses using DHCP. You must specify a static IP address.
+    choices: hardware, software
+    type: str
+  pn_hw_vrrp_id:
+    description:
+      - Specifies the VRRP ID for a hardware vrouter.
+    type: str
+  pn_router_id:
+    description:
+      - Specify the vRouter IP address.
+    type: str
+  pn_bgp_as:
+    description:
+      - Specify the Autonomous System Number(ASN) if the vRouter runs Border
+        Gateway Protocol(BGP).
     type: int
-  pn_vrouterbgp_as: 
-    description: 
-      - BGP Autonomous System number from 1 to 4294967295
-      required: False
   pn_quiet:
     description:
       - The C(pn_quiet) option to enable or disable the system bootup message
@@ -64,41 +88,38 @@ options:
 """
 
 EXAMPLES = """
-- name: create vrouter 
+- name: create vrouter
   pn_vrouter:
     pn_cliusername: admin
     pn_clipassword: admin
-    pn_routercommand: 'vrouter-create'
-    pn_vroutername: 'ansible-vrouter'
-    pn_vroutervnet: 'ansible-vnet'
-    pn_vrouterstate: 'enable'
-    pn_vrouterhw_vrrp_id: 18
-    pn_quiet: True
+    pn_command: 'vrouter-create'
+    pn_name: 'ansible-vrouter'
+    pn_vnet: 'ansible-vnet'
+    pn_router_id: 208.74.182.1
 
-- name: delete vrouter 
+- name: delete vrouter
   pn_vrouter:
     pn_cliusername: admin
     pn_clipassword: admin
-    pn_vroutercommand: 'vrouter-delete'
-    pn_vroutername: 'ansible-vrouter'
-    pn_quiet: True
+    pn_command: 'vrouter-delete'
+    pn_name: 'ansible-vrouter'
 """
 
 RETURN = """
-vroutercmd:
+command:
   description: the CLI command run on the target node(s).
 stdout:
   description: the set of responses from the vrouter command.
-  returned: always
-  type: list
-stdout_lines:
-  description: the value of stdout split into a list.
   returned: always
   type: list
 stderr:
   description: the set of error responses from the vrouter command.
   returned: on error
   type: list
+rc:
+  description: return code of the module.
+  returned: 0 on success, 1 on error
+  type: int
 changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
@@ -110,36 +131,48 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str'),
-            pn_clipassword=dict(required=True, type='str'),
-            pn_vroutercommand=dict(required=True, type='str',
-                                   choices=['vrouter-create', 'vrouter-delete',
-                                            'vrouter-modify']),
-            pn_vroutername=dict(required=True, type='str'),
-            pn_vroutervnet=dict(type='str'),
-            pn_vrouterstate=dict(type='str', choices=['enable', 'disable']),
-            pn_vrouterbgp_as=dict(required=False, type='str'),
-            pn_vrouterhw_vrrp_id=dict(required=False, type='int'),
-            pn_quiet=dict(default=True, type='bool')
+            pn_cliusername=dict(required=True, type='str',
+                                aliases=['username']),
+            pn_clipassword=dict(required=True, type='str',
+                                aliases=['password']),
+            pn_cliswitch=dict(required=False, type='str', aliases=['switch']),
+            pn_command=dict(required=True, type='str',
+                            choices=['vrouter-create', 'vrouter-delete',
+                                     'vrouter-modify'], aliases=['command']),
+            pn_name=dict(required=True, type='str', aliases=['name']),
+            pn_vnet=dict(type='str', aliases=['vnet']),
+            pn_service_type=dict(type='str', choices=['dedicated', 'shared'],
+                                 aliases=['service_type']),
+            pn_service_state=dict(type='str', choices=['enable', 'disable'],
+                                  aliases=['service_state']),
+            pn_router_type=dict(type='str', choices=['hardware', 'software'],
+                                aliases=['router_type']),
+            pn_hw_vrrp_id=dict(type='str', aliases=['hw_vrrp_id']),
+            pn_router_id=dict(type='str', aliases=['router_id']),
+            pn_bgp_as=dict(type='int', aliases=['bgp_as']),
+            pn_quiet=dict(default=True, type='bool', aliases=['quiet'])
         ),
         required_if=(
-            ["pn_vroutercommand", "vrouter-create",
-             ["pn_vroutername", "pn_vroutervnet", "pn_vrouterstate",
-              "pn_vrouterhw_vrrp_id"]],
-            ["pn_vroutercommand", "vrouter-delete", ["pn_vroutername"]],
-            ["pn_vroutercommand", "vrouter-modify", ["pn_vroutername"]]
+            ["pn_command", "vrouter-create",
+             ["pn_name", "pn_vnet", "pn_service_state", "pn_hw_vrrp_id"]],
+            ["pn_command", "vrouter-delete", ["pn_name"]],
+            ["pn_command", "vrouter-modify", ["pn_name"]]
         )
     )
 
     # Accessing the arguments
     cliusername = module.params['pn_cliusername']
     clipassword = module.params['pn_clipassword']
-    vroutercommand = module.params['pn_vroutercommand']
-    vroutername = module.params['pn_vroutername']
-    vroutervnet = module.params['pn_vroutervnet']
-    vrouterstate = module.params['pn_vrouterstate']
-    vrouterbgp_as = module.params['pn_vrouterbgp_as']
-    vrouterhw_vrrp_id = module.params['pn_vrouterhw_vrrp_id']
+    cliswitch = module.params['pn_cliswitch']
+    command = module.params['pn_command']
+    name = module.params['pn_name']
+    vnet = module.params['pn_vnet']
+    service_type = module.params['pn_service_type']
+    service_state = module.params['pn_service_state']
+    router_type = module.params['pn_router_type']
+    hw_vrrp_id = module.params['pn_hw_vrrp_id']
+    router_id = module.params['pn_router_id']
+    bgp_as = module.params['pn_bgp_as']
     quiet = module.params['pn_quiet']
 
     # Building the CLI command string
@@ -149,20 +182,31 @@ def main():
     else:
         cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
 
-    if vroutername:
-        cli += vroutercommand + ' name ' + vroutername
+    if cliswitch:
+        cli += ' switch ' + cliswitch
 
-    if vroutervnet:
-        cli += ' vnet ' + vroutervnet
+    cli += ' ' + command + ' name ' + name
 
-    if vrouterbgp_as:
-        cli += ' bgp-as ' + vrouterbgp_as
+    if vnet:
+        cli += ' vnet ' + vnet
 
-    if vrouterhw_vrrp_id:
-        cli += ' hw-vrrp-id ' + str(vrouterhw_vrrp_id)
+    if service_type:
+        cli += ' ' + service_type + '-vnet-service '
 
-    if vrouterstate:
-        cli += " " + vrouterstate
+    if service_state:
+        cli += ' ' + service_state
+
+    if router_type:
+        cli += ' router-type ' + router_type
+
+    if hw_vrrp_id:
+        cli += ' hw-vrrp-id ' + hw_vrrp_id
+
+    if router_id:
+        cli += ' router-id ' + router_id
+
+    if bgp_as:
+        cli += ' bgp-as ' + bgp_as
 
     # Run the CLI command
     vroutercmd = shlex.split(cli)
@@ -173,10 +217,12 @@ def main():
     # 'err' contains the error messages
     out, err = response.communicate()
 
+    # Response in JSON format
     if err:
         module.exit_json(
-            vroutercmd=vrouter,
+            command=cli,
             stderr=err.rstrip("\r\n"),
+            rc=1,
             changed=False
         )
 
@@ -184,11 +230,14 @@ def main():
         module.exit_json(
             command=cli,
             stdout=out.rstrip("\r\n"),
+            rc=0,
             changed=True
         )
+
 
 # AnsibleModule boilerplate
 from ansible.module_utils.basic import AnsibleModule
 
 if __name__ == '__main__':
     main()
+
