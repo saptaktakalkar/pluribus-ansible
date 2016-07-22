@@ -1,10 +1,10 @@
 --- 
-- hosts: newswitches
+- hosts: spine[0]
   name: "PN-CLI Fabric Show Test"
-  gather_facts: True
+ 
   tasks: 
     - name: "Test Fabric Show CLI command"
-      pn_show: pn_cliusername=network-admin pn_clipassword=test123 pn_showcommand=fabric-show pn_quiet=True
+      pn_show: pn_cliusername=network-admin pn_clipassword=test123 pn_command=fabric-node-show pn_quiet=True
       register: cmd_output
     - debug: var=cmd_output  
   user: pluribus
