@@ -1,10 +1,10 @@
 ---
 - name: PN-CLI vrouter Create
-  hosts: newswitches
+  hosts: spine[0]
   user: pluribus  
 
   tasks:
   - name: Create vrouter 
-    pn_vrouter: pn_cliusername=network-admin pn_clipassword=test123 pn_vroutercommand=vrouter-create pn_vroutername=ansible-vrouter pn_vroutervnet=puppet-ansible-chef-fab-global pn_vrouterhw_vrrp_id=18 pn_vrouterstate=enable pn_quiet=True
+    pn_vrouter: pn_cliusername=network-admin pn_clipassword=test123 pn_command=vrouter-create pn_name=ansible-vrouter pn_vnet=puppet-ansible-chef-fab-global pn_router_type=hardware pn_hw_vrrp_id=18
     register: cmd_output
   - debug: var=cmd_output 
