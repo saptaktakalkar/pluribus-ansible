@@ -1,6 +1,6 @@
 ---
 - name: Main playbook... Calling different roles
-  hosts: pokemon[0]
+  hosts: spine[0]
   user: root
 
   roles:
