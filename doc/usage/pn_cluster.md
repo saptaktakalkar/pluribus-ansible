@@ -2,10 +2,25 @@
 
 Module for CLI cluster configurations. Supports `cluster-create`, `cluster-delete` and `cluster-modify` commands with options. 
 
+ - [Synopsis](#synopsis)
  - [Options](#options)
  - [Usage](#usage)
  - [Examples](#examples)
  - [Return Values](#return-values)
+
+## Synopsis
+  A cluster allows two switches to cooperate in high-availability (HA) deployments. The nodes that
+  form the cluster must be members of the same fabric. Clusters are typically used in conjunction
+  with a virtual link aggregation group (VLAG) that allows links physically connected to two
+  separate switches appear as a single trunk to a third device. The third device can be a switch,
+  server, or any Ethernet device. 
+  
+ 
+ **_Informational Note_**: You may configure multiple clusters of switches within a single fabric. However,
+    a switch can participate in only one cluster configuration. For example, switch-1 and switch-2 can
+    participate in cluster-1, and switch-3 and switch-4 can participate in cluster-2, but switch-1 and
+    switch-2 cannot participate in cluster-2 or any other cluster. 
+
 
 ## Options
 | parameter       | required       | default      |choices       |comments                                                    |
