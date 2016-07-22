@@ -1,10 +1,10 @@
 ---
 - name: PN-CLI vrouter Delete
-  hosts: newswitches
+  hosts: spine[0]
   user: pluribus  
 
   tasks:
   - name: Delete vrouter 
-    pn_vrouter: pn_cliusername=network-admin pn_clipassword=test123 pn_vroutercommand=vrouter-delete  pn_vroutername=ansible-vrouter pn_quiet=True
+    pn_vrouter: pn_cliusername=network-admin pn_clipassword=test123 pn_command=vrouter-delete  pn_name=ansible-vrouter pn_quiet=True
     register: cmd_output
   - debug: var=cmd_output 
