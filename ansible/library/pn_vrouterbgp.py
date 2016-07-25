@@ -162,10 +162,6 @@ stdout:
   description: the set of responses from the vrouterbpg command.
   returned: always
   type: list
-stdout_lines:
-  description: the value of stdout split into a list.
-  returned: always
-  type: list
 stderr:
   description: the set of error responses from the vrouterbgp command.
   returned: on error
@@ -350,12 +346,11 @@ def main():
     # 'err' contains the err messages
     out, err = response.communicate()
 
-    # Response in json format
+    # Response in JSON format
     if err:
         module.exit_json(
             command=cli,
             stderr=err.rstrip("\r\n"),
-            rc=1,
             changed=False
         )
 
@@ -363,10 +358,8 @@ def main():
         module.exit_json(
             command=cli,
             stdout=out.rstrip("\r\n"),
-            rc=0,
             changed=True
         )
-
 
 # Ansible boiler-plate
 from ansible.module_utils.basic import AnsibleModule
