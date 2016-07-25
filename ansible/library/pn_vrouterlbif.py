@@ -108,8 +108,10 @@ def main():
                                 aliases=['password']),
             pn_cliswitch=dict(required=False, type='str', aliases=['switch']),
             pn_command=dict(required=True, type='str',
-                            choices=['vrouter-create', 'vrouter-delete',
-                                     'vrouter-modify'], aliases=['command']),
+                            choices=['vrouter-loopback-interface-add',
+                                     'vrouter-loopback-interface-remove',
+                                     'vrouter-loopback-interface-modify'],
+                            aliases=['command']),
             pn_vrouter_name=dict(required=True, type='str',
                                  aliases=['vrouter_name']),
             pn_index=dict(type='int', aliases=['index']),
@@ -182,4 +184,3 @@ from ansible.module_utils.basic import AnsibleModule
 
 if __name__ == '__main__':
     main()
-
