@@ -100,10 +100,6 @@ stderr:
   description: the set of error responses from the cluster command.
   returned: on error
   type: list
-rc:
-  description: return code of the module.
-  returned: 0 on success, 1 on error
-  type: int
 changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
@@ -183,7 +179,6 @@ def main():
         module.exit_json(
             command=cli,
             stderr=err.rstrip("\r\n"),
-            rc=0,
             changed=False
         )
 
@@ -191,10 +186,8 @@ def main():
         module.exit_json(
             command=cli,
             stdout=out.rstrip("\r\n"),
-            rc=1,
             changed=True
         )
-
 
 # AnsibleModule boilerplate
 from ansible.module_utils.basic import AnsibleModule
