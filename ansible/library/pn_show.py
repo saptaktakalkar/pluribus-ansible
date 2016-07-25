@@ -84,10 +84,6 @@ stderr:
   description: the set of error responses from the show command.
   returned: on error
   type: list
-rc:
-  description: return code of the module.
-  returned: 0 for output, 1 for error, 2 for no show.
-  type: int
 changed:
   description: Indicates whether the CLI caused any change on the target.
   returned: always(False)
@@ -150,7 +146,6 @@ def main():
         module.exit_json(
             command=cli,
             stderr=err.strip("\r\n"),
-            rc=1,
             changed=False
         )
 
@@ -158,7 +153,6 @@ def main():
         module.exit_json(
             command=cli,
             stdout=out.strip("\r\n"),
-            rc=0,
             changed=False
         )
 
@@ -166,7 +160,6 @@ def main():
         module.exit_json(
             command=cli,
             msg="Nothing to display!!!",
-            rc=2,
             changed=False
         )
 
