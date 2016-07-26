@@ -95,15 +95,13 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str',
-                                aliases=['username']),
-            pn_clipassword=dict(required=True, type='str', aliase=['password']),
-            pn_cliswitch=dict(required=False, type='str', aliases=['switch']),
-            pn_command=dict(required=True, type='str', aliases=['command']),
-            pn_parameters=dict(default='all', type='str',
-                               aliases=['parameters']),
-            pn_options=dict(type='str', aliases=['options']),
-            pn_quiet=dict(default=True, type='bool', aliases=['quiet'])
+            pn_cliusername=dict(required=True, type='str'),
+            pn_clipassword=dict(required=True, type='str'),
+            pn_cliswitch=dict(required=False, type='str'),
+            pn_command=dict(required=True, type='str'),
+            pn_parameters=dict(default='all', type='str'),
+            pn_options=dict(type='str'),
+            pn_quiet=dict(default=True, type='bool')
         )
     )
 
@@ -124,7 +122,10 @@ def main():
         cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
 
     if cliswitch:
-        cli += ' switch ' + cliswitch
+        if cliswitch == 'local':
+            cli += ' switch-local '
+        else:
+            cli += ' switch ' + cliswitch
 
     cli += ' ' + command
     if parameters:

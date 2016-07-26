@@ -163,42 +163,36 @@ def main():
     """ This portion is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str',
-                                aliases=['username']),
-            pn_clipassword=dict(required=True, type='str',
-                                aliases=['password']),
-            pn_cliswitch=dict(required=False, type='str', aliases=['switch']),
+            pn_cliusername=dict(required=True, type='str'),
+            pn_clipassword=dict(required=True, type='str'),
+            pn_cliswitch=dict(required=False, type='str'),
             pn_command=dict(required=True, type='str',
                             choices=['vrouter-interface-add',
                                      'vrouter-interface-remove',
-                                     'vrouter-interface-modify'],
-                            aliases=['command']),
-            pn_vrouter_name=dict(required=True, type='str',
-                                 aliases=['vrouter_name']),
-            pn_vlan=dict(type='int', aliases=['vlan']),
-            pn_interface_ip=dict(type='str', aliases=['interface_ip']),
-            pn_netmask=dict(type='str', aliases=['netmask']),
+                                     'vrouter-interface-modify']),
+            pn_vrouter_name=dict(required=True, type='str'),
+            pn_vlan=dict(type='int'),
+            pn_interface_ip=dict(type='str'),
+            pn_netmask=dict(type='str'),
             pn_assignment=dict(type='str',
-                               choices=['none', 'dhcp', 'dhcpv6', 'autov6'],
-                               aliases=['assignment']),
-            pn_vxlan=dict(type='str', aliases=['vxlan']),
-            pn_interface=dict(type='str', choices=['mgmt', 'data', 'span'],
-                              aliases=['interface']),
-            pn_alias=dict(type='str', aliases=['alias']),
-            pn_exclusive=dict(type='bool', aliases=['exclusive']),
-            pn_nic=dict(type='bool', aliases=['nic']),
-            pn_vrrpid=dict(type='int', aliases=['vrrpid']),
-            pn_vrrp_primary=dict(type='str', aliases=['vrrp_primary']),
-            pn_vrrp_priority=dict(type='int', aliases=['vrrp_priority']),
-            pn_vrrp_adv_int=dict(type='str', aliases=['vrrp_adv_int']),
-            pn_l3port=dict(type='str', aliases=['l3_port']),
-            pn_secondary_macs=dict(type='str', aliases=['secondary_macs']),
-            pn_nic_str=dict(type='str', aliases=['nic_str']),
-            pn_quiet=dict(default=True, type='bool', aliases=['quiet'])
+                               choices=['none', 'dhcp', 'dhcpv6', 'autov6']),
+            pn_vxlan=dict(type='str'),
+            pn_interface=dict(type='str', choices=['mgmt', 'data', 'span']),
+            pn_alias=dict(type='str'),
+            pn_exclusive=dict(type='bool'),
+            pn_nic=dict(type='bool'),
+            pn_vrrpid=dict(type='int'),
+            pn_vrrp_primary=dict(type='str'),
+            pn_vrrp_priority=dict(type='int'),
+            pn_vrrp_adv_int=dict(type='str'),
+            pn_l3port=dict(type='str'),
+            pn_secondary_macs=dict(type='str'),
+            pn_nic_str=dict(type='str'),
+            pn_quiet=dict(default=True, type='bool')
         ),
         required_if=(
             ["pn_command", "vrouter-interface-add",
-             ["pn_vrouter_name", "pn_vlan"]],
+             ["pn_vrouter_name"]],
             ["pn_command", "vrouter-interface-remove",
              ["pn_vrouter_name", "pn_nic_str"]],
             ["pn_command", "vrouter-interface-modify",
@@ -232,12 +226,15 @@ def main():
     # Building the CLI command string
     if quiet is True:
         cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword + ' ')
+               clipassword)
     else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
+        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
 
     if cliswitch:
-        cli += ' switch ' + cliswitch
+        if cliswitch == 'local':
+            cli += ' switch-local '
+        else:
+            cli += ' switch ' + cliswitch
 
     cli += ' ' + command + ' vrouter-name ' + vrouter_name
 

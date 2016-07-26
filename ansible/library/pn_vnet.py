@@ -130,30 +130,24 @@ def main():
     """ This section is for argument parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str',
-                                aliases=['username']),
-            pn_clipassword=dict(required=True, type='str',
-                                aliases=['password']),
-            pn_cliswitch=dict(required=False, type='str', aliases=['switch']),
+            pn_cliusername=dict(required=True, type='str'),
+            pn_clipassword=dict(required=True, type='str'),
+            pn_cliswitch=dict(required=False, type='str'),
             pn_command=dict(required=True, type='str',
-                            choices=['vnet-create', 'vnet-delete'],
-                            aliases=['command']),
-            pn_name=dict(required=True, type='str', aliases=['name']),
-            pn_scope=dict(type='str', choices=['local', 'fabric'],
-                          aliases=['scope']),
-            pn_vrg=dict(type='str', aliases=['vrg']),
-            pn_vlan_nums=dict(type='str', aliases=['num_vlans']),
-            pn_managed_ports=dict(type='str', aliases=['managed_ports']),
-            pn_ports=dict(type='str', aliases=['ports']),
-            pn_vlanports=dict(type='str', aliases=['vlan_ports']),
+                            choices=['vnet-create', 'vnet-delete']),
+            pn_name=dict(required=True, type='str'),
+            pn_scope=dict(type='str', choices=['local', 'fabric']),
+            pn_vrg=dict(type='str'),
+            pn_vlan_nums=dict(type='str'),
+            pn_managed_ports=dict(type='str'),
+            pn_ports=dict(type='str'),
+            pn_vlanports=dict(type='str'),
             pn_config_admin=dict(type='str',
-                                 choices=['config-admin', 'no-config-admin'],
-                                 aliases=['config_admin']),
-            pn_admin_name=dict(type='str', aliases=['admin_name']),
-            pn_vnet_mgr_name=dict(type='str', aliases=['vnet_mgr_name']),
-            pn_vnet_mgr_storage_pool=dict(type='str',
-                                          aliases=['vnet_mgr_storage_pool']),
-            pn_quiet=dict(default=True, type='bool', aliases=['quiet'])
+                                 choices=['config-admin', 'no-config-admin']),
+            pn_admin_name=dict(type='str'),
+            pn_vnet_mgr_name=dict(type='str'),
+            pn_vnet_mgr_storage_pool=dict(type='str'),
+            pn_quiet=dict(default=True, type='bool')
         ),
         required_if=(
             ["pn_command", "vnet-create", ["pn_name", "pn_scope"]],
@@ -164,7 +158,7 @@ def main():
     # Argument accessing
     cliusername = module.params['pn_cliusername']
     clipassword = module.params['pn_clipassword']
-    switch = module.params['pn_cliswitch']
+    cliswitch = module.params['pn_cliswitch']
     command = module.params['pn_command']
     name = module.params['pn_name']
     scope = module.params['pn_scope']
@@ -182,12 +176,15 @@ def main():
     # Building the CLI command string
     if quiet is True:
         cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword + ' ')
+               clipassword)
     else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
+        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
 
-    if switch:
-        cli += ' switch ' + switch
+    if cliswitch:
+        if cliswitch == 'local':
+            cli += ' switch-local '
+        else:
+            cli += ' switch ' + cliswitch
 
     cli += ' ' + command + ' name ' + name
 

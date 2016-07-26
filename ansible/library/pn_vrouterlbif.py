@@ -12,9 +12,9 @@ short_description: CLI command to add/remove/modify vrouter-loopback-interface
 description:
   - Execute vrouter-loopback-interface-add, vrouter-loopback-interface-remove,
     vrouter-loopback-interface-modify commands.
-  - Each fabric, cluster, standalone switch, or virtual network (VNET) can 
+  - Each fabric, cluster, standalone switch, or virtual network (VNET) can
     provide its tenants with a virtual router (vRouter) service that forwards
-    traffic between networks and implements Layer 3 protocols. 
+    traffic between networks and implements Layer 3 protocols.
 options:
   pn_cliusername:
     description:
@@ -102,21 +102,16 @@ def main():
     """ This portion is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str',
-                                aliases=['username']),
-            pn_clipassword=dict(required=True, type='str',
-                                aliases=['password']),
-            pn_cliswitch=dict(required=False, type='str', aliases=['switch']),
+            pn_cliusername=dict(required=True, type='str'),
+            pn_clipassword=dict(required=True, type='str'),
+            pn_cliswitch=dict(required=False, type='str'),
             pn_command=dict(required=True, type='str',
-                            choices=['vrouter-loopback-interface-add',
-                                     'vrouter-loopback-interface-remove',
-                                     'vrouter-loopback-interface-modify'],
-                            aliases=['command']),
-            pn_vrouter_name=dict(required=True, type='str',
-                                 aliases=['vrouter_name']),
-            pn_index=dict(type='int', aliases=['index']),
-            pn_interface_ip=dict(type='str', aliases=['interface_ip']),
-            pn_quiet=dict(default=True, type='bool', aliases=['quiet'])
+                            choices=['vrouter-create', 'vrouter-delete',
+                                     'vrouter-modify']),
+            pn_vrouter_name=dict(required=True, type='str'),
+            pn_index=dict(type='int'),
+            pn_interface_ip=dict(type='str'),
+            pn_quiet=dict(default=True, type='bool')
         ),
         required_if=(
             ["pn_command", "vrouter-loopback-interface-add",
@@ -140,12 +135,15 @@ def main():
     # Building the CLI command string
     if quiet is True:
         cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword + ' ')
+               clipassword)
     else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
+        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
 
     if cliswitch:
-        cli += ' switch ' + cliswitch
+        if cliswitch == 'local':
+            cli += ' switch-local '
+        else:
+            cli += ' switch ' + cliswitch
 
     cli += ' ' + command + ' vrouter-name ' + vrouter_name
 
@@ -184,3 +182,4 @@ from ansible.module_utils.basic import AnsibleModule
 
 if __name__ == '__main__':
     main()
+

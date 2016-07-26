@@ -177,42 +177,35 @@ def main():
     """ This portion is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str',
-                                aliases=['username']),
-            pn_clipassword=dict(required=True, type='str',
-                                aliases=['password']),
-            pn_cliswitch=dict(required=False, type='str', aliases=['switch']),
+            pn_cliusername=dict(required=True, type='str'),
+            pn_clipassword=dict(required=True, type='str'),
+            pn_cliswitch=dict(required=False, type='str'),
             pn_command=dict(required=True, type='str',
                             choices=['vrouter-bgp-add', 'vrouter-bgp-remove',
-                                     'vrouter-bgp-modify'],
-                            aliases=['command']),
-            pn_vrouter_name=dict(required=True, type='str',
-                                 aliases=['vrouter_name']),
-            pn_neighbor=dict(type='str', aliases=['neighbor']),
-            pn_remote_as=dict(type='str', aliases=['remote_as']),
-            pn_next_hop_self=dict(type='bool', aliases=['next_hop_self']),
-            pn_password=dict(type='str', aliases=['bgp_password']),
-            pn_ebgp=dict(type='int', aliases=['ebgp']),
-            pn_prefix_listin=dict(type='str', aliases=['prefix_listin']),
-            pn_prefix_listout=dict(type='str', aliases=['prefix_listout']),
-            pn_route_reflector=dict(type='bool', aliases=['route_reflector']),
-            pn_override_capability=dict(type='bool',
-                                        aliases=['override_capability']),
-            pn_soft_reconfig=dict(type='bool', aliases=['soft_reconfig']),
-            pn_max_prefix=dict(type='int', aliases=['max_prefix']),
-            pn_max_prefix_warn=dict(type='bool', aliases=['max_prefix_warn']),
-            pn_bfd=dict(type='bool', aliases=['bfd']),
+                                     'vrouter-bgp-modify']),
+            pn_vrouter_name=dict(required=True, type='str'),
+            pn_neighbor=dict(type='str'),
+            pn_remote_as=dict(type='str'),
+            pn_next_hop_self=dict(type='bool'),
+            pn_password=dict(type='str'),
+            pn_ebgp=dict(type='int'),
+            pn_prefix_listin=dict(type='str'),
+            pn_prefix_listout=dict(type='str'),
+            pn_route_reflector=dict(type='bool'),
+            pn_override_capability=dict(type='bool'),
+            pn_soft_reconfig=dict(type='bool'),
+            pn_max_prefix=dict(type='int'),
+            pn_max_prefix_warn=dict(type='bool'),
+            pn_bfd=dict(type='bool'),
             pn_multiprotocol=dict(type='bool',
-                                  choices=['ipv4-unicast', 'ipv6-unicast'],
-                                  aliases=['multiprotocol']),
-            pn_weight=dict(type='int', aliases=['weight']),
-            pn_default_originate=dict(type='bool',
-                                      aliases=['default_originate']),
-            pn_keepalive=dict(type='str', aliases=['keepalive']),
-            pn_holdtime=dict(type='str', aliases=['holdtime']),
-            pn_route_mapin=dict(type='str', aliases=['route_mapin']),
-            pn_route_mapout=dict(type='str', aliases=['route_mapout']),
-            pn_quiet=dict(default=True, type='bool', aliases=['quiet'])
+                                  choices=['ipv4-unicast', 'ipv6-unicast']),
+            pn_weight=dict(type='int'),
+            pn_default_originate=dict(type='bool'),
+            pn_keepalive=dict(type='str'),
+            pn_holdtime=dict(type='str'),
+            pn_route_mapin=dict(type='str'),
+            pn_route_mapout=dict(type='str'),
+            pn_quiet=dict(default=True, type='bool')
         ),
         required_if=(
             ["pn_command", "vrouter-bgp-add",
@@ -254,14 +247,17 @@ def main():
     # Building the CLI command string
     if quiet is True:
         cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword + ' ')
+               clipassword)
     else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
+        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
 
     if cliswitch:
-        cli += ' switch ' + cliswitch
+        if cliswitch == 'local':
+            cli += ' switch-local '
+        else:
+            cli += ' switch ' + cliswitch
 
-    cli += command + ' vrouter-name ' + vrouter_name
+    cli += ' ' + command + ' vrouter-name ' + vrouter_name
 
     if neighbor:
         cli += ' neighbor ' + neighbor

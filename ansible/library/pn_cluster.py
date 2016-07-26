@@ -111,20 +111,16 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str',
-                                aliases=['username']),
-            pn_clipassword=dict(required=True, type='str',
-                                aliases=['password']),
-            pn_cliswitch=dict(required=False, type='str', aliases=['switch']),
+            pn_cliusername=dict(required=True, type='str'),
+            pn_clipassword=dict(required=True, type='str'),
+            pn_cliswitch=dict(required=False, type='str'),
             pn_command=dict(required=True, type='str',
-                            choices=['cluster-create', 'cluster-delete'],
-                            aliases=['command']),
-            pn_name=dict(required=True, type='str', aliases=['name']),
-            pn_cluster_node1=dict(type='str', aliases=['cluster_node1']),
-            pn_cluster_node2=dict(type='str', aliases=['cluster_node2']),
-            pn_validate=dict(type='str', choices=['validate', 'no-validate'],
-                             aliases=['validate']),
-            pn_quiet=dict(default=True, type='bool', aliases=['quiet'])
+                            choices=['cluster-create', 'cluster-delete']),
+            pn_name=dict(required=True, type='str'),
+            pn_cluster_node1=dict(type='str'),
+            pn_cluster_node2=dict(type='str'),
+            pn_validate=dict(type='str', choices=['validate', 'no-validate']),
+            pn_quiet=dict(default=True, type='bool')
         ),
         required_if=(
             ["pn_command", "cluster-create",
@@ -139,20 +135,23 @@ def main():
     cliswitch = module.params['pn_cliswitch']
     command = module.params['pn_command']
     name = module.params['pn_name']
-    cluster_node1 = module.params['pn_clusternode1']
-    cluster_node2 = module.params['pn_clusternode2']
+    cluster_node1 = module.params['pn_cluster_node1']
+    cluster_node2 = module.params['pn_cluster_node2']
     validate = module.params['pn_validate']
     quiet = module.params['pn_quiet']
 
     # Building the CLI command string
     if quiet is True:
         cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword + ' ')
+               clipassword)
     else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
+        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
 
     if cliswitch:
-        cli += ' switch ' + cliswitch
+        if cliswitch == 'local':
+            cli += ' switch-local '
+        else:
+            cli += ' switch ' + cliswitch
 
     cli += ' ' + command + ' name ' + name
 
@@ -188,6 +187,7 @@ def main():
             stdout=out.rstrip("\r\n"),
             changed=True
         )
+
 
 # AnsibleModule boilerplate
 from ansible.module_utils.basic import AnsibleModule

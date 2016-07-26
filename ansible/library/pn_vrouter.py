@@ -127,26 +127,21 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str',
-                                aliases=['username']),
-            pn_clipassword=dict(required=True, type='str',
-                                aliases=['password']),
-            pn_cliswitch=dict(required=False, type='str', aliases=['switch']),
+            pn_cliusername=dict(required=True, type='str'),
+            pn_clipassword=dict(required=True, type='str'),
+            pn_cliswitch=dict(required=False, type='str'),
             pn_command=dict(required=True, type='str',
                             choices=['vrouter-create', 'vrouter-delete',
-                                     'vrouter-modify'], aliases=['command']),
-            pn_name=dict(required=True, type='str', aliases=['name']),
-            pn_vnet=dict(type='str', aliases=['vnet']),
-            pn_service_type=dict(type='str', choices=['dedicated', 'shared'],
-                                 aliases=['service_type']),
-            pn_service_state=dict(type='str', choices=['enable', 'disable'],
-                                  aliases=['service_state']),
-            pn_router_type=dict(type='str', choices=['hardware', 'software'],
-                                aliases=['router_type']),
-            pn_hw_vrrp_id=dict(type='str', aliases=['hw_vrrp_id']),
-            pn_router_id=dict(type='str', aliases=['router_id']),
-            pn_bgp_as=dict(type='int', aliases=['bgp_as']),
-            pn_quiet=dict(default=True, type='bool', aliases=['quiet'])
+                                     'vrouter-modify']),
+            pn_name=dict(required=True, type='str'),
+            pn_vnet=dict(type='str'),
+            pn_service_type=dict(type='str', choices=['dedicated', 'shared']),
+            pn_service_state=dict(type='str', choices=['enable', 'disable']),
+            pn_router_type=dict(type='str', choices=['hardware', 'software']),
+            pn_hw_vrrp_id=dict(type='str'),
+            pn_router_id=dict(type='str'),
+            pn_bgp_as=dict(type='int'),
+            pn_quiet=dict(default=True, type='bool')
         ),
         required_if=(
             ["pn_command", "vrouter-create",
@@ -174,12 +169,15 @@ def main():
     # Building the CLI command string
     if quiet is True:
         cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword + ' ')
+               clipassword)
     else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
+        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
 
     if cliswitch:
-        cli += ' switch ' + cliswitch
+        if cliswitch == 'local':
+            cli += ' switch-local '
+        else:
+            cli += ' switch ' + cliswitch
 
     cli += ' ' + command + ' name ' + name
 
@@ -227,6 +225,7 @@ def main():
             stdout=out.rstrip("\r\n"),
             changed=True
         )
+
 
 # AnsibleModule boilerplate
 from ansible.module_utils.basic import AnsibleModule
