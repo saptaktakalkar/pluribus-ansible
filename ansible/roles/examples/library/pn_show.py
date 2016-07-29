@@ -84,10 +84,6 @@ stderr:
   description: the set of error responses from the show command.
   returned: on error
   type: list
-rc:
-  description: return code of the module.
-  returned: 0 for output, 1 for error, 2 for no show.
-  type: int
 changed:
   description: Indicates whether the CLI caused any change on the target.
   returned: always(False)
@@ -99,15 +95,13 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str',
-                                aliases=['username']),
-            pn_clipassword=dict(required=True, type='str', aliase=['password']),
-            pn_cliswitch=dict(required=False, type='str', aliases=['switch']),
-            pn_command=dict(required=True, type='str', aliases=['command']),
-            pn_parameters=dict(default='all', type='str',
-                               aliases=['parameters']),
-            pn_options=dict(type='str', aliases=['options']),
-            pn_quiet=dict(default=True, type='bool', aliases=['quiet'])
+            pn_cliusername=dict(required=True, type='str'),
+            pn_clipassword=dict(required=True, type='str'),
+            pn_cliswitch=dict(required=False, type='str'),
+            pn_command=dict(required=True, type='str'),
+            pn_parameters=dict(default='all', type='str'),
+            pn_options=dict(type='str'),
+            pn_quiet=dict(default=True, type='bool')
         )
     )
 
@@ -128,7 +122,10 @@ def main():
         cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
 
     if cliswitch:
-        cli += ' switch ' + cliswitch
+        if cliswitch == 'local':
+            cli += ' switch-local '
+        else:
+            cli += ' switch ' + cliswitch
 
     cli += ' ' + command
     if parameters:
@@ -150,7 +147,6 @@ def main():
         module.exit_json(
             command=cli,
             stderr=err.strip("\r\n"),
-            rc=1,
             changed=False
         )
 
@@ -158,7 +154,6 @@ def main():
         module.exit_json(
             command=cli,
             stdout=out.strip("\r\n"),
-            rc=0,
             changed=False
         )
 
@@ -166,7 +161,6 @@ def main():
         module.exit_json(
             command=cli,
             msg="Nothing to display!!!",
-            rc=2,
             changed=False
         )
 

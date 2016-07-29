@@ -95,10 +95,6 @@ stderr:
   description: the set of error responses from the ospf command.
   returned: on error
   type: list
-rc:
-  description: return code of the module.
-  returned: 0 on success, 1 on error
-  type: int
 changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
@@ -110,26 +106,21 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str',
-                                aliases=['username']),
-            pn_clipassword=dict(required=True, type='str',
-                                aliases=['password']),
-            pn_cliswitch=dict(required=False, type='str', aliases=['switch']),
+            pn_cliusername=dict(required=True, type='str'),
+            pn_clipassword=dict(required=True, type='str'),
+            pn_cliswitch=dict(required=False, type='str'),
             pn_command=dict(required=True, type='str',
                             choices=['vrouter-ospf-area-add',
                                      'vrouter-ospf-area-remove',
-                                     'vrouter-ospf-area-modify'],
-                            aliases=['command']),
-            pn_vrouter_name=dict(required=True, type='str',
-                                 aliases=['vrouter_name']),
-            pn_ospf_area=dict(type='str', aliases=['area']),
+                                     'vrouter-ospf-area-modify']),
+            pn_vrouter_name=dict(required=True, type='str'),
+            pn_ospf_area=dict(type='str'),
             pn_stub_type=dict(type='str', choices=['none', 'stub', 'nssa',
                                                    'stub-no-summary',
-                                                   'nssa-no-summary'],
-                              aliases=['stub_type']),
-            pn_prefix_listin=dict(type='str', aliases=['prefix_listin']),
-            pn_prefix_listout=dict(type='str', aliases=['prefix_listout']),
-            pn_quiet=dict(type='bool', default='True', aliases=['quiet'])
+                                                   'nssa-no-summary']),
+            pn_prefix_listin=dict(type='str'),
+            pn_prefix_listout=dict(type='str'),
+            pn_quiet=dict(type='bool', default='True')
         ),
         required_if=(
             ['pn_command', 'vrouter-ospf-area-add',
@@ -158,7 +149,10 @@ def main():
         cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
 
     if cliswitch:
-        cli += ' switch ' + cliswitch
+        if cliswitch == 'local':
+            cli += ' switch-local '
+        else:
+            cli += ' switch ' + cliswitch
 
     cli += ' ' + command + ' vrouter-name ' + vrouter_name
 
@@ -169,10 +163,10 @@ def main():
         cli += ' stub-type ' + stub_type
 
     if prefix_listin:
-        cli += 'prefix-list-in ' + prefix_listin
+        cli += ' prefix-list-in ' + prefix_listin
 
     if prefix_listout:
-        cli += 'prefix-list-out ' + prefix_listout
+        cli += ' prefix-list-out ' + prefix_listout
 
     # Run the CLI command
     ospfcommand = shlex.split(cli)
@@ -188,7 +182,6 @@ def main():
         module.exit_json(
             command=cli,
             stderr=err.rstrip("\r\n"),
-            rc=1,
             changed=False
         )
 
@@ -196,7 +189,6 @@ def main():
         module.exit_json(
             command=cli,
             stdout=out.rstrip("\r\n"),
-            rc=0,
             changed=True
         )
 

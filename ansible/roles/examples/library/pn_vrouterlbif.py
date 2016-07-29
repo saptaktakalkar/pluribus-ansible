@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI vrouter-loopback-interface-add/remove/modify """
+""" PN CLI vrouter-loopback-interface-add/remove """
 
 import subprocess
 import shlex
@@ -8,20 +8,19 @@ DOCUMENTATION = """
 ---
 module: pn_vrouterlbif
 author: "Pluribus Networks"
-short_description: CLI command to add/remove/modify vrouter-loopback-interface
+short_description: CLI command to add/remove vrouter-loopback-interface.
 description:
-  - Execute vrouter-loopback-interface-add, vrouter-loopback-interface-remove,
-    vrouter-loopback-interface-modify commands.
-  - Each fabric, cluster, standalone switch, or virtual network (VNET) can 
+  - Execute vrouter-loopback-interface-add, vrouter-loopback-interface-remove commands.
+  - Each fabric, cluster, standalone switch, or virtual network (VNET) can
     provide its tenants with a virtual router (vRouter) service that forwards
-    traffic between networks and implements Layer 3 protocols. 
+    traffic between networks and implements Layer 3 protocols.
 options:
   pn_cliusername:
     description:
       - Login username.
     required: true
     type: str
-  pn_clipassword
+  pn_clipassword:
     description:
       - Login password.
     required: true
@@ -36,8 +35,7 @@ options:
       - The C(pn_command) takes the vrouter-loopback-interface command
         as value.
     required: true
-    choices: vrouter-loopback-interface-add, vrouter-loopback-interface-remove,
-             vrouter-loopback-interface-modify
+    choices: ['vrouter-loopback-interface-add', 'vrouter-loopback-interface-remove']
     type: str
   pn_vrouter_name:
     description:
@@ -47,7 +45,7 @@ options:
   pn_index:
     description:
       - Specify the interface index fro 1 to 255.
-    required_if: vrouter-loopback-interface-add/remove
+    required: True
     type: int
   pn_interface_ip:
     description:
@@ -91,10 +89,6 @@ stderr:
   description: the set of error responses from the vrouterlb command.
   returned: on error
   type: list
-rc:
-  description: return code of the module.
-  returned: 0 on success, 1 on error
-  type: int
 changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
@@ -106,27 +100,22 @@ def main():
     """ This portion is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str',
-                                aliases=['username']),
-            pn_clipassword=dict(required=True, type='str',
-                                aliases=['password']),
-            pn_cliswitch=dict(required=False, type='str', aliases=['switch']),
+            pn_cliusername=dict(required=True, type='str'),
+            pn_clipassword=dict(required=True, type='str'),
+            pn_cliswitch=dict(required=False, type='str'),
             pn_command=dict(required=True, type='str',
-                            choices=['vrouter-create', 'vrouter-delete',
-                                     'vrouter-modify'], aliases=['command']),
-            pn_vrouter_name=dict(required=True, type='str',
-                                 aliases=['vrouter_name']),
-            pn_index=dict(type='int', aliases=['index']),
-            pn_interface_ip=dict(type='str', aliases=['interface_ip']),
-            pn_quiet=dict(default=True, type='bool', aliases=['quiet'])
+                            choices=['vrouter-loopback-interface-add',
+                                     'vrouter-loopback-interface-remove']),
+            pn_vrouter_name=dict(required=True, type='str'),
+            pn_index=dict(type='int'),
+            pn_interface_ip=dict(type='str'),
+            pn_quiet=dict(default=True, type='bool')
         ),
         required_if=(
             ["pn_command", "vrouter-loopback-interface-add",
              ["pn_vrouter_name", "pn_index", "pn_interface_ip"]],
             ["pn_command", "vrouter-loopback-interface-remove",
-             ["pn_vrouter_name", "pn_index"]],
-            ["pn_command", "vrouter-loopback-interface-modify",
-             ["pn_vrouter_name"]]
+             ["pn_vrouter_name", "pn_index"]]
         )
     )
 
@@ -142,12 +131,15 @@ def main():
     # Building the CLI command string
     if quiet is True:
         cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword + ' ')
+               clipassword)
     else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
+        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
 
     if cliswitch:
-        cli += ' switch ' + cliswitch
+        if cliswitch == 'local':
+            cli += ' switch-local '
+        else:
+            cli += ' switch ' + cliswitch
 
     cli += ' ' + command + ' vrouter-name ' + vrouter_name
 
@@ -171,7 +163,6 @@ def main():
         module.exit_json(
             command=cli,
             stderr=err.rstrip("\r\n"),
-            rc=1,
             changed=False
         )
 
@@ -179,7 +170,6 @@ def main():
         module.exit_json(
             command=cli,
             stdout=out.rstrip("\r\n"),
-            rc=0,
             changed=True
         )
 

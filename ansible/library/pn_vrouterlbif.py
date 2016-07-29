@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI vrouter-loopback-interface-add/remove/modify """
+""" PN CLI vrouter-loopback-interface-add/remove """
 
 import subprocess
 import shlex
@@ -8,10 +8,9 @@ DOCUMENTATION = """
 ---
 module: pn_vrouterlbif
 author: "Pluribus Networks"
-short_description: CLI command to add/remove/modify vrouter-loopback-interface
+short_description: CLI command to add/remove vrouter-loopback-interface.
 description:
-  - Execute vrouter-loopback-interface-add, vrouter-loopback-interface-remove,
-    vrouter-loopback-interface-modify commands.
+  - Execute vrouter-loopback-interface-add, vrouter-loopback-interface-remove commands.
   - Each fabric, cluster, standalone switch, or virtual network (VNET) can
     provide its tenants with a virtual router (vRouter) service that forwards
     traffic between networks and implements Layer 3 protocols.
@@ -21,7 +20,7 @@ options:
       - Login username.
     required: true
     type: str
-  pn_clipassword
+  pn_clipassword:
     description:
       - Login password.
     required: true
@@ -36,8 +35,7 @@ options:
       - The C(pn_command) takes the vrouter-loopback-interface command
         as value.
     required: true
-    choices: vrouter-loopback-interface-add, vrouter-loopback-interface-remove,
-             vrouter-loopback-interface-modify
+    choices: ['vrouter-loopback-interface-add', 'vrouter-loopback-interface-remove']
     type: str
   pn_vrouter_name:
     description:
@@ -47,7 +45,7 @@ options:
   pn_index:
     description:
       - Specify the interface index fro 1 to 255.
-    required_if: vrouter-loopback-interface-add/remove
+    required: True
     type: int
   pn_interface_ip:
     description:
@@ -106,8 +104,8 @@ def main():
             pn_clipassword=dict(required=True, type='str'),
             pn_cliswitch=dict(required=False, type='str'),
             pn_command=dict(required=True, type='str',
-                            choices=['vrouter-create', 'vrouter-delete',
-                                     'vrouter-modify']),
+                            choices=['vrouter-loopback-interface-add',
+                                     'vrouter-loopback-interface-remove']),
             pn_vrouter_name=dict(required=True, type='str'),
             pn_index=dict(type='int'),
             pn_interface_ip=dict(type='str'),
@@ -117,9 +115,7 @@ def main():
             ["pn_command", "vrouter-loopback-interface-add",
              ["pn_vrouter_name", "pn_index", "pn_interface_ip"]],
             ["pn_command", "vrouter-loopback-interface-remove",
-             ["pn_vrouter_name", "pn_index"]],
-            ["pn_command", "vrouter-loopback-interface-modify",
-             ["pn_vrouter_name"]]
+             ["pn_vrouter_name", "pn_index"]]
         )
     )
 

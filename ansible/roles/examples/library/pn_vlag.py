@@ -128,10 +128,6 @@ stderr:
   description: the set of error responses from the vlag command.
   returned: on error
   type: list
-rc:
-  description: return code of the module.
-  returned: 0 on success, 1 on error
-  type: int
 changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
@@ -143,31 +139,22 @@ def main():
     """ This section is for argument parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str',
-                                aliases=['username']),
-            pn_clipassword=dict(required=True, type='str',
-                                aliases=['password']),
-            pn_cliswitch=dict(required=False, type='str', aliases=['switch']),
+            pn_cliusername=dict(required=True, type='str'),
+            pn_clipassword=dict(required=True, type='str'),
+            pn_cliswitch=dict(required=False, type='str'),
             pn_command=dict(required=True, type='str',
                             choices=['vlag-create', 'vlag-delete',
-                                     'vlag-modify'], aliases=['command']),
-            pn_name=dict(required=True, type='str', aliases=['name']),
-            pn_port=dict(type='str', aliases=['port']),
-            pn_peer_port=dict(type='str', aliases=['peer_port']),
-            pn_mode=dict(type='str',
-                         choices=['active-standby', 'active-active'],
-                         aliases=['mode']),
-            pn_peer_switch=dict(type='str', aliases=['peer_switch']),
-            pn_failover_action=dict(type='str', choices=['move', 'ignore'],
-                                    aliases=['failover_action']),
-            pn_lacp_mode=dict(type='str', choices=['off', 'passive', 'active'],
-                              aliases=['lacp_mode']),
-            pn_lacp_timeout=dict(type='str', choices=['slow', 'fast'],
-                                 aliases=['lacp_timeout']),
-            pn_lacp_fallback=dict(type='str', choices=['individual', 'bundled'],
-                                  aliases=['lacp_fallback']),
-            pn_lacp_fallback_timeout=dict(type='str',
-                                          aliases=['lacp_fallback_timeout']),
+                                     'vlag-modify']),
+            pn_name=dict(required=True, type='str'),
+            pn_port=dict(type='str'),
+            pn_peer_port=dict(type='str'),
+            pn_mode=dict(type='str', choices=['active-standby', 'active-active']),
+            pn_peer_switch=dict(type='str'),
+            pn_failover_action=dict(type='str', choices=['move', 'ignore']),
+            pn_lacp_mode=dict(type='str', choices=['off', 'passive', 'active']),
+            pn_lacp_timeout=dict(type='str', choices=['slow', 'fast']),
+            pn_lacp_fallback=dict(type='str', choices=['individual', 'bundled']),
+            pn_lacp_fallback_timeout=dict(type='str'),
             pn_quiet=dict(default=True, type='bool')
         ),
         required_if=(
@@ -198,12 +185,15 @@ def main():
     # Building the CLI command string
     if quiet is True:
         cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword + ' ')
+               clipassword)
     else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
+        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
 
     if cliswitch:
-        cli += ' switch ' + cliswitch
+        if cliswitch == 'local':
+            cli += ' switch-local '
+        else:
+            cli += ' switch ' + cliswitch
 
     cli += ' ' + command + ' name ' + name
 
@@ -217,7 +207,7 @@ def main():
         cli += ' mode ' + mode
 
     if peer_switch:
-        cli += ' peer-switch' + peer_switch
+        cli += ' peer-switch ' + peer_switch
 
     if failover_action:
         cli += ' failover-' + failover_action + '-L2 '
@@ -248,7 +238,6 @@ def main():
         module.exit_json(
             command=cli,
             stderr=err.rstrip("\r\n"),
-            rc=1,
             changed=False
         )
 
@@ -256,13 +245,12 @@ def main():
         module.exit_json(
             command=cli,
             stdout=out.rstrip("\r\n"),
-            rc=0,
             changed=True
         )
-
 
 # AnsibleModule boilerplate
 from ansible.module_utils.basic import AnsibleModule
 
 if __name__ == '__main__':
     main()
+

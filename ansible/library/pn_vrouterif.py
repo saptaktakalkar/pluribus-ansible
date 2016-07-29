@@ -3,6 +3,7 @@
 
 import subprocess
 import shlex
+import re
 
 DOCUMENTATION = """
 ---
@@ -80,7 +81,7 @@ options:
         specified when you configure the interface as span interface and allows
         higher throughput through the interface.
     type: bool
-  pn_nic:
+  pn_nic_enable:
     description:
       - Specify if the NIC is enabled or not
     type: bool
@@ -168,11 +169,11 @@ def main():
             pn_cliswitch=dict(required=False, type='str'),
             pn_command=dict(required=True, type='str',
                             choices=['vrouter-interface-add',
-                                     'vrouter-interface-remove',
-                                     'vrouter-interface-modify']),
+                                     'vrouter-interface-remove']),
             pn_vrouter_name=dict(required=True, type='str'),
             pn_vlan=dict(type='int'),
             pn_interface_ip=dict(type='str'),
+            pn_vrrp_ip=dict(type='str'),
             pn_netmask=dict(type='str'),
             pn_assignment=dict(type='str',
                                choices=['none', 'dhcp', 'dhcpv6', 'autov6']),
@@ -180,9 +181,8 @@ def main():
             pn_interface=dict(type='str', choices=['mgmt', 'data', 'span']),
             pn_alias=dict(type='str'),
             pn_exclusive=dict(type='bool'),
-            pn_nic=dict(type='bool'),
-            pn_vrrpid=dict(type='int'),
-            pn_vrrp_primary=dict(type='str'),
+            pn_nic_enable=dict(type='bool'),
+            pn_vrrp_id=dict(type='int'),
             pn_vrrp_priority=dict(type='int'),
             pn_vrrp_adv_int=dict(type='str'),
             pn_l3port=dict(type='str'),
@@ -192,11 +192,9 @@ def main():
         ),
         required_if=(
             ["pn_command", "vrouter-interface-add",
-             ["pn_vrouter_name"]],
+             ["pn_vrouter_name", "pn_interface_ip"]],
             ["pn_command", "vrouter-interface-remove",
-             ["pn_vrouter_name", "pn_nic_str"]],
-            ["pn_command", "vrouter-interface-modify",
-             ["pn_vrouter_name", "pn_nic_str"]]
+             ["pn_vrouter_name", "pn_interface_ip"]]
         ),
     )
 
@@ -213,9 +211,9 @@ def main():
     interface = module.params['pn_interface']
     alias = module.params['pn_alias']
     exclusive = module.params['pn_exclusive']
-    nic = module.params['pn_nic']
-    vrrpid = module.params['pn_vrrpid']
-    vrrp_primary = module.params['pn_vrrp_primary']
+    nic_enable = module.params['pn_nic_enable']
+    vrrp_id = module.params['pn_vrrp_id']
+    vrrp_ip = module.params['pn_vrrp_ip']
     vrrp_priority = module.params['pn_vrrp_priority']
     vrrp_adv_int = module.params['pn_vrrp_adv_int']
     l3port = module.params['pn_l3port']
@@ -238,57 +236,78 @@ def main():
 
     cli += ' ' + command + ' vrouter-name ' + vrouter_name
 
-    if vlan:
-        cli += ' vlan ' + str(vlan)
+    show_cmd = '/usr/bin/cli --quiet --user ' + cliusername + ':' + \
+               clipassword + ' vrouter-interface-show vrouter-name ' + \
+               vrouter_name + ' ip ' + interface_ip + \
+               ' format nic no-show-headers parsable-delim % '
 
-    if interface_ip:
-        cli += ' ip ' + interface_ip
+    show_cmd = shlex.split(show_cmd)
+    result = subprocess.Popen(show_cmd, stderr=subprocess.PIPE,
+                              stdout=subprocess.PIPE, universal_newlines=True)
+    out, err = result.communicate()
+    show = out.rstrip("\r\n")
+    vrouter, vrrp_nic = show.split('%')
 
-    if netmask:
-        cli += ' netmask ' + netmask
+    if command == 'vrouter-interface-add':
 
-    if assignment:
-        cli += ' assignment ' + assignment
+        if vrrp_ip:
+            cli += ' ip ' + vrrp_ip
 
-    if vxlan:
-        cli += ' vxlan ' + vxlan
+            if vrrp_id:
+                cli += ' vrrp-id ' + str(vrrp_id)
 
-    if interface:
-        cli += ' if ' + interface
+            cli += ' vrrp-primary ' + vrrp_nic
 
-    if alias:
-        cli += ' alias-on ' + alias
+            if vrrp_priority:
+                cli += ' vrrp-priority ' + str(vrrp_priority)
 
-    if exclusive is True:
-        cli += ' exclusive '
-    if exclusive is False:
-        cli += ' no-exclusive '
+            if vrrp_adv_int:
+                cli += ' vrrp-adv-int ' + vrrp_adv_int
 
-    if nic is True:
-        cli += ' nic-enable '
-    if nic is False:
-        cli += ' nic-disable '
+        else:
+            cli += ' ip ' + interface_ip
 
-    if vrrpid:
-        cli += ' vrrp-id ' + str(vrrpid)
+        if vlan:
+            cli += ' vlan ' + str(vlan)
 
-    if vrrp_primary:
-        cli += ' vrrp-primary ' + vrrp_primary
+        if l3port:
+            cli += ' l3-port ' + l3port
 
-    if vrrp_priority:
-        cli += ' vrrp-priority ' + str(vrrp_priority)
+        if netmask:
+            cli += ' netmask ' + netmask
 
-    if vrrp_adv_int:
-        cli += ' vrrp-adv-int ' + vrrp_adv_int
+        if assignment:
+            cli += ' assignment ' + assignment
 
-    if l3port:
-        cli += ' l3-port ' + l3port
+        if vxlan:
+            cli += ' vxlan ' + vxlan
 
-    if secondary_macs:
-        cli += ' secondary-macs ' + secondary_macs
+        if interface:
+            cli += ' if ' + interface
 
-    if nic_str:
-        cli += ' nic ' + nic_str
+        if alias:
+            cli += ' alias-on ' + alias
+
+        if exclusive is True:
+            cli += ' exclusive '
+        if exclusive is False:
+            cli += ' no-exclusive '
+
+        if nic_enable is True:
+            cli += ' nic-enable '
+        if nic_enable is False:
+            cli += ' nic-disable '
+
+        if secondary_macs:
+            cli += ' secondary-macs ' + secondary_macs
+
+    if command == 'vrouter-interface-remove':
+
+        if nic_str:
+            cli += ' nic ' + nic_str
+        else:
+            cli += ' nic ' + vrrp_nic
+
 
     # Run the CLI command
     vrouterifcmd = shlex.split(cli)
@@ -298,6 +317,9 @@ def main():
     # 'out' contains the output
     # 'err' contains the err messages
     out, err = response.communicate()
+
+    exp = re.compile('.*(eth\d*.\d*).*')
+    nic = exp.findall(out)
 
     # Response in JSON format
     if err:
@@ -311,6 +333,7 @@ def main():
         module.exit_json(
             command=cli,
             stdout=out.rstrip("\r\n"),
+            nic=nic,
             changed=True
         )
 

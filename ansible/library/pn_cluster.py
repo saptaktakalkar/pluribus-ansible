@@ -8,7 +8,7 @@ DOCUMENTATION = """
 ---
 module: pn_cluster
 author: "Pluribus Networks"
-short_description: CLI command to create/delete a cluster
+short_description: CLI command to create/delete a cluster.
 description:
   - Execute cluster-create or cluster-delete command. 
   - A cluster allows two switches to cooperate in high-availability (HA) 
@@ -36,9 +36,9 @@ options:
   pn_command:
     description:
       - The C(pn_command) takes the cluster-create/cluster-delete command
-      as value.
+        as value.
     required: true
-    choices: cluster-create, cluster-delete
+    choices: ['cluster-create', 'cluster-delete']
     type: str
   pn_name:
     description:
@@ -48,17 +48,17 @@ options:
   pn_cluster_node1:
     description:
       - Specify the name of the first switch in the cluster.
-    required_if: cluster-create
+      - Required for 'cluster-create'.
     type: str
   pn_cluster_node2:
     description:
       - Specify the name of the second switch in the cluster.
-    required_if: cluster-create
+      - Required for 'cluster-create'.
     type: str
   pn_validate:
     description:
-      - validate the inter-switch links and state of switches in the cluster.
-    choices: validate, no-validate
+      - Validate the inter-switch links and state of switches in the cluster.
+    choices: ['validate', 'no-validate']
     type: str
   pn_quiet:
     description:

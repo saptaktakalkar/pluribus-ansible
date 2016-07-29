@@ -8,7 +8,7 @@ DOCUMENTATION = """
 ---
 module: pn_cluster
 author: "Pluribus Networks"
-short_description: CLI command to create/delete a cluster
+short_description: CLI command to create/delete a cluster.
 description:
   - Execute cluster-create or cluster-delete command. 
   - A cluster allows two switches to cooperate in high-availability (HA) 
@@ -36,9 +36,9 @@ options:
   pn_command:
     description:
       - The C(pn_command) takes the cluster-create/cluster-delete command
-      as value.
+        as value.
     required: true
-    choices: cluster-create, cluster-delete
+    choices: ['cluster-create', 'cluster-delete']
     type: str
   pn_name:
     description:
@@ -48,17 +48,17 @@ options:
   pn_cluster_node1:
     description:
       - Specify the name of the first switch in the cluster.
-    required_if: cluster-create
+      - Required for 'cluster-create'.
     type: str
   pn_cluster_node2:
     description:
       - Specify the name of the second switch in the cluster.
-    required_if: cluster-create
+      - Required for 'cluster-create'.
     type: str
   pn_validate:
     description:
-      - validate the inter-switch links and state of switches in the cluster.
-    choices: validate, no-validate
+      - Validate the inter-switch links and state of switches in the cluster.
+    choices: ['validate', 'no-validate']
     type: str
   pn_quiet:
     description:
@@ -100,10 +100,6 @@ stderr:
   description: the set of error responses from the cluster command.
   returned: on error
   type: list
-rc:
-  description: return code of the module.
-  returned: 0 on success, 1 on error
-  type: int
 changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
@@ -115,20 +111,16 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str',
-                                aliases=['username']),
-            pn_clipassword=dict(required=True, type='str',
-                                aliases=['password']),
-            pn_cliswitch=dict(required=False, type='str', aliases=['switch']),
+            pn_cliusername=dict(required=True, type='str'),
+            pn_clipassword=dict(required=True, type='str'),
+            pn_cliswitch=dict(required=False, type='str'),
             pn_command=dict(required=True, type='str',
-                            choices=['cluster-create', 'cluster-delete'],
-                            aliases=['command']),
-            pn_name=dict(required=True, type='str', aliases=['name']),
-            pn_cluster_node1=dict(type='str', aliases=['cluster_node1']),
-            pn_cluster_node2=dict(type='str', aliases=['cluster_node2']),
-            pn_validate=dict(type='str', choices=['validate', 'no-validate'],
-                             aliases=['validate']),
-            pn_quiet=dict(default=True, type='bool', aliases=['quiet'])
+                            choices=['cluster-create', 'cluster-delete']),
+            pn_name=dict(required=True, type='str'),
+            pn_cluster_node1=dict(type='str'),
+            pn_cluster_node2=dict(type='str'),
+            pn_validate=dict(type='str', choices=['validate', 'no-validate']),
+            pn_quiet=dict(default=True, type='bool')
         ),
         required_if=(
             ["pn_command", "cluster-create",
@@ -143,20 +135,23 @@ def main():
     cliswitch = module.params['pn_cliswitch']
     command = module.params['pn_command']
     name = module.params['pn_name']
-    cluster_node1 = module.params['pn_clusternode1']
-    cluster_node2 = module.params['pn_clusternode2']
+    cluster_node1 = module.params['pn_cluster_node1']
+    cluster_node2 = module.params['pn_cluster_node2']
     validate = module.params['pn_validate']
     quiet = module.params['pn_quiet']
 
     # Building the CLI command string
     if quiet is True:
         cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword + ' ')
+               clipassword)
     else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
+        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
 
     if cliswitch:
-        cli += ' switch ' + cliswitch
+        if cliswitch == 'local':
+            cli += ' switch-local '
+        else:
+            cli += ' switch ' + cliswitch
 
     cli += ' ' + command + ' name ' + name
 
@@ -183,7 +178,6 @@ def main():
         module.exit_json(
             command=cli,
             stderr=err.rstrip("\r\n"),
-            rc=0,
             changed=False
         )
 
@@ -191,7 +185,6 @@ def main():
         module.exit_json(
             command=cli,
             stdout=out.rstrip("\r\n"),
-            rc=1,
             changed=True
         )
 

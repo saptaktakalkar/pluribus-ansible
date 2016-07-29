@@ -200,7 +200,7 @@ def main():
         cli += ' router-id ' + router_id
 
     if bgp_as:
-        cli += ' bgp-as ' + bgp_as
+        cli += ' bgp-as ' + str(bgp_as)
 
     # Run the CLI command
     vroutercmd = shlex.split(cli)

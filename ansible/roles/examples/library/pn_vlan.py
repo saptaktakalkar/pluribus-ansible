@@ -105,10 +105,6 @@ stderr:
   description: the set of error responses from the vlan command.
   returned: on error
   type: list
-rc:
-  description: return code of the module.
-  returned: 0 on success, 1 on error
-  type: int
 changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
@@ -120,22 +116,18 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str',
-                                aliases=['username']),
-            pn_clipassword=dict(required=True, type='str',
-                                aliases=['password']),
+            pn_cliusername=dict(required=True, type='str'),
+            pn_clipassword=dict(required=True, type='str'),
+            pn_cliswitch=dict(required=False, type='str'),
             pn_command=dict(required=True, type='str',
-                            choices=['vlan-create', 'vlan-delete'],
-                            aliases=['command']),
-            pn_vlanid=dict(required=True, type='int', aliases=['vlanid']),
-            pn_scope=dict(type='str', choices=['fabric', 'local'],
-                          aliases=['scope']),
-            pn_description=dict(type='str', aliases=['description']),
-            pn_stats=dict(type='str', choices=['stats', 'no-stats'],
-                          aliases=['stats']),
-            pn_ports=dict(type='str', aliases=['ports']),
-            pn_untagged_ports=dict(type='str', aliases=['untagged_ports']),
-            pn_quiet=dict(default='True', type='bool', aliases=['quiet'])
+                            choices=['vlan-create', 'vlan-delete']),
+            pn_vlanid=dict(required=True, type='int'),
+            pn_scope=dict(type='str', choices=['fabric', 'local']),
+            pn_description=dict(type='str'),
+            pn_stats=dict(type='str', choices=['stats', 'no-stats']),
+            pn_ports=dict(type='str'),
+            pn_untagged_ports=dict(type='str'),
+            pn_quiet=dict(default=True, type='bool')
         ),
         required_if=(
             ["pn_command", "vlan-create", ["pn_vlanid", "pn_scope"]],
@@ -146,6 +138,7 @@ def main():
     # Accessing the arguments
     cliusername = module.params['pn_cliusername']
     clipassword = module.params['pn_clipassword']
+    cliswitch = module.params['pn_cliswitch']
     command = module.params['pn_command']
     vlanid = module.params['pn_vlanid']
     scope = module.params['pn_scope']
@@ -158,16 +151,22 @@ def main():
     # Building the CLI command string
     if quiet is True:
         cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword + ' ')
+               clipassword)
     else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
+        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
 
     if vlanid < 2:
-        module.exit_json(msg="Invalid vlan ID", rc=1, changed=False)
+        module.exit_json(msg="Invalid vlan ID", changed=False)
     if vlanid > 4092:
-        module.exit_json(msg="Invalid vlan ID", rc=1, changed=False)
+        module.exit_json(msg="Invalid vlan ID", changed=False)
 
-    cli += command + ' id ' + str(vlanid)
+    if cliswitch:
+        if cliswitch == 'local':
+            cli += ' switch-local '
+        else:
+            cli += ' switch ' + cliswitch
+
+    cli += ' ' + command + ' id ' + str(vlanid)
 
     if scope:
         cli += ' scope ' + scope
@@ -198,14 +197,12 @@ def main():
         module.exit_json(
             command=cli,
             stderr=err.rstrip("\r\n"),
-            rc=1,
             changed=False
         )
     else:
         module.exit_json(
             command=cli,
             stdout=out.rstrip("\r\n"),
-            rc=0,
             changed=True
         )
 

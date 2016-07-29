@@ -169,10 +169,6 @@ stderr:
   description: the set of error responses from the trunk command.
   returned: on error
   type: list
-rc:
-  description: return code of the module.
-  returned: 0 on success, 1 on error
-  type: int
 changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
@@ -184,46 +180,37 @@ def main():
     """ This portion is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str',
-                                aliases=['username']),
-            pn_clipassword=dict(required=True, type='str',
-                                aliases=['password']),
-            pn_cliswitch=dict(required=False, type='str', aliases=['switch']),
+            pn_cliusername=dict(required=True, type='str'),
+            pn_clipassword=dict(required=True, type='str'),
+            pn_cliswitch=dict(required=False, type='str'),
             pn_command=dict(required=True, type='str',
                             choices=['trunk-create', 'trunk-delete',
-                                     'trunk-modify'], aliases=['switch']),
-            pn_name=dict(required=True, type='str', aliases=['name']),
-            pn_ports=dict(type='str', aliases=['ports']),
+                                     'trunk-modify']),
+            pn_name=dict(required=True, type='str'),
+            pn_ports=dict(type='str'),
             pn_speed=dict(type='str',
                           choices=['disable', '10m', '100m', '1g', '2.5g',
-                                   '10g', '40g'], aliases=['speed']),
-            pn_egress_rate_limit=dict(type='str',
-                                      aliases=['egress_rate_limit']),
-            pn_jumbo=dict(type='bool', aliases=['jumbo']),
-            pn_lacp_mode=dict(type='str', choices=['off', 'passive', 'active'],
-                              aliases=['lacp_mode']),
-            pn_lacp_priority=dict(type='int', aliases=['lacp_priority']),
-            pn_lacp_timeout=dict(type='str', choices=['slow', 'fast'],
-                                 aliases=['lacp_timeout']),
-            pn_lacp_fallback=dict(type='str', choices=['bundle', 'individual'],
-                                  aliases=['lacp_fallback']),
-            pn_lacp_fallback_timeout=dict(type='str',
-                                          aliases=['lacp_fallback_timeout']),
-            pn_edge_switch=dict(type='bool', aliases=['edge_switch']),
-            pn_pause=dict(type='bool', aliases=['pause']),
-            pn_description=dict(type='str', aliases=['description']),
-            pn_loopback=dict(type='bool', aliases=['loopback']),
-            pn_mirror_receive=dict(type='bool', aliases=['mirror_receive']),
-            pn_unknown_ucast_level=dict(type='str',
-                                        aliases=['unkown_ucast_level']),
-            pn_unknown_mcast_level=dict(type='str',
-                                        aliases=['unkown_mcast_level']),
-            pn_broadcast_level=dict(type='str', aliases=['broadcast_level']),
-            pn_port_macaddr=dict(type='str', aliases=['port_macaddr']),
-            pn_loopvlans=dict(type='str', aliases=['loopvlans']),
-            pn_routing=dict(type='bool', aliases=['routing']),
-            pn_host=dict(type='bool', aliases=['host']),
-            pn_quiet=dict(default=True, type='bool', aliases=['quiet'])
+                                   '10g', '40g']),
+            pn_egress_rate_limit=dict(type='str'),
+            pn_jumbo=dict(type='bool'),
+            pn_lacp_mode=dict(type='str', choices=['off', 'passive', 'active']),
+            pn_lacp_priority=dict(type='int'),
+            pn_lacp_timeout=dict(type='str'),
+            pn_lacp_fallback=dict(type='str', choices=['bundle', 'individual']),
+            pn_lacp_fallback_timeout=dict(type='str'),
+            pn_edge_switch=dict(type='bool'),
+            pn_pause=dict(type='bool'),
+            pn_description=dict(type='str'),
+            pn_loopback=dict(type='bool'),
+            pn_mirror_receive=dict(type='bool'),
+            pn_unknown_ucast_level=dict(type='str'),
+            pn_unknown_mcast_level=dict(type='str'),
+            pn_broadcast_level=dict(type='str'),
+            pn_port_macaddr=dict(type='str'),
+            pn_loopvlans=dict(type='str'),
+            pn_routing=dict(type='bool'),
+            pn_host=dict(type='bool'),
+            pn_quiet=dict(default=True, type='bool')
         ),
         required_if=(
             ["pn_command", "trunk-create", ["pn_name", "pn_ports"]],
@@ -263,12 +250,16 @@ def main():
     # Building the CLI command string
     if quiet is True:
         cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword + ' ')
+               clipassword)
     else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword + ' '
+        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
+
 
     if cliswitch:
-        cli += ' switch ' + cliswitch
+        if cliswitch == 'local':
+            cli += ' switch-local '
+        else:
+            cli += ' switch ' + cliswitch
 
     cli += ' ' + command + ' name ' + name
 
@@ -358,12 +349,11 @@ def main():
     # 'err' contains the err messages
     out, err = response.communicate()
 
-    # Response in json format
+    # Response in JSON format
     if err:
         module.exit_json(
             command=cli,
             stderr=err.rstrip("\r\n"),
-            rc=0,
             changed=False
         )
 
@@ -371,7 +361,6 @@ def main():
         module.exit_json(
             command=cli,
             stdout=out.rstrip("\r\n"),
-            rc=1,
             changed=True
         )
 

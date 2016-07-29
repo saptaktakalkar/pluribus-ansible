@@ -93,10 +93,6 @@ stderr:
   description: the set of error responses from the ospf command.
   returned: on error
   type: list
-rc:
-  description: return code of the module.
-  returned: 0 on success, 1 on error
-  type: int
 changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
@@ -108,22 +104,17 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str',
-                                aliases=['username']),
-            pn_clipassword=dict(required=True, type='str',
-                                aliases=['password']),
-            pn_cliswitch=dict(required=False, type='str',
-                              aliases=['switch']),
+            pn_cliusername=dict(required=True, type='str'),
+            pn_clipassword=dict(required=True, type='str'),
+            pn_cliswitch=dict(required=False, type='str'),
             pn_command=dict(required=True, type='str',
                             choices=['vrouter-ospf-add',
-                                     'vrouter-ospf-remove'],
-                            aliases=['command']),
-            pn_vrouter_name=dict(required=True, type='str',
-                                 aliases=['vrouter_name']),
-            pn_network_ip=dict(type='str', aliases=['network']),
-            pn_netmask=dict(type='str', aliases=['netmask']),
-            pn_ospf_area=dict(type='str', aliases=['area']),
-            pn_quiet=dict(default=True, type='str', aliases=['quiet'])
+                                     'vrouter-ospf-remove']),
+            pn_vrouter_name=dict(required=True, type='str'),
+            pn_network_ip=dict(type='str'),
+            pn_netmask=dict(type='str'),
+            pn_ospf_area=dict(type='str'),
+            pn_quiet=dict(default=True, type='bool')
         ),
         required_if=(
             ['pn_command', 'vrouter-ospf-add',
@@ -135,7 +126,7 @@ def main():
     # Accessing the arguments
     cliusername = module.params['pn_cliusername']
     clipassword = module.params['pn_clipassword']
-    cliswitch = module.params['pn_switch']
+    cliswitch = module.params['pn_cliswitch']
     command = module.params['pn_command']
     vrouter_name = module.params['pn_vrouter_name']
     network_ip = module.params['pn_network_ip']
@@ -150,8 +141,12 @@ def main():
     else:
         cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
 
+
     if cliswitch:
-        cli += ' switch ' + cliswitch
+        if cliswitch == 'local':
+            cli += ' switch-local '
+        else:
+            cli += ' switch ' + cliswitch
 
     cli += ' ' + command + ' vrouter-name ' + vrouter_name
 
@@ -162,7 +157,7 @@ def main():
         cli += ' netmask ' + netmask
 
     if ospf_area:
-        cli += 'ospf-area ' + ospf_area
+        cli += ' ospf-area ' + ospf_area
 
     # Run the CLI command
     ospfcommand = shlex.split(cli)
@@ -178,7 +173,6 @@ def main():
         module.exit_json(
             command=cli,
             stderr=err.rstrip("\r\n"),
-            rc=1,
             changed=False
         )
 
@@ -186,7 +180,6 @@ def main():
         module.exit_json(
             command=cli,
             stdout=out.rstrip("\r\n"),
-            rc=0,
             changed=True
         )
 
