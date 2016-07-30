@@ -1,0 +1,85 @@
+# This Playbook performs following operations:
+#
+# 1. Auto Fabric congiguration:
+#     Tags: "bringup"
+#     a. Create Clusters:
+#        i) (charmander)----------(squirtle) (spinecluster)
+#        ii) (pikachu)----------(gyarados) (leafcluste)
+#     
+#     b. Create Trunks:
+#        i) (charmander)----------(pikachu+gyarados) (spine1-to-leaf) 
+#        ii) (charmander)----------(lapras) (spine1-to-leaf3) 
+#        iii) (charmander)----------(jigglypuff) (spine1-to-leaf4)
+#        iv) (squirtle)----------(pikachu+gyarados) (spine2-to-leaf)
+#        v) (squirtle)----------(lapras) (spine2-to-leaf3)
+#        vi) (squirtle)----------(jigglypuff) (spine2-to-leaf4)
+#        vii) (pikachu)----------(charmander+squirtle) (leaf1-to-spine)
+#        viii) (gyarados)----------(charmander+squirtle) (leaf2-to-spine)
+#
+#     c. Create VLAGs:
+#        i) (charmander+squirtle)----------(pikachu+gyarados) (spine-to-leaf)
+#        ii) (charmander+squirtle)----------(lapras) (spine-to-leaf3)
+#        iii) (charmander+squirtle)----------(jigglypuff) (spine-to-leaf4)
+#        iv) (pikachu+gyarados)----------(charmander+squirtle) (leafcluster-to-spinecluster)
+#
+#
+#     d. Create VLANs:
+#        vlanid: 100...105, scope: fabric
+#
+# Modules used:
+# 1. pn_cluster
+# 2. pn_trunk
+# 3. pn_vlag
+# 4. pn_vlan
+#
+
+
+---
+
+- name: "Auto Fabric configuration..."
+  hosts: testswitches[0]
+  user: root
+  tags: bringup
+
+  tasks:
+
+    - name: "Create Clusters: Spine and Leaf..."
+      pn_cluster: pn_cliusername=network-admin pn_clipassword=test123 pn_cliswitch={{ item.switch }} pn_command=cluster-create pn_name={{ item.name }} pn_cluster_node1={{ item.node1 }} pn_cluster_node2={{ item.node2 }}
+      with_items:
+        - {switch: 'local', name: 'spinecluster', node1: 'charmander', node2: 'squirtle'}
+        - {switch: 'pikachu', name: 'leafcluster', node1: 'pikachu', node2: 'gyarados'}
+      register: cluster_create
+    - debug: var=cluster_create
+
+
+    - name: "Create Trunks..."
+      pn_trunk: pn_cliusername=network-admin pn_clipassword=test123 pn_cliswitch={{ item.switch }} pn_command=trunk-create pn_name={{ item.name }} pn_ports={{ item.ports }}
+      with_items:
+        - {switch: 'local', name: 'spine1-to-leaf', ports: '41,42,43,44'}
+        - {switch: 'local', name: 'spine1-to-leaf3', ports: '45,46'}
+        - {switch: 'local', name: 'spine1-to-leaf4', ports: '47,48'}
+        - {switch: 'squirtle', name: 'spine2-to-leaf', ports: '41,42,43,44'} 
+        - {switch: 'squirtle', name: 'spine2-to-leaf3', ports: '45,46'} 
+        - {switch: 'squirtle', name: 'spine2-to-leaf4', ports: '47,48'}
+        - {switch: 'pikachu', name: 'leaf1-to-spine', ports: '41,42,43,44'}
+        - {switch: 'gyarados', name: 'leaf2-to-spine', ports: '41,42,43,44'}
+      register: trunk_create
+    - debug: var=trunk_create
+
+
+    - name: "Create VLAGs..."
+      pn_vlag: pn_cliusername=network-admin pn_clipassword=test123 pn_cliswitch={{ item.switch }} pn_command=vlag-create pn_name={{ item.name }} pn_port={{ item.port }} pn_peer_switch={{ item.peer }} pn_peer_port={{ item.peerport }} pn_mode=active-active
+      with_items:
+        - {switch: 'local', name: 'spine-to-leaf', port: 'spine1-to-leaf', peer: 'squirtle', peerport: 'spine2-to-leaf'}
+        - {switch: 'local', name: 'spine-to-leaf3', port: 'spine1-to-leaf3', peer: 'squirtle', peerport: 'spine2-to-leaf3'}
+        - {switch: 'local', name: 'spine-to-leaf4', port: 'spine1-to-leaf4', peer: 'squirtle', peerport: 'spine2-to-leaf4'}
+        - {switch: 'pikachu', name: 'leafcluster-to-spinecluster', port: 'leaf1-to-spine', peer: 'gyarados', peerport: 'leaf2-to-spine'}
+      register: vlag_create
+    - debug: var=vlag_create
+
+
+    - name: "Create VLANs..."
+      pn_vlan: pn_cliusername=network-admin pn_clipassword=test123 pn_command=vlan-create pn_vlanid={{ item }} pn_scope=fabric
+      with_sequence: start=100 end=105
+      register: vlan_create
+    - debug: var=vlan_create
