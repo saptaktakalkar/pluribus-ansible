@@ -194,7 +194,7 @@ def main():
             ["pn_command", "vrouter-interface-add",
              ["pn_vrouter_name", "pn_interface_ip"]],
             ["pn_command", "vrouter-interface-remove",
-             ["pn_vrouter_name", "pn_interface_ip"]]
+             ["pn_vrouter_name", "pn_nic_str"]]
         ),
     )
 
@@ -236,21 +236,41 @@ def main():
 
     cli += ' ' + command + ' vrouter-name ' + vrouter_name
 
-    show_cmd = '/usr/bin/cli --quiet --user ' + cliusername + ':' + \
-               clipassword + ' vrouter-interface-show vrouter-name ' + \
-               vrouter_name + ' ip ' + interface_ip + \
-               ' format nic no-show-headers parsable-delim % '
-
-    show_cmd = shlex.split(show_cmd)
-    result = subprocess.Popen(show_cmd, stderr=subprocess.PIPE,
-                              stdout=subprocess.PIPE, universal_newlines=True)
-    out, err = result.communicate()
-    show = out.rstrip("\r\n")
-    vrouter, vrrp_nic = show.split('%')
 
     if command == 'vrouter-interface-add':
 
         if vrrp_ip:
+
+            show_cmd = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
+                        clipassword + ' vrouter-interface-show vrouter-name ' +
+                        vrouter_name + ' ip ' + vrrp_ip + ' vrrp-id ' + str(vrrp_id))
+
+            show_cmd = shlex.split(show_cmd)
+            result = subprocess.Popen(show_cmd, stderr=subprocess.PIPE,
+                                      stdout=subprocess.PIPE, universal_newlines=True)
+            out, err = result.communicate()
+            if out:
+                module.exit_json(changed=False, msg="Interface already in use")
+            if err:
+                module.exit_json(changed=False, stderr=err.rstrip("\r\n"))
+
+            show_cmd = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
+                        clipassword + ' vrouter-interface-show vrouter-name ' +
+                        vrouter_name + ' ip ' + interface_ip +
+                        ' format nic no-show-headers parsable-delim % ')
+
+            show_cmd = shlex.split(show_cmd)
+            result = subprocess.Popen(show_cmd, stderr=subprocess.PIPE,
+                                      stdout=subprocess.PIPE, universal_newlines=True)
+            out, err = result.communicate()
+
+            if err:
+                module.exit_json(changed=False, stderr=err.rstrip("\r\n"))
+
+            if out:
+                show = out.rstrip("\r\n")
+                vrouter, vrrp_nic = show.split('%')
+
             cli += ' ip ' + vrrp_ip
 
             if vrrp_id:
@@ -303,10 +323,7 @@ def main():
 
     if command == 'vrouter-interface-remove':
 
-        if nic_str:
-            cli += ' nic ' + nic_str
-        else:
-            cli += ' nic ' + vrrp_nic
+        cli += ' nic ' + nic_str
 
 
     # Run the CLI command
@@ -318,7 +335,7 @@ def main():
     # 'err' contains the err messages
     out, err = response.communicate()
 
-    exp = re.compile('.*(eth\d*.\d*).*')
+    exp = re.compile(r'.*(eth\d*.\d*).*')
     nic = exp.findall(out)
 
     # Response in JSON format
@@ -342,4 +359,3 @@ from ansible.module_utils.basic import AnsibleModule
 
 if __name__ == '__main__':
     main()
-
