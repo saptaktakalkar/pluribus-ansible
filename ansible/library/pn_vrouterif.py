@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN-CLI vrouter-interface-add/remove/modify """
+""" PN-CLI vrouter-interface-add/remove """
 
 import subprocess
 import shlex
@@ -9,21 +9,21 @@ DOCUMENTATION = """
 ---
 module: pn_vrouterif
 author: "Pluribus Networks"
-short_description: CLI command to add/remove/modify vrouter-interface
+short_description: CLI command to add/remove vrouter-interface.
 description:
-  - Execute vrouter-interface-add, vrouter-interface-remove,
-    vrouter-interface-modify command.
-  - You configure interfaces to vRouter services on a fabric, cluster,
-    standalone switch or virtula network(VNET).
+  - Execute vrouter-interface-add, vrouter-interface-remove
+    command.
+  - You can configure interfaces to vRouter services on a fabric,
+    cluster, standalone switch or virtual network(VNET).
 options:
   pn_cliusername:
     description:
-      - Login username
+      - Login username.
     required: true
     type: str
   pn_clipassword:
     description:
-      - Login password
+      - Login password.
     required: true
     type: str
   pn_cliswitch:
@@ -35,8 +35,7 @@ options:
     description:
       - The C(pn_command) takes the vrouter-interface command as value.
     required: true
-    choices: vrouter-interface-add, vrouter-interface-remove,
-             vrouter-interface-modify
+    choices: ['vrouter-interface-add', 'vrouter-interface-remove']
     type: str
   pn_vrouter_name:
     description:
@@ -45,12 +44,14 @@ options:
     type: str
   pn_vlan:
     description:
-      - interface Specify the VLAN identifier. This is a value between 1 and
+      - Specify the VLAN identifier. This is a value between 1 and
         4092.
     type: int
   pn_interface_ip:
     description:
       - Specify the IP address of the interface.
+      - For VRRP interface, specify the IP in pn_vrrp_ip. Specify the IP of the
+        primary interface here.
     type: str
   pn_netmask:
     description:
@@ -59,16 +60,16 @@ options:
   pn_assignment:
     description:
       - Specify the DHCP method for IP address assignment.
-    choices: none, dhcp, dhcpv6, autov6
+      - Choices- none, dhcp, dhcpv6, autov6
     type: str
   pn_vxlan:
     description:
       - Specify the VXLAN identifier. This is a value between 1 and 16777215.
     type: str
-  pn__interface:
+  pn_interface:
     description:
       - Specify if the interface is management, data or span interface.
-    choices: mgmt, data, span
+      - Choices- mgmt, data, span.
     type: str
   pn_alias:
     description:
@@ -90,9 +91,9 @@ options:
       - Specify the ID for the VRRP interface. The IDs on both vRouters must be
         the same IS number.
     type: int
-  pn_vrrp_primary:
+  pn_vrrp_ip:
     description:
-      - Specifies the primary interface for VRRP failover.
+      - Specify the IP for VRRP interface.
     type: str
   pn_vrrp_priority:
     description:
@@ -125,25 +126,37 @@ options:
 """
 
 EXAMPLES = """
-- name: add vrouter-interface
+- name: Add vrouter-interface
   pn_vrouterif:
     pn_cliusername: admin
     pn_clipassword: admin
     pn_command: 'vrouter-interface-add'
     pn_vrouter_name: 'ansible-vrouter'
-    pn_vlan: 104
+    pn_interface_ip: 101.101.101.2/24
+    pn_vlan: 101
 
-- name: remove vrouter-interface
+- name: Add VRRP...
+  pn_vrouterif:
+    pn_cliusername: admin
+    pn_clipassword: admin
+    pn_command: vrouter-interface-add
+    pn_vrouter_name: 'ansible-vrouter'
+    pn_interface_ip: 101.101.101.2/24
+    pn_vrrp_ip: 101.101.101.1/24
+    pn_vrrp_priority: 100
+    pn_vlan: 101
+
+- name: Remove vrouter-interface
   pn_vrouterif:
     pn_cliusername: admin
     pn_clipassword: admin
     pn_command: 'vrouter-interface-remove'
     pn_vrouter_name: 'ansible-vrouter'
-    pn_nic_str: 'eth-104'
+    pn_interface_ip: 101.101.101.2/24
 """
 
 RETURN = """
-vrouterifcmd:
+command:
   description: the CLI command run on the target node(s).
 stdout:
   description: the set of responses from the vrouterif command.
