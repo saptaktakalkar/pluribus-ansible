@@ -9,6 +9,7 @@ Module for CLI cluster configurations. Supports `cluster-create`  and `cluster-d
  - [Return Values](#return-values)
 
 ## Synopsis
+  
   A cluster allows two switches to cooperate in high-availability (HA) deployments. The nodes that
   form the cluster must be members of the same fabric. Clusters are typically used in conjunction
   with a virtual link aggregation group (VLAG) that allows links physically connected to two
@@ -23,17 +24,18 @@ Module for CLI cluster configurations. Supports `cluster-create`  and `cluster-d
 
 
 ## Options
+
 | parameter       | required       | default      |choices       |comments                                                    |
 |-----------------|----------------|--------------|--------------|------------------------------------------------------------|
-|pn_cliusername   | yes            |              |              | Login username                                             |
-|pn_clipassword   | yes            |              |              | Login password                                             |
-|pn_cliswitch     | no             |              |              | Target switch to run command on.
-|pn_command       | yes            |              | cluster-create, cluster-delete| Create or delete cluster configuration|
-|pn_name          | yes            |              |              | Specify the name of the cluster.                                             |
-|pn_cluster_node1 | conditional    |              |              | Specify the name of the first switch in the cluster.              |
-|pn_cluster_node2 | conditional    |              |              | Specify the name of the second switch in the cluster.    |
+|pn_cliusername   | yes            |              |              | Login username.                                            |
+|pn_clipassword   | yes            |              |              | Login password.                                            |
+|pn_cliswitch     | no             |              |              | Target switch(es) to run command on.                       |
+|pn_command       | yes            |              | cluster-create, cluster-delete| Create or delete cluster configuration.   |
+|pn_name          | yes            |              |              | Specify the name of the cluster.                           |
+|pn_cluster_node1 | for cluster-create    |       |              | Specify the name of the first switch in the cluster.       |
+|pn_cluster_node2 | for cluster-create    |       |              | Specify the name of the second switch in the cluster.      |
 |pn_validate      | no             |              |validate, no-validate | Validate the inter-switch links and state of the switches in the cluster. |
-|pn_quiet         | no             | true         |              | Enable/disable system information.                           |
+|pn_quiet         | no             | true         |              | Enable/disable system information.                         |
 
 
 ## Usage
@@ -60,7 +62,7 @@ Module for CLI cluster configurations. Supports `cluster-create`  and `cluster-d
 ## Examples
 
 # cluster-create
-YAML Playbook for **_creating_** a Cluster configuration using `pn_cluster` module
+Sample playbook for **_creating_** a Cluster configuration.
 
 ```
 ---
@@ -85,7 +87,7 @@ YAML Playbook for **_creating_** a Cluster configuration using `pn_cluster` modu
 
 
 # cluster-delete
-YAML Playbook for **_deleting_** a Cluster Configuration using `pn_cluster` module
+Sampe Playbook for **_deleting_** a Cluster Configuration.
 
 ```
 ---
@@ -104,10 +106,12 @@ YAML Playbook for **_deleting_** a Cluster Configuration using `pn_cluster` modu
   - debug: var=cmd_output
   
 ```
+
 ## Return Values
+
 | name | description | returned | type |
 |--------|------------|----------|---------|
-| command | The CLI command run on target nodes| always | string |
-| stdout | Output of the CLI command | on success | string |
-| stderr | Error message from the CLI command | on failure | string |
-| rc | Return code of the CLI command. 0 for success, 1 for failure | always | integer | 
+| command | The CLI command run on target nodes. | always | string |
+| stdout | Output of the CLI command. | on success | string |
+| stderr | Error message from the CLI command. | on failure | string |
+| changed | Indicates whether the CLI caused changes in the target node.| always | bool |
