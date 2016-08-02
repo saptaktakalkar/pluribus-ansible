@@ -6,6 +6,6 @@
 
   tasks:
   - name: Delete VLAN 
-    pn_vlan: pn_cliusername=network-admin pn_clipassword=test123 pn_command=vlan-delete pn_vlanid=300 pn_quiet=True
+    pn_vlan: pn_cliusername=admin pn_clipassword=admin pn_command=vlan-delete pn_vlanid=300 
     register: cmd_output
   - debug: var=cmd_output 
