@@ -5,6 +5,6 @@
 
   tasks:
   - name: Create vrouter 
-    pn_vrouter: pn_cliusername=network-admin pn_clipassword=test123 pn_command=vrouter-create pn_name=ansible-vrouter pn_vnet=puppet-ansible-chef-fab-global pn_router_type=hardware pn_hw_vrrp_id=18
+    pn_vrouter: pn_cliusername=admin pn_clipassword=admin pn_command=vrouter-create pn_name=ansible-vrouter pn_vnet=puppet-ansible-chef-fab-global pn_router_type=hardware pn_hw_vrrp_id=18
     register: cmd_output
   - debug: var=cmd_output 
