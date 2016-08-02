@@ -5,6 +5,6 @@
 
   tasks: 
   - name: Delete cluster
-    pn_cluster: pn_cliusername=network-admin pn_clipassword=test123 pn_command=cluster-delete pn_name=spinecluster pn_quiet=True
+    pn_cluster: pn_cliusername=admin pn_clipassword=admin pn_command=cluster-delete pn_name=spinecluster 
     register: cmd_output
   - debug: var=cmd_output
