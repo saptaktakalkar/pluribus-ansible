@@ -5,6 +5,6 @@
 
   tasks:
   - name: Create Cluster 
-    pn_cluster: pn_cliusername=network-admin pn_clipassword=test123 pn_command=cluster-create pn_name=spinecluster pn_cluster_node1=spine1 pn_cluster_node2=onvl-spine2 pn_quiet=True
+    pn_cluster: pn_cliusername=admin pn_clipassword=admin pn_command=cluster-create pn_name=spinecluster pn_cluster_node1=spine1 pn_cluster_node2=onvl-spine2
     register: cmd_output
   - debug: var=cmd_output 
