@@ -5,6 +5,6 @@
 
   tasks:
   - name: Add vrouter bgp 
-    pn_vrouterbgp: pn_cliusername=network-admin pn_clipassword=test123 pn_command=vrouter-bgp-add pn_vrouter_name=ansible-vrouter pn_neighbor=104.104.104.2 pn_remote_as=201 pn_quiet=True
+    pn_vrouterbgp: pn_cliusername=admin pn_clipassword=admin pn_command=vrouter-bgp-add pn_vrouter_name=ansible-vrouter pn_neighbor=104.104.104.2 pn_remote_as=65000
     register: cmd_output
   - debug: var=cmd_output 
