@@ -5,6 +5,6 @@
 
   tasks:
   - name: Add vrouter interface 
-    pn_vrouterif: pn_cliusername=network-admin pn_clipassword=test123 pn_command=vrouter-interface-add pn_vrouter_name=ansible-vrouter pn_vlan=201 pn_interface_ip=104.104.104.1/24 pn_interface=data pn_quiet=True
+    pn_vrouterif: pn_cliusername=admin pn_clipassword=admin pn_command=vrouter-interface-add pn_vrouter_name=ansible-vrouter pn_vlan=201 pn_interface_ip=104.104.104.1/24 pn_interface=data
     register: cmd_output
   - debug: var=cmd_output 
