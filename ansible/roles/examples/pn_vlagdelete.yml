@@ -6,6 +6,6 @@
 
   tasks:
   - name: Delete VLAG 
-    pn_vlag: pn_cliusername=network-admin pn_clipassword=test123 pn_command=vlag-delete pn_name=spine-to-leaf pn_quiet=True
+    pn_vlag: pn_cliusername=admin pn_clipassword=admin pn_command=vlag-delete pn_name=spine-to-leaf
     register: cmd_output
   - debug: var=cmd_output 
