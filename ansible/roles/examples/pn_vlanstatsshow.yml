@@ -2,11 +2,10 @@
 - name: PN-CLI Test
   hosts: spine[0]
   user: pluribus
-  gather_facts: False
 
   tasks:
   - name: Test VLAN Stats Show CLI commands 
-    pn_show: pn_cliusername=network-admin pn_clipassword=test123 pn_command=vlan-stats-show pn_quiet=True 
+    pn_show: pn_cliusername=admin pn_clipassword=admin pn_command=vlan-stats-show
     register: cmd_output
   - debug: var=cmd_output 
     
