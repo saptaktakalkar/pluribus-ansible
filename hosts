@@ -1,0 +1,44 @@
+# This is the default ansible 'hosts' file.
+#
+# It should live in /etc/ansible/hosts
+#
+#   - Comments begin with the '#' character
+#   - Blank lines are ignored
+#   - Groups of hosts are delimited by [header] elements
+#   - You can enter hostnames or ip addresses
+#   - A hostname/ip can be a member of multiple groups
+
+charmander ansible_host=charmander.pluribunetworks.com
+squirtle ansible_host=squirtle.pluribusnetworks.com
+gyarados ansible_host=gyarados.pluribusnetworks.com
+jigglypuff ansible_host=jigglypuff.pluribusnetworks.com
+lapras ansible_host=lapras.pluribusnetworks.com
+pikachu ansible_host=pikachu.pluribusnetworks.com
+
+[topology]
+spine
+leaf
+
+[spine]
+spine01 ansible_host=10.9.21.106
+spine02 ansible_host=10.9.21.107
+
+[leaf]
+leftbranch
+rightbranch
+
+[leftbranch]
+leaf01 ansible_host=10.9.10.142
+leaf02 ansible_host=10.9.10.143
+
+[rightbranch]
+leaf03 ansible_host=10.9.10.56
+leaf04 ansible_host=10.9.10.133
+
+[testswitches]
+10.9.21.106
+10.9.21.107
+10.9.10.142
+10.9.10.143
+10.9.10.56
+10.9.10.133
