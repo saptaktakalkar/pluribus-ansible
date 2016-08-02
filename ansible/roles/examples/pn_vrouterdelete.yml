@@ -5,6 +5,6 @@
 
   tasks:
   - name: Delete vrouter 
-    pn_vrouter: pn_cliusername=network-admin pn_clipassword=test123 pn_command=vrouter-delete  pn_name=ansible-vrouter pn_quiet=True
+    pn_vrouter: pn_cliusername=admin pn_clipassword=admin pn_command=vrouter-delete  pn_name=ansible-vrouter
     register: cmd_output
   - debug: var=cmd_output 
