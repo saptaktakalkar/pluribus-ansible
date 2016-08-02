@@ -6,7 +6,7 @@
 
   tasks:
   - name: Test VLAN Stats Settings Show CLI commands 
-    pn_show: pn_cliusername=network-admin pn_clipassword=test123 pn_command=vlan-stats-settings-show pn_quiet=True 
+    pn_show: pn_cliusername=admin pn_clipassword=admin pn_command=vlan-stats-settings-show
     register: cmd_output
   - debug: var=cmd_output 
     
