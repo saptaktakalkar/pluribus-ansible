@@ -34,12 +34,12 @@ description:
 options:
   pn_cliusername:
     description:
-      - Login username
+      - Login username.
     required: true
     type: str
   pn_clipassword:
     description:
-      - Login password
+      - Login password.
     required: true
     type: str
   pn_cliswitch:
@@ -155,28 +155,22 @@ def main():
     quiet = module.params['pn_quiet']
 
     # Building the CLI command string
+    cli = '/usr/bin/cli'
+
     if quiet is True:
-        cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword)
-    else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
+        cli += ' --quiet '
+
+    cli += ' --user %s:%s ' % (cliusername, clipassword)
 
     if cliswitch:
-        if cliswitch == 'local':
-            cli += ' switch-local '
-        else:
-            cli += ' switch ' + cliswitch
+        cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
 
-    cli += ' ' + command + ' name ' + name
+    cli += ' %s name %s ' % (command, name)
 
-    if cluster_node1:
-        cli += ' cluster-node-1 ' + cluster_node1
-
-    if cluster_node2:
-        cli += ' cluster-node-2 ' + cluster_node2
-
-    if validate:
-        cli += ' ' + validate
+    if command == 'cluster-create':
+        cli += ' cluster-node-1 %s cluster-node-2 %s ' % (cluster_node1, cluster_node2)
+        if validate:
+            cli += validate
 
     # Run the CLI command
     clustercmd = shlex.split(cli)

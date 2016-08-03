@@ -41,7 +41,7 @@ options:
     type: str
   pn_cliswitch:
     description:
-    - Target switch to run the cli on.
+    - Target switch(es) to run the cli on.
     required: False
     type: str
   pn_command:
@@ -64,11 +64,11 @@ options:
   pn_interface_ip:
     description:
       - Specify the IP address.
-    required_if: vrouter-loopback-interface-add
+      - Required for vrouter-loopback-interface-add.
     type: str
   pn_quiet:
     description:
-      - The C(pn_quiet) option to enable or disable the system bootup message
+      - Enable/disable system information.
     required: false
     type: bool
     default: true
@@ -143,22 +143,22 @@ def main():
     quiet = module.params['pn_quiet']
 
     # Building the CLI command string
+    cli = '/usr/bin/cli'
+
     if quiet is True:
-        cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword)
-    else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
+        cli += ' --quiet '
+
+    cli += ' --user %s:%s ' % (cliusername, clipassword)
 
     if cliswitch:
-        if cliswitch == 'local':
-            cli += ' switch-local '
-        else:
-            cli += ' switch ' + cliswitch
+        cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
 
-    cli += ' ' + command + ' vrouter-name ' + vrouter_name
+    cli += ' %s vrouter-name %s ' % (command, vrouter_name)
 
-    if index:
-        cli += ' index ' + str(index)
+    if not 1 <= index <= 255:
+        module.exit_json(msg='Index should be in the range 1 to 255', changed=False)
+
+    cli += ' index ' + str(index)
 
     if interface_ip:
         cli += ' ip ' + interface_ip

@@ -74,16 +74,16 @@ options:
   pn_assignment:
     description:
       - Specify the DHCP method for IP address assignment.
-      - Choices- none, dhcp, dhcpv6, autov6
+    choices: ['none', 'dhcp', 'dhcpv6', 'autov6']
     type: str
   pn_vxlan:
     description:
       - Specify the VXLAN identifier. This is a value between 1 and 16777215.
-    type: str
+    type: int
   pn_interface:
     description:
       - Specify if the interface is management, data or span interface.
-      - Choices- mgmt, data, span.
+    choices: ['mgmt', 'data', 'span']
     type: str
   pn_alias:
     description:
@@ -133,7 +133,7 @@ options:
     type: str
   pn_quiet:
     description:
-      - The C(pn_quiet) option to enable or disable the system bootup message
+      - Enable/disable system information.
     required: false
     type: bool
     default: true
@@ -204,7 +204,7 @@ def main():
             pn_netmask=dict(type='str'),
             pn_assignment=dict(type='str',
                                choices=['none', 'dhcp', 'dhcpv6', 'autov6']),
-            pn_vxlan=dict(type='str'),
+            pn_vxlan=dict(type='int'),
             pn_interface=dict(type='str', choices=['mgmt', 'data', 'span']),
             pn_alias=dict(type='str'),
             pn_exclusive=dict(type='bool'),
@@ -327,7 +327,7 @@ def main():
             cli += ' assignment ' + assignment
 
         if vxlan:
-            cli += ' vxlan ' + vxlan
+            cli += ' vxlan ' + str(vxlan)
 
         if interface:
             cli += ' if ' + interface

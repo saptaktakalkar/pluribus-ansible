@@ -22,7 +22,7 @@ DOCUMENTATION = """
 ---
 module: pn_trunk
 author: "Pluribus Networks"
-short_description: CLI command to create/delete/modify a trunk
+short_description: CLI command to create/delete/modify a trunk.
 description:
   - Execute trunk-create or trunk-delete command.
   - Trunks can be used to aggregate network links at Layer 2 on the local
@@ -30,24 +30,24 @@ description:
 options:
   pn_cliusername:
     description:
-      - Login username
+      - Login username.
     required: true
     type: str
   pn_clipassword:
     description:
-      - Login password
+      - Login password.
     required: true
     type: str
   pn_cliswitch:
     description:
-    - Target switch to run the cli on.
+    - Target switch(es) to run the cli on.
     required: False
     type: str
   pn_command:
     description:
       - The C(pn_command) takes the trunk commands as value.
     required: true
-    choices: trunk-create, trunk-delete, trunk-modify
+    choices: ['trunk-create', 'trunk-delete', 'trunk-modify']
     type: str
   pn_name:
     description:
@@ -57,13 +57,12 @@ options:
   pn_ports:
     description:
       - Specify the port number(s) for the link(s) to aggregate into the trunk.
-    required_if: trunk-create
+      - Required for trunk-create.
     type: str
   pn_speed:
     description:
       - Specify the port speed or disable the port.
-    required: false
-    choices: disable, 10m, 100m, 1g, 2.5g, 10g, 40g
+    choices: ['disable', '10m', '100m', '1g', '2.5g', '10g', '40g']
     type: str
   pn_egress_rate_limit:
     description:
@@ -76,7 +75,7 @@ options:
   pn_lacp_mode:
     description:
       - Specify the LACP mode for the configuration.
-    choices: off, passive, active
+    choices: ['off', 'passive', 'active']
     type: str
   pn_lacp_priority:
     description
@@ -87,12 +86,12 @@ options:
     description:
       - Specify the LACP time out as slow (30 seconds) or fast (4seconds).
         The default value is slow.
-    choices: slow, fast
+    choices: ['slow', 'fast']
     type: str
   pn_lacp_fallback:
     description:
       - Specify the LACP fallback mode as bundles or individual.
-    choices: bundle, individual
+    choices: ['bundle', 'individual']
     type: str
   pn_lacp_fallback_timeout:
     description:
@@ -162,7 +161,7 @@ EXAMPLES = """
     pn_clipassword: admin
     pn_command: 'trunk-create'
     pn_name: 'spine-to-leaf'
-
+    pn_ports: '11,12,13,14'
 
 - name: delete trunk
   pn_trunk:
@@ -262,20 +261,17 @@ def main():
     quiet = module.params['pn_quiet']
 
     # Building the CLI command string
-    if quiet is True:
-        cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword)
-    else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
+    cli = '/usr/bin/cli'
 
+    if quiet is True:
+        cli += ' --quiet '
+
+    cli += ' --user %s:%s ' % (cliusername, clipassword)
 
     if cliswitch:
-        if cliswitch == 'local':
-            cli += ' switch-local '
-        else:
-            cli += ' switch ' + cliswitch
+        cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
 
-    cli += ' ' + command + ' name ' + name
+    cli += ' %s name %s ' % (command, name)
 
     if ports:
         cli += ' ports ' + ports

@@ -30,17 +30,17 @@ description:
 options:
   pn_cliusername:
     description:
-      - Login username
+      - Login username.
     required: true
     type: str
   pn_clipassword:
     description:
-      - Login password
+      - Login password.
     required: true
     type: str
   pn_cliswitch:
     description:
-    - Target switch to run the CLI on.
+    - Target switch(es) to run the CLI on.
     required: False
     type: str
   pn_command:
@@ -48,31 +48,31 @@ options:
       - The C(pn_command) takes the vrouter-ospf add/remove
         command as value.
     required: true
-    choices: vrouter-ospf-add, vrouter-ospf-remove
+    choices: ['vrouter-ospf-add', 'vrouter-ospf-remove']
     type: str
   pn_vrouter_name:
     description:
-      - specify the name of the vRouter.
+      - Specify the name of the vRouter.
     required: true
     type: str
   pn_network_ip:
     description:
       - Specify the network IP address.
-    required_if: vrouter-ospf-add
+      - Required for vrouter-ospf-add.
     type: str
   pn_netmask:
     description:
       - Specify the netmask of the IP address.
-    required_if: vrouter-ospf-add
+      - Required for vrouter-ospf-add.
     type: str
   pn_ospf_area:
     description:
-    - Stub area number for the configuration
-    required_if: vrouter-ospf-add
+      - Stub area number for the configuration.
+      - Required for vrouter-ospf-add.
     type: str
   pn_quiet:
     description:
-    - Enable/disable system information
+    - Enable/disable system information.
     required: false
     type: bool
     default: true
@@ -149,23 +149,19 @@ def main():
     quiet = module.params['pn_quiet']
 
     # Building the CLI command string
-    if quiet is True:
-        cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword)
-    else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
+    cli = '/usr/bin/cli'
 
+    if quiet is True:
+        cli += ' --quiet '
+
+    cli += ' --user %s:%s ' % (cliusername, clipassword)
 
     if cliswitch:
-        if cliswitch == 'local':
-            cli += ' switch-local '
-        else:
-            cli += ' switch ' + cliswitch
+        cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
 
-    cli += ' ' + command + ' vrouter-name ' + vrouter_name
+    cli += ' %s vrouter-name %s ' % (command, vrouter_name)
 
-    if network_ip:
-        cli += ' network ' + network_ip
+    cli += ' network ' + network_ip
 
     if netmask:
         cli += ' netmask ' + netmask
@@ -202,4 +198,3 @@ from ansible.module_utils.basic import AnsibleModule
 
 if __name__ == '__main__':
     main()
-

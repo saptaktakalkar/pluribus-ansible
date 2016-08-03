@@ -22,24 +22,24 @@ DOCUMENTATION = """
 ---
 module: pn_show
 author: "Pluribus Networks"
-short_description: Run show commands on nvOS device
+short_description: Run show commands on nvOS device.
 description:
   - Execute show command in the nodes and returns the results
     read from the device.
 options:
   pn_cliusername:
     description:
-      - Login username
+      - Login username.
     required: true
     type: str
   pn_clipassword:
     description:
-      - Login password
+      - Login password.
     required: true
     type: str
   pn_cliswitch:
     description:
-    - Target switch to run the cli on.
+    - Target switch(es) to run the cli on.
     required: False
     type: str
   pn_command:
@@ -50,14 +50,15 @@ options:
   pn_parameters:
     description:
       - Display output using a specific parameter. Use 'all' to display possible
-        output. List of comman separated parameters
+        output. List of comman separated parameters.
     type: str
   pn_options:
     description:
       - Specify formatting options.
+    type: str
   pn_quiet:
     description:
-      - The C(pn_quiet) option to enable or disable the initial system message
+      - The C(pn_quiet) option to enable or disable the initial system message.
     required: false
     type: bool
     default: true
@@ -129,17 +130,15 @@ def main():
     quiet = module.params['pn_quiet']
 
     # Building the CLI command string
+    cli = '/usr/bin/cli'
+
     if quiet is True:
-        cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword)
-    else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
+        cli += ' --quiet '
+
+    cli += ' --user %s:%s ' % (cliusername, clipassword)
 
     if cliswitch:
-        if cliswitch == 'local':
-            cli += ' switch-local '
-        else:
-            cli += ' switch ' + cliswitch
+        cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
 
     cli += ' ' + command
     if parameters:
