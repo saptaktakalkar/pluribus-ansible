@@ -22,7 +22,7 @@ DOCUMENTATION = """
 ---
 module: pn_ospfarea
 author: "Pluribus Networks"
-short_description: CLI command to add/remove ospf area to/from to a vrouter
+short_description: CLI command to add/remove ospf area to/from to a vrouter.
 description:
   - Execute vrouter-ospf-add, vrouter-ospf-remove command.
   - This command adds/removes Open Shortest Path First(OSPF) area to/from
@@ -30,17 +30,17 @@ description:
 options:
   pn_cliusername:
     description:
-      - Login username
+      - Login username.
     required: true
     type: str
   pn_clipassword:
     description:
-      - Login password
+      - Login password.
     required: true
     type: str
   pn_cliswitch:
     description:
-    - Target switch to run the CLI on.
+    - Target switch(es) to run the CLI on.
     required: False
     type: str
   pn_command:
@@ -48,7 +48,7 @@ options:
       - The C(pn_command) takes the vrouter-ospf-area add/remove
         command as value.
     required: true
-    choices: vrouter-ospf-area-add, vrouter-ospf-area-remove
+    choices: ['vrouter-ospf-area-add', 'vrouter-ospf-area-remove', 'vrouter-ospf-area-modify']
     type: str
   pn_vrouter_name:
     description:
@@ -58,23 +58,24 @@ options:
   pn_ospf_area:
     description:
       - Specify the OSPF area number.
+    required: true
     type: str
   pn_stub_type:
     description:
       - Specify the OSPF stub type.
-    choices: none, stub, stub-no-summary, nssa, nssa-no-summary
+    choices: ['none', 'stub', 'stub-no-summary', 'nssa', 'nssa-no-summary']
     type: str
   pn_prefix_listin:
     description:
-    - OSPF prefix list for filtering incoming packets
+    - OSPF prefix list for filtering incoming packets.
     type: str
   pn_prefix_listout:
     description:
-    - OSPF prefix list for filtering outgoing packets
+    - OSPF prefix list for filtering outgoing packets.
     type: str
   pn_quiet:
     description:
-    - Enable/disable system information
+    - Enable/disable system information.
     required: false
     type: bool
     default: true
@@ -128,18 +129,13 @@ def main():
                                      'vrouter-ospf-area-remove',
                                      'vrouter-ospf-area-modify']),
             pn_vrouter_name=dict(required=True, type='str'),
-            pn_ospf_area=dict(type='str'),
+            pn_ospf_area=dict(required=True, type='str'),
             pn_stub_type=dict(type='str', choices=['none', 'stub', 'nssa',
                                                    'stub-no-summary',
                                                    'nssa-no-summary']),
             pn_prefix_listin=dict(type='str'),
             pn_prefix_listout=dict(type='str'),
             pn_quiet=dict(type='bool', default='True')
-        ),
-        required_if=(
-            ['pn_command', 'vrouter-ospf-area-add',
-             ['pn_network_ip', 'pn_netmask', 'pn_ospf_area']],
-            ['pn_command', 'vrouter-ospf-area-remove', ['pn_network_ip']]
         )
     )
 
@@ -156,22 +152,17 @@ def main():
     quiet = module.params['pn_quiet']
 
     # Building the CLI command string
+    cli = '/usr/bin/cli'
+
     if quiet is True:
-        cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword)
-    else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
+        cli += ' --quiet '
+
+    cli += ' --user %s:%s ' % (cliusername, clipassword)
 
     if cliswitch:
-        if cliswitch == 'local':
-            cli += ' switch-local '
-        else:
-            cli += ' switch ' + cliswitch
+        cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
 
-    cli += ' ' + command + ' vrouter-name ' + vrouter_name
-
-    if ospf_area:
-        cli += ' area ' + ospf_area
+    cli += ' %s vrouter-name %s area %s ' % (command, vrouter_name, ospf_area)
 
     if stub_type:
         cli += ' stub-type ' + stub_type

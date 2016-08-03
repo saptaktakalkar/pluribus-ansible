@@ -1,6 +1,6 @@
 #!/usr/bin/python
 """ This is a basic module to run any PN CLI commands.
-    The CLI command should be provide to 'pn_command' parameter.
+    The CLI command should be provided to 'pn_command' parameter.
 """
 
 # Copyright 2016 Pluribus Networks

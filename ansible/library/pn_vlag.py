@@ -22,7 +22,7 @@ DOCUMENTATION = """
 ---
 module: pn_vlag
 author: "Pluribus Networks"
-short_description: CLI command to create/delete vlag.
+short_description: CLI command to create/delete/modify vlag.
 description:
   - Execute vlag-create/vlag-delete/vlag-modify command.
   - A virtual link aggregation group (VLAG) allows links that are physically
@@ -34,23 +34,23 @@ description:
 options:
   pn_cliusername:
     description:
-      - Login username
+      - Login username.
     required: true
     type: str
   pn_clipassword:
     description:
-      - Login password
+      - Login password.
     required: true
     type: str
   pn_cliswitch:
     description:
-      - Target switch to run this command on.
+      - Target switch(es) to run this command on.
     type: str
   pn_command:
     description:
       - The C(pn_command) takes the vlag-create/delete/modify command as value.
     required: true
-    choices: vlag-create, vlag-delete, vlag-modify
+    choices: ['vlag-create', 'vlag-delete', 'vlag-modify']
     type: str
   pn_name:
     description:
@@ -60,19 +60,19 @@ options:
   pn_port:
     description:
       - Specify the local VLAG port.
-    required_if: vlag-create
+      - Required for vlag-create.
     type: str
   pn_peer_port:
     description:
       - Specify the peer VLAG port.
-    required_if: vlag-create
+      - Required for vlag-create.
     type: str
   pn_mode:
     description:
       - Specify the mode for the VLAG. Active-standby indicates one side is
         active and the other side is in standby mode. Active-active indicates
         that both sides of the vlag are up by default.
-    choices: active-active, active-standby
+    choices: ['active-active', 'active-standby']
     type: str
   pn_peer_switch:
     description:
@@ -81,22 +81,22 @@ options:
   pn_failover_action:
     description:
       - Specify the failover action as move or ignore.
-    choices: move, ignore
+    choices: ['move', 'ignore']
     type: str
   pn_lacp_mode:
     description:
       - Specify the LACP mode.
-    choices: off, passive, active
+    choices: ['off', 'passive', 'active']
     type: str
   pn_lacp_timeout:
     description:
       - Specify the LACP timeout as slow(30 seconds) or fast(4 seconds).
-    choices: slow, fast
+    choices: ['slow', 'fast']
     type: str
   pn_lacp_fallback:
     description:
       - Specify the LACP fallback mode as bundles or individual.
-    choices: bundle, individual
+    choices: ['bundle', 'individual']
     type: str
   pn_lacp_fallback_timeout:
     description:
@@ -172,10 +172,7 @@ def main():
             pn_quiet=dict(default=True, type='bool')
         ),
         required_if=(
-            ["pn_command", "vlag-create",
-             ["pn_name", "pn_port", "pn_peer_port"]],
-            ["pn_command", "vlag-delete", ["pn_name"]],
-            ["pn_command", "vlag-modify", ["pn_name"]]
+            ["pn_command", "vlag-create", ["pn_port", "pn_peer_port"]]
         )
     )
 
@@ -197,25 +194,20 @@ def main():
     quiet = module.params['pn_quiet']
 
     # Building the CLI command string
+    cli = '/usr/bin/cli'
+
     if quiet is True:
-        cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword)
-    else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
+        cli += ' --quiet '
+
+    cli += ' --user %s:%s ' % (cliusername, clipassword)
 
     if cliswitch:
-        if cliswitch == 'local':
-            cli += ' switch-local '
-        else:
-            cli += ' switch ' + cliswitch
+        cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
 
-    cli += ' ' + command + ' name ' + name
+    cli += ' %s name %s ' % (command, name)
 
-    if port:
-        cli += ' port ' + port
-
-    if peer_port:
-        cli += ' peer-port ' + peer_port
+    if command == 'vlag-create':
+        cli += ' port %s peer-port %s ' %(port, peer_port)
 
     if mode:
         cli += ' mode ' + mode

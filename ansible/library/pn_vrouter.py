@@ -22,7 +22,7 @@ DOCUMENTATION = """
 ---
 module: pn_vrouter
 author: "Pluribus Networks"
-short_description: CLI command to create/delete/modify a vrouter
+short_description: CLI command to create/delete/modify a vrouter.
 description:
   - Execute vrouter-create, vrouter-delete, vrouter-modify command.
   - Each fabric, cluster, standalone switch, or virtual network (VNET) can
@@ -34,24 +34,24 @@ description:
 options:
   pn_cliusername:
     description:
-      - Login username
+      - Login username.
     required: true
     type: str
   pn_clipassword:
     description:
-      - Login password
+      - Login password.
     required: true
     type: str
   pn_cliswitch:
     description:
-      - Target switch to run the CLI on.
+      - Target switch(es) to run the CLI on.
     required: False
     type: str
   pn_command:
     description:
-      - The C(pn_command) takes the v-router command as value.
+      - The C(pn_command) takes the vrouter command as value.
     required: true
-    choices: vrouter-create, vrouter-delete, vrouter-modify
+    choices: ['vrouter-create', 'vrouter-delete', 'vrouter-modify']
     type: str
   pn_name:
     description:
@@ -61,24 +61,24 @@ options:
   pn_vnet:
     description:
       - Specify the name of the VNET.
-    required_if: vrouter-create
+      - Required for vrouter-create.
     type: str
   pn_service_type:
     description:
       - Specify if the vRouter is a dedicated or shared VNET service.
-    choices: dedicated, shared
+    choices: ['dedicated', 'shared']
     type: str
   pn_service_state:
     description:
       -  Specify to enable or disable vRouter service.
-    choices: enable, disable
+    choices: ['enable', 'disable']
     type: str
   pn_router_type:
     description:
       - Specify if the vRouter uses software or hardware.
       - Note that if you specify hardware as router type, you cannot assign IP
         addresses using DHCP. You must specify a static IP address.
-    choices: hardware, software
+    choices: ['hardware', 'software']
     type: str
   pn_hw_vrrp_id:
     description:
@@ -93,9 +93,39 @@ options:
       - Specify the Autonomous System Number(ASN) if the vRouter runs Border
         Gateway Protocol(BGP).
     type: int
+  pn_bgp_redistribute:
+    description:
+      - Specify how BGP routes are redistributed.
+    choices: ['static', 'connected', 'rip', 'ospf']
+    type: str
+  pn_bgp_max_paths:
+    description: 
+      - Specify the maximum number of paths for BGP. This is a number between
+        1 and 255 or 0 to unset.
+    type: int
+  pn_bgp_options:
+    description:
+      - Specify other BGP options as a whitespaces separted string within 
+        single quotes ''.
+    type: str
+  pn_rip_redistribute:
+    description:
+      - Specify how RIP routes are redistributed.
+    choices: ['static', 'connected', 'ospf', 'bgp']
+    type: str
+  pn_ospf_redistribute:
+    description:
+      - Specify how OSPF routes are redistributed.
+    choices: ['static', 'connected', 'bgp', 'rip']
+    type: str
+  pn_ospf_options:
+    description:
+      - Specify other OSPF options as a whitespaces separated string within
+        single quotes ''.
+    type: str 
   pn_quiet:
     description:
-      - The C(pn_quiet) option to enable or disable the system bootup message
+      - Enable/disable system information.
     required: false
     type: bool
     default: true
@@ -155,11 +185,19 @@ def main():
             pn_hw_vrrp_id=dict(type='str'),
             pn_router_id=dict(type='str'),
             pn_bgp_as=dict(type='int'),
+            pn_bgp_redistribute=dict(type='str', choices=['static', 'connected',
+                                                          'rip', 'ospf']),
+            pn_bgp_max_paths=dict(type='int'),
+            pn_bgp_options=dict(type='str'),
+            pn_rip_redistribute=dict(type='str', choices=['static', 'connected',
+                                                          'bgp', 'ospf']),
+            pn_ospf_redistribute=dict(type='str', choices=['static', 'connected',
+                                                           'bgp', 'rip']),
+            pn_vrrp_track_port=dict(type='str'),
             pn_quiet=dict(default=True, type='bool')
         ),
         required_if=(
-            ["pn_command", "vrouter-create",
-             ["pn_name", "pn_vnet", "pn_service_state", "pn_hw_vrrp_id"]],
+            ["pn_command", "vrouter-create", ["pn_name", "pn_vnet"]],
             ["pn_command", "vrouter-delete", ["pn_name"]],
             ["pn_command", "vrouter-modify", ["pn_name"]]
         )
@@ -178,31 +216,36 @@ def main():
     hw_vrrp_id = module.params['pn_hw_vrrp_id']
     router_id = module.params['pn_router_id']
     bgp_as = module.params['pn_bgp_as']
+    bgp_redistribute = module.params['pn_bgp_redistribute']
+    bgp_max_paths = module.params['pn_bgp_max_paths']
+    bgp_options = module.params['pn_bgp_options']
+    rip_redistribute = module.params['pn_rip_redistribute']
+    ospf_redistribute = module.params['pn_ospf_redistribute']
+    ospf_options = module.params['pn_ospf_options']
+    vrrp_track_port = module.params['pn_vrrp_track_port']
     quiet = module.params['pn_quiet']
 
     # Building the CLI command string
+    cli = '/usr/bin/cli'
+
     if quiet is True:
-        cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword)
-    else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
+        cli += ' --quiet '
+
+    cli += ' --user %s:%s ' % (cliusername, clipassword)
 
     if cliswitch:
-        if cliswitch == 'local':
-            cli += ' switch-local '
-        else:
-            cli += ' switch ' + cliswitch
+        cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
 
-    cli += ' ' + command + ' name ' + name
+    cli += ' %s name %s ' % (command, name)
 
     if vnet:
         cli += ' vnet ' + vnet
 
     if service_type:
-        cli += ' ' + service_type + '-vnet-service '
+        cli += ' %s-vnet-service ' % service_type
 
     if service_state:
-        cli += ' ' + service_state
+        cli += service_state
 
     if router_type:
         cli += ' router-type ' + router_type
@@ -215,6 +258,27 @@ def main():
 
     if bgp_as:
         cli += ' bgp-as ' + str(bgp_as)
+
+    if bgp_redistribute:
+        cli += ' bgp-redistribute ' + bgp_redistribute
+
+    if bgp_max_paths:
+        cli += ' bgp-max-paths ' + str(bgp_max_paths)
+
+    if bgp_options:
+        cli += ' %s ' % bgp_options
+
+    if rip_redistribute:
+        cli += ' rip-redistribute ' + rip_redistribute
+
+    if ospf_redistribute:
+        cli += ' ospf-redistribute ' + ospf_redistribute
+
+    if ospf_options:
+        cli += ' %s ' % ospf_options
+
+    if vrrp_track_port:
+        cli += ' vrrp-track-port ' + vrrp_track_port
 
     # Run the CLI command
     vroutercmd = shlex.split(cli)
@@ -239,7 +303,6 @@ def main():
             stdout=out.rstrip("\r\n"),
             changed=True
         )
-
 
 # AnsibleModule boilerplate
 from ansible.module_utils.basic import AnsibleModule

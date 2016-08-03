@@ -31,24 +31,24 @@ description:
 options:
   pn_cliusername:
     description:
-      - Login username
+      - Login username.
     required: true
     type: str
   pn_clipassword:
     description:
-      - Login password
+      - Login password.
     required: true
     type: str
   pn_cliswitch:
     description:
-    - Target switch to run the cli on.
+    - Target switch(es) to run the cli on.
     required: False
     type: str
   pn_command:
     description:
       - The C(pn_command) takes the vlan-create/delete command as value.
     required: true
-    choices: vlan-create, vlan-delete
+    choices: ['vlan-create', 'vlan-delete']
     type: str
   pn_vlanid:
     description:
@@ -59,8 +59,8 @@ options:
   pn_scope:
     description:
       - Specify a scope for the VLAN.
-    required_if: vlan-create
-    choices: fabric/local
+      - Required for vlan-create.
+    choices: ['fabric', 'local']
     type: str
   pn_description:
     description:
@@ -70,7 +70,7 @@ options:
     description:
       - Specify if you want to collect statistics for a VLAN. Statistic 
         collection is enabled by default.
-    choices: stats/no-stats
+    choices: ['stats', 'no-stats']
     type: str
   pn_ports:
     description:
@@ -163,22 +163,18 @@ def main():
     quiet = module.params['pn_quiet']
 
     # Building the CLI command string
-    if quiet is True:
-        cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword)
-    else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
+    cli = '/usr/bin/cli'
 
-    if vlanid < 2:
-        module.exit_json(msg="Invalid vlan ID", changed=False)
-    if vlanid > 4092:
-        module.exit_json(msg="Invalid vlan ID", changed=False)
+    if quiet is True:
+        cli += ' --quiet '
+
+    cli += ' --user %s:%s ' % (cliusername, clipassword)
 
     if cliswitch:
-        if cliswitch == 'local':
-            cli += ' switch-local '
-        else:
-            cli += ' switch ' + cliswitch
+        cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
+
+    if not 2 <= vlanid <= 4092:
+        module.exit_json(msg="vLAN id must be between 2 and 4092", changed=False)
 
     cli += ' ' + command + ' id ' + str(vlanid)
 

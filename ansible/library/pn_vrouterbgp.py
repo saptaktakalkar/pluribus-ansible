@@ -22,7 +22,7 @@ DOCUMENTATION = """
 ---
 module: pn_vrouterbgp
 author: "Pluribus Networks"
-short_description: CLI command to add/remove/modify vrouter-bgp
+short_description: CLI command to add/remove/modify vrouter-bgp.
 description:
   - Execute vrouter-bgp-add, vrouter-bgp-remove, vrouter-bgp-modify command.
   - Each fabric, cluster, standalone switch, or virtual network (VNET) can
@@ -31,24 +31,24 @@ description:
 options:
   pn_cliusername:
     description:
-      - Login username
+      - Login username.
     required: true
     type: str
   pn_clipassword:
     description:
-      - Login password
+      - Login password.
     required: true
     type: str
   pn_cliswitch:
     description:
-    - Target switch to run the cli on.
+    - Target switch(es) to run the cli on.
     required: False
     type: str
   pn_command:
     description:
       - The C(pn_command) takes the vrouter-bgp command as value.
     required: true
-    choices: vrouter-bgp-add, vrouter-bgp-remove, vrouter-bgp-modify
+    choices: ['vrouter-bgp-add', 'vrouter-bgp-remove', 'vrouter-bgp-modify']
     type: str
   pn_vrouter_name:
     description:
@@ -58,13 +58,13 @@ options:
   pn_neighbor:
     description:
       - Specify a neighbor IP address to use for BGP.
-    required_if: vrouter-bgp-add
+      - Required for vrouter-bgp-add.
     type: str
   pn_remote_as:
     description:
       - Specify the remote Autonomous System(AS) number. This value is between
         1 and 4294967295.
-    required_if: vrouter-bgp-add
+      - Required for vrouter-bgp-add.
     type: str
   pn_next_hop_self:
     description:
@@ -116,7 +116,7 @@ options:
   pn_multiprotocol:
     description:
       - Specify a multi-protocol for BGP.
-    choices: ipv4-unicast, ipv6-unicast
+    choices: ['ipv4-unicast', 'ipv6-unicast']
     type: str
   pn_weight:
     description:
@@ -259,19 +259,17 @@ def main():
     quiet = module.params['pn_quiet']
 
     # Building the CLI command string
+    cli = '/usr/bin/cli'
+
     if quiet is True:
-        cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword)
-    else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
+        cli += ' --quiet '
+
+    cli += ' --user %s:%s ' % (cliusername, clipassword)
 
     if cliswitch:
-        if cliswitch == 'local':
-            cli += ' switch-local '
-        else:
-            cli += ' switch ' + cliswitch
+        cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
 
-    cli += ' ' + command + ' vrouter-name ' + vrouter_name
+    cli += ' %s vrouter-name %s ' % (command, vrouter_name)
 
     if neighbor:
         cli += ' neighbor ' + neighbor
