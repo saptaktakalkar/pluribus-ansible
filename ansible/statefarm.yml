@@ -1,0 +1,877 @@
+---
+
+
+
+# Spine1
+
+
+
+- name: State farm implementation
+  hosts: testswitches[0]
+  user: root
+  tags: charmander
+
+  tasks:
+
+    - name: Create vRouter
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-create
+        pn_name: spine1vrouter
+        pn_vnet: no-fail-fab-global
+        pn_router_type: hardware
+      register: spine1_vrouter
+    - debug: var=spine1_vrouter
+
+
+#    - name: Add vRouter interface L3
+#      pn_vrouterif:
+#        pn_cliusername: network-admin
+#        pn_clipassword: test123
+#        pn_command: vrouter-interface-add
+#        pn_vrouter_name: spine1vrouter
+#        pn_interface_ip: "{{ item.ip }}"
+#        pn_l3port: "{{ item.port }}"
+#      with_items:
+#        - {ip: '10.96.243.147/30', port: 41}
+#        - {ip: '10.96.243.151/30', port: 43}
+#        - {ip: '10.96.243.155/30', port: 45}
+#        - {ip: '10.96.243.159/30', port: 47}
+#      register: spine1_l3
+#    - debug: var=spine1_l3
+
+
+    - name: Add vRouter loopback interface
+      pn_vrouterlbif:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-loopback-interface-add
+        pn_vrouter_name: spine1vrouter
+        pn_interface_ip: 10.96.243.200
+      register: spine1_loopback
+    - debug: var=spine1_loopback
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: spine1vrouter
+        pn_bgp_as: 65000
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+
+#    - name: Create VLAN
+#      pn_vlan:
+#        pn_cliusername: network-admin
+#        pn_clipassword: test123
+#        pn_command: vlan-create
+#        pn_vlanid: 500
+#        pn_scope: fabric
+#        pn_untagged_ports: 1-38
+#      register: spine1_vlan
+#    - debug: var=spine1_vlan
+
+
+#    - name: Add vRouter interface
+#      pn_vrouterif:
+#        pn_cliusername: network-admin
+#        pn_clipassword: test123
+#        pn_command: vrouter-interface-add
+#        pn_vrouter_name: spine1vrouter
+#        pn_interface_ip: 10.96.242.27
+#        pn_netmask: 255.255.255.192
+#        pn_vlan: 500
+#      register: spine1_interface
+#    - debug: var=spine1_interface
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: spine1vrouter
+        pn_router_id: 10.96.243.200
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: spine1vrouter
+        pn_bgp_redistribute: connected
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: spine1vrouter
+        pn_bgp_max_paths: 16
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Add vRouter BGP 
+      pn_vrouterbgp:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-bgp-add
+        pn_vrouter_name: spine1vrouter
+        pn_neighbor: "{{ item.ip }}"
+        pn_remote_as: "{{item.remote }}"
+      with_items:
+        - {ip: '10.96.243.146', remote: 65001}
+        - {ip: '10.96.243.150', remote: 65002}
+        - {ip: '10.96.243.154', remote: 65003}
+        - {ip: '10.96.243.158', remote: 65004}
+      register: spine1_bgp
+    - debug: var=spine1_bgp
+
+
+#    - name: Check the interfaces
+#      pn_show:
+#        pn_cliusername: network-admin
+#        pn_clipassword: test123
+#        pn_cliswitch: local
+#        pn_command: vrouter-interface-show
+#      register: spine1_show
+#    - debug: var=spine1_show.stdout_lines
+    
+
+
+
+# Spine2
+
+
+- name: State farm implementation
+  hosts: testswitches[1]
+  user: root
+  tags: squirtle
+
+  tasks:
+
+    - name: Create vRouter
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-create
+        pn_name: spine2vrouter
+        pn_vnet: no-fail-fab-global
+        pn_router_type: hardware
+      register: spine2_vrouter
+    - debug: var=spine2_vrouter
+
+
+#    - name: Add vRouter interface L3
+#      pn_vrouterif:
+#        pn_cliusername: network-admin
+#        pn_clipassword: test123
+#        pn_command: vrouter-interface-add
+#        pn_vrouter_name: spine2vrouter
+#        pn_interface_ip: "{{ item.ip }}"
+#        pn_l3port: "{{ item.port }}"
+#      with_items:
+#        - {ip: '10.96.243.163/30', port: 39}
+#        - {ip: '10.96.243.167/30', port: 43}
+#        - {ip: '10.96.243.171/30', port: 45}
+#        - {ip: '10.96.243.175/30', port: 47}
+#      register: spine2_l3
+#    - debug: var=spine2_l3
+
+
+    - name: Add vRouter loopback interface
+      pn_vrouterlbif:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-loopback-interface-add
+        pn_vrouter_name: spine2vrouter
+        pn_interface_ip: 10.96.243.201
+      register: spine2_loopback
+    - debug: var=spine2_loopback
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: spine2vrouter
+        pn_bgp_as: 65000
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Create VLAN
+      pn_vlan:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vlan-create
+        pn_vlanid: 600
+        pn_scope: fabric
+        pn_untagged_ports: 1-38
+      register: spine2_vlan
+    - debug: var=spine2_vlan
+
+
+    - name: Add vRouter interface
+      pn_vrouterif:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-interface-add
+        pn_vrouter_name: spine2vrouter
+        pn_interface_ip: 10.96.242.28
+        pn_netmask: 255.255.255.192
+        pn_vlan: 600
+      register: spine2_interface
+    - debug: var=spine2_interface
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: spine2vrouter
+        pn_router_id: 10.96.243.201
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: spine2vrouter
+        pn_bgp_redistribute: connected
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: spine2vrouter
+        pn_bgp_max_paths: 16
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Add vRouter BGP 
+      pn_vrouterbgp:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-bgp-add
+        pn_vrouter_name: spine2vrouter
+        pn_neighbor: "{{ item.ip }}"
+        pn_remote_as: "{{item.remote }}"
+      with_items:
+        - {ip: '10.96.243.162', remote: 65001}
+        - {ip: '10.96.243.166', remote: 65002}
+        - {ip: '10.96.243.170', remote: 65003}
+        - {ip: '10.96.243.174', remote: 65004}
+      register: spine2_bgp
+    - debug: var=spine2_bgp
+
+
+#    - name: Check the interfaces
+#      pn_show:
+#        pn_cliusername: network-admin
+#        pn_clipassword: test123
+#        pn_cliswitch: local
+#        pn_command: vrouter-interface-show
+#      register: spine2_show
+#    - debug: var=spine2_show.stdout_lines
+
+
+
+
+
+
+# Leaf1
+
+
+
+- name: State farm implementation
+  hosts: testswitches[2]
+  user: pluribus
+  tags: pikachu
+
+  tasks:
+
+
+    - name: Create vRouter
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-create
+        pn_name: leaf1vrouter
+        pn_vnet: no-fail-fab-global
+        pn_router_type: hardware
+      register: leaf1_vrouter
+    - debug: var=leaf1_vrouter
+
+
+    - name: Add vRouter interface L3
+      pn_vrouterif:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-interface-add
+        pn_vrouter_name: leaf1vrouter
+        pn_interface_ip: "{{ item.ip }}"
+        pn_l3port: "{{ item.port }}"
+      with_items:
+        - {ip: '10.96.243.146/30', port: 1}
+        - {ip: '10.96.243.162/30', port: 3}
+      register: leaf1_l3
+    - debug: var=leaf1_l3
+
+
+    - name: Add vRouter loopback interface
+      pn_vrouterlbif:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-loopback-interface-add
+        pn_vrouter_name: leaf1vrouter
+        pn_interface_ip: 10.96.243.245
+      register: leaf1_loopback
+    - debug: var=leaf1_loopback
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: leaf1vrouter
+        pn_bgp_as: 65001
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+
+    - name: Create VLAN
+      pn_vlan:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vlan-create
+        pn_vlanid: 100
+        pn_scope: fabric
+        pn_untagged_ports: 1-38
+      register: leaf1_vlan
+    - debug: var=leaf1_vlan
+
+
+    - name: Add vRouter interface
+      pn_vrouterif:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-interface-add
+        pn_vrouter_name: leaf1vrouter
+        pn_interface_ip: 10.96.242.65
+        pn_netmask: 255.255.255.192
+        pn_vlan: 100
+      register: leaf1_interface
+    - debug: var=leaf1_interface
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: leaf1vrouter
+        pn_router_id: 10.96.243.245
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: leaf1vrouter
+        pn_bgp_redistribute: connected
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: leaf1vrouter
+        pn_bgp_max_paths: 16
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Add vRouter BGP 
+      pn_vrouterbgp:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-bgp-add
+        pn_vrouter_name: leaf1vrouter
+        pn_neighbor: "{{ item }}"
+        pn_remote_as: 65000
+      with_items:
+        - 10.96.243.147
+        - 10.96.243.163
+      register: leaf1_bgp
+    - debug: var=leaf1_bgp
+
+
+    - name: Check the interfaces
+      pn_show:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_cliswitch: local
+        pn_command: vrouter-interface-show
+      register: leaf1_show
+    - debug: var=leaf1_show.stdout_lines
+
+
+
+
+# Leaf2
+
+
+
+- name: State farm implementation
+  hosts: testswitches[3]
+  user: pluribus
+  tags: gyarados
+
+  tasks:
+
+    - name: Create vRouter
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-create
+        pn_name: leaf2vrouter
+        pn_vnet: no-fail-fab-global
+        pn_router_type: hardware
+      register: leaf2_vrouter
+    - debug: var=leaf2_vrouter
+
+
+    - name: Add vRouter interface L3
+      pn_vrouterif:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-interface-add
+        pn_vrouter_name: leaf2vrouter
+        pn_interface_ip: "{{ item.ip }}"
+        pn_l3port: "{{ item.port }}"
+      with_items:
+        - {ip: '10.96.243.150/30', port: 1}
+        - {ip: '10.96.243.166/30', port: 3}
+      register: leaf2_l3
+    - debug: var=leaf2_l3
+
+
+    - name: Add vRouter loopback interface
+      pn_vrouterlbif:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-loopback-interface-add
+        pn_vrouter_name: leaf2vrouter
+        pn_interface_ip: 10.96.243.246
+      register: leaf2_loopback
+    - debug: var=leaf2_loopback
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: leaf2vrouter
+        pn_bgp_as: 65002
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Create VLAN
+      pn_vlan:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vlan-create
+        pn_vlanid: 200
+        pn_scope: fabric
+        pn_untagged_ports: 1-38
+      register: leaf2_vlan
+    - debug: var=leaf2_vlan
+
+
+    - name: Add vRouter interface
+      pn_vrouterif:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-interface-add
+        pn_vrouter_name: leaf2vrouter
+        pn_interface_ip: 10.96.242.129
+        pn_netmask: 255.255.255.192
+        pn_vlan: 200
+      register: leaf2_interface
+    - debug: var=leaf2_interface
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: leaf2vrouter
+        pn_router_id: 10.96.243.246
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: leaf2vrouter
+        pn_bgp_redistribute: connected
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: leaf2vrouter
+        pn_bgp_max_paths: 16
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Add vRouter BGP 
+      pn_vrouterbgp:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-bgp-add
+        pn_vrouter_name: leaf2vrouter
+        pn_neighbor: "{{ item }}"
+        pn_remote_as: 65000
+      with_items:
+        - 10.96.243.151
+        - 10.96.243.167
+      register: leaf2_bgp
+    - debug: var=leaf2_bgp
+
+
+    - name: Check the interfaces
+      pn_show:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_cliswitch: local
+        pn_command: vrouter-interface-show
+      register: leaf2_show
+    - debug: var=leaf2_show.stdout_lines
+
+
+# Leaf3
+
+
+
+- name: State farm implementation
+  hosts: testswitches[4]
+  user: pluribus
+  tags: lapras
+
+  tasks:
+
+    - name: Create vRouter
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-create
+        pn_name: leaf3vrouter
+        pn_vnet: no-fail-fab-global
+        pn_router_type: hardware
+      register: leaf3_vrouter
+    - debug: var=leaf3_vrouter
+
+
+    - name: Add vRouter interface L3
+      pn_vrouterif:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-interface-add
+        pn_vrouter_name: leaf3vrouter
+        pn_interface_ip: "{{ item.ip }}"
+        pn_l3port: "{{ item.port }}"
+      with_items:
+        - {ip: '10.96.243.154/30', port: 1}
+        - {ip: '10.96.243.170/30', port: 3}
+      register: leaf3_l3
+    - debug: var=leaf3_l3
+
+
+    - name: Add vRouter loopback interface
+      pn_vrouterlbif:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-loopback-interface-add
+        pn_vrouter_name: leaf3vrouter
+        pn_interface_ip: 10.96.243.247
+      register: leaf3_loopback
+    - debug: var=leaf3_loopback
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: leaf3vrouter
+        pn_bgp_as: 65003
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Create VLAN
+      pn_vlan:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vlan-create
+        pn_vlanid: 300
+        pn_scope: fabric
+        pn_untagged_ports: 1-38
+      register: leaf3_vlan
+    - debug: var=leaf3_vlan
+
+
+    - name: Add vRouter interface
+      pn_vrouterif:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-interface-add
+        pn_vrouter_name: leaf3vrouter
+        pn_interface_ip: 10.96.242.193
+        pn_netmask: 255.255.255.192
+        pn_vlan: 300
+      register: leaf3_interface
+    - debug: var=leaf3_interface
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: leaf3vrouter
+        pn_router_id: 10.96.243.247
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: leaf3vrouter
+        pn_bgp_redistribute: connected
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: leaf3vrouter
+        pn_bgp_max_paths: 16
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Add vRouter BGP 
+      pn_vrouterbgp:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-bgp-add
+        pn_vrouter_name: leaf3vrouter
+        pn_neighbor: "{{ item }}"
+        pn_remote_as: 65000
+      with_items:
+        - 10.96.243.155
+        - 10.96.243.171
+      register: leaf3_bgp
+    - debug: var=leaf3_bgp
+
+    
+    - name: Check the interfaces
+      pn_show:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_cliswitch: local
+        pn_command: vrouter-interface-show
+      register: leaf3_show
+    - debug: var=leaf3_show.stdout_lines
+
+# Leaf4
+
+
+- name: State farm implementation
+  hosts: testswitches[5]
+  user: pluribus
+  tags: jigglypuff
+
+  tasks:
+
+    - name: Create vRouter
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-create
+        pn_name: leaf4vrouter
+        pn_vnet: no-fail-fab-global
+        pn_router_type: hardware
+      register: leaf4_vrouter
+    - debug: var=leaf4_vrouter
+
+
+    - name: Add vRouter interface L3
+      pn_vrouterif:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-interface-add
+        pn_vrouter_name: leaf4vrouter
+        pn_interface_ip: "{{ item.ip }}"
+        pn_l3port: "{{ item.port }}"
+      with_items:
+        - {ip: '10.96.243.158/30', port: 1}
+        - {ip: '10.96.243.174/30', port: 3}
+      register: leaf4_l3
+    - debug: var=leaf4_l3
+
+
+    - name: Add vRouter loopback interface
+      pn_vrouterlbif:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-loopback-interface-add
+        pn_vrouter_name: leaf4vrouter
+        pn_interface_ip: 10.96.243.248
+      register: leaf4_loopback
+    - debug: var=leaf4_loopback
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: leaf4vrouter
+        pn_bgp_as: 65004
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Create VLAN
+      pn_vlan:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vlan-create
+        pn_vlanid: 400
+        pn_scope: fabric
+        pn_untagged_ports: 1-38
+      register: leaf4_vlan
+    - debug: var=leaf4_vlan
+
+
+    - name: Add vRouter interface
+      pn_vrouterif:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-interface-add
+        pn_vrouter_name: leaf4vrouter
+        pn_interface_ip: 10.96.242.194
+        pn_netmask: 255.255.255.192
+        pn_vlan: 300
+      register: leaf4_interface
+    - debug: var=leaf4_interface
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: leaf4vrouter
+        pn_router_id: 10.96.243.248
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: leaf4vrouter
+        pn_bgp_redistribute: connected
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Modify vRouter BGP
+      pn_vrouter:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-modify
+        pn_name: leaf4vrouter
+        pn_bgp_max_paths: 16
+      register: modifybgp
+    - debug: var=modifybgp
+
+
+    - name: Add vRouter BGP 
+      pn_vrouterbgp:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_command: vrouter-bgp-add
+        pn_vrouter_name: leaf4vrouter
+        pn_neighbor: "{{ item }}"
+        pn_remote_as: 65000
+      with_items:
+        - 10.96.243.159
+        - 10.96.243.175
+      register: leaf4_bgp
+    - debug: var=leaf4_bgp
+
+
+
+    - name: Check the interfaces
+      pn_show:
+        pn_cliusername: network-admin
+        pn_clipassword: test123
+        pn_cliswitch: local
+        pn_command: vrouter-interface-show
+      register: leaf4_show
+    - debug: var=leaf4_show.stdout_lines

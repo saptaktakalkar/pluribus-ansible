@@ -127,7 +127,7 @@ def main():
         ),
         required_if=(
             ["pn_command", "vrouter-loopback-interface-add",
-             ["pn_vrouter_name", "pn_index", "pn_interface_ip"]],
+             ["pn_vrouter_name", "pn_interface_ip"]],
             ["pn_command", "vrouter-loopback-interface-remove",
              ["pn_vrouter_name", "pn_index"]]
         )
@@ -155,10 +155,10 @@ def main():
 
     cli += ' %s vrouter-name %s ' % (command, vrouter_name)
 
-    if not 1 <= index <= 255:
-        module.exit_json(msg='Index should be in the range 1 to 255', changed=False)
-
-    cli += ' index ' + str(index)
+    if index:
+        if not 1 <= index <= 255:
+            module.exit_json(msg='Index should be in the range 1 to 255', changed=False)
+        cli += ' index ' + str(index)
 
     if interface_ip:
         cli += ' ip ' + interface_ip

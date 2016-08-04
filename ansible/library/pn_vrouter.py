@@ -193,6 +193,7 @@ def main():
                                                           'bgp', 'ospf']),
             pn_ospf_redistribute=dict(type='str', choices=['static', 'connected',
                                                            'bgp', 'rip']),
+            pn_ospf_options=dict(type='str'),
             pn_vrrp_track_port=dict(type='str'),
             pn_quiet=dict(default=True, type='bool')
         ),
