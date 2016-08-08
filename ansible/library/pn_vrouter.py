@@ -246,7 +246,7 @@ def main():
         cli += ' %s-vnet-service ' % service_type
 
     if service_state:
-        cli += service_state
+        cli += ' ' + service_state
 
     if router_type:
         cli += ' router-type ' + router_type
