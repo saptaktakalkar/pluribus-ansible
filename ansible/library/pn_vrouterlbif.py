@@ -22,6 +22,7 @@ DOCUMENTATION = """
 ---
 module: pn_vrouterlbif
 author: "Pluribus Networks"
+version: 1.0
 short_description: CLI command to add/remove vrouter-loopback-interface.
 description:
   - Execute vrouter-loopback-interface-add, vrouter-loopback-interface-remove commands.
@@ -41,7 +42,7 @@ options:
     type: str
   pn_cliswitch:
     description:
-    - Target switch(es) to run the cli on.
+      - Target switch(es) to run the cli on.
     required: False
     type: str
   pn_command:
