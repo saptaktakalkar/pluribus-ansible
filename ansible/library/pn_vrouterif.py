@@ -23,6 +23,7 @@ DOCUMENTATION = """
 ---
 module: pn_vrouterif
 author: "Pluribus Networks"
+version: 1.0
 short_description: CLI command to add/remove vrouter-interface.
 description:
   - Execute vrouter-interface-add, vrouter-interface-remove
@@ -42,7 +43,7 @@ options:
     type: str
   pn_cliswitch:
     description:
-    - Target switch to run the cli on.
+      - Target switch to run the cli on.
     required: False
     type: str
   pn_command:

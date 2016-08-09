@@ -1,20 +1,44 @@
 # pn_vrouter
 
-Module for CLI vrouter configurations. Supports `vrouter-create`, `vrouter-delete` and `vrouter-modify` commands with options.
+ Module for CLI vrouter configurations. Supports `vrouter-create`, `vrouter-delete` and `vrouter-modify` commands with options.
 
-| parameter      | required       | default      |choices       |comments                                                    |
-|----------------|----------------|--------------|--------------|------------------------------------------------------------|
-|pn_cliusername  | yes            |              |              | Login username                                             |
-|pn_clipassword  | yes            |              |              | Login password                                             |
-|pn_vroutercommand | yes          |              | vrouter-create, vrouter-delete, vrouter-modify | Create, delete, modify vrouter configurations|
-|pn_vroutername    | yes          |              |              | Name for the configuration                                               |
-|pn_vroutervnet    | conditional  |              | | VNET assigned to the service. Required for vrouter-create                                                      |
-|pn_vrouterstate   | conditional  |              | enable, disable| State of the service. Required for vrouter-create |
-|pn_vrouterhw_vrrp_id| conditional|              | | VRRP id assigned to the hardware router. Required for vrouter-create|
-|pn_vrouterbgp_as  | no           |              | | BGP Autonomous System number from 1 to 4294967295  |
-|pn_quiet        | no             | true         |              | --quiet                                                       |
+ - [Synopsis](#synopsis)
+ - [Options](#options)
+ - [Usage](#usage)
+ - [Examples](#examples)
+ - [Return Values](#return-values)
 
+## Synopsis
 
+  Each fabric, cluster, standalone switch, or virtual network (VNET) can provide its tenants with a virtual router (vRouter) service that forwards traffic between networks and implements Layer 3 protocols.
+  
+## Options
+
+| parameter       | required       | default      |choices       |comments                                                    |
+|-----------------|----------------|--------------|--------------|------------------------------------------------------------|
+| pn_cliusername  | yes            |              |              | Login username.                                            |
+| pn_clipassword  | yes            |              |              | Login password.                                            |
+| pn_cliswitch    | no             |              |              | Target switch(es) to run command on.                       |
+| pn_command      | yes            |              | vrouter-create, vrouter-delete, vrouter-modify | Create, delete, modify vrouter configurations.|
+| pn_name         | yes            |              |              | Specify the name of the vRouter.                           |
+| pn_vnet         | for vrouter-create |          |              | Specify the name of the VNET.                              |
+| pn_service_type | no             |              | dedicated, shared | Specify if the vRouter is a dedicated or a shared VNET service.| 
+| pn_service_state| no             |              | enable, disable| Specify to enable disable vRouter service.               |
+| pn_router_type  | no             |              | hardware, software | Specify if the vRouter uses software or hardware.    |
+| pn_hw_vrrp_id   | no             |              |              | Specifies the VRRP ID for a hardware vrouter.              |
+| pn_router_id    | no             |              |              | Specify the vRouter IP address.                            |
+| pn_bgp_as       | no             |              | | Specify the Autonomous System number if the vRouter runs BGP. This is a number between 1 to 4294967295.|
+| pn_bgp_redistribute | no         |              | static, connected, rip, ospf | Specify how BGP routes are redistributed.  |
+| pn_bgp_max_paths| no             |              |              | Specify the maximum number of paths for BGP. This is a number between 1 and 255 or 0 to unset. |
+| pn_bgp_options  | no             |              |              | Specify other BGP options as a whitespace separated string within single quotes. |
+| pn_rip_redistribute | no         |              | static, connected, ospf, bgp | Specify how RIP routes are redistributed.  |
+| pn_ospf_redistribute | no        |              | static, connected, rip, bgp | Specify how OSPF routes are redistributed.  |
+| pn_ospf_options | no             |              |              | Specify other OSPF options as a whitespace separated string within single quotes. |
+| pn_quiet        | no             | true         |              | Enable/disable system information.                         |
+
+```
+# Note: If you specify hardware as router type, you cannot assign IP address using DHCP. You must specify a static IP address.
+```
 ## Usage
 
 ```
@@ -24,39 +48,57 @@ Module for CLI vrouter configurations. Supports `vrouter-create`, `vrouter-delet
   
   tasks:
   - name: "PN vrouter command"
-    pn_vlan: pn_cliusername=<username> pn_clipassword=<password> pn_vroutercommand=<vrouter-create/delete/modify> pn_vroutername=<name> [pn_vroutervnet] [pn_vrouterstate] [pn_vrouterhw_vrrp_id] [pn_vrouterbgp_as] pn_quiet=<True/False>
+    pn_vlan: >
+      pn_cliusername=<username> 
+      pn_clipassword=<password> 
+      pn_command=<vrouter-create/delete/modify> 
+      pn_name=<name> 
+      [pn_vnet] 
+      [pn_service_state=<enable/disable>] 
+      [pn_hw_vrrp_id=<hw vrrp id>] 
+      [pn_bgp_as=<bgp as number>] 
+      [pn_quiet=<True/False>]
   
 ```
 
 ## Examples
 
 # vrouter-create
-YAML Playbook for **_creating_** a vrouter configuration using `pn_vrouter` module
+Sample playbook for **_creating_** a vRouter configuration.
 ```
 ---
 - name: "Playbook for vrouter Create"
-  hosts: switches
+  hosts: spine[0]
   user: root
   tasks:
   - name: "Create vrouter"
-    pn_vrouter: pn_cliusername=<username> pn_clipassword=<password> pn_routercommand='vrouter-create' pn_vroutername='ansible-vrouter' pn_vroutervnet='ansible-vnet' pn_vrouterstate='enable' pn_vrouterhw_vrrp_id=18 pn_quiet=True
+    pn_vrouter: pn_cliusername=<username> pn_clipassword=<password> pn_command='vrouter-create' pn_name='ansible-vrouter' pn_vnet='ansible-vnet-global' pn_service_state=enable pn_hw_vrrp_id=18
     register: cmd_output
   - debug: var=cmd_output
   
 ```
 
 # vrouter-delete
-YAML Playbook for **_deleting_** a vrouter configuration using `pn_vrouter` module
+Sample playbook for **_deleting_** a vrouter configuration.
 
 ```
 ---
 - name: "Playbook for vrouter Delete"
-  hosts: switches
+  hosts: spine[0]
   user: root
   tasks:
   - name: "Delete vrouter"
-    pn_vrouter: pn_cliusername=<username> pn_clipassword=<password> pn_vroutercommand='vrouter-delete' pn_vroutername='ansible-vrouter' pn_quiet=True
+    pn_vrouter: pn_cliusername=<username> pn_clipassword=<password> pn_command='vrouter-delete' pn_name='ansible-vrouter'
     register: cmd_output
   - debug: var=cmd_output
   
 ```
+
+## Return Values
+
+| name | description | returned | type |
+|--------|------------|----------|---------|
+| command | The CLI command run on target nodes. | always | string |
+| stdout | Output of the CLI command. | on success | string |
+| stderr | Error message from the CLI command. | on failure | string |
+| changed | Indicates whether the CLI caused changes in the target node.| always | bool |

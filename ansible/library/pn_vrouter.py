@@ -22,6 +22,7 @@ DOCUMENTATION = """
 ---
 module: pn_vrouter
 author: "Pluribus Networks"
+version: 1.0
 short_description: CLI command to create/delete/modify a vrouter.
 description:
   - Execute vrouter-create, vrouter-delete, vrouter-modify command.
@@ -193,6 +194,7 @@ def main():
                                                           'bgp', 'ospf']),
             pn_ospf_redistribute=dict(type='str', choices=['static', 'connected',
                                                            'bgp', 'rip']),
+            pn_ospf_options=dict(type='str'),
             pn_vrrp_track_port=dict(type='str'),
             pn_quiet=dict(default=True, type='bool')
         ),
@@ -245,7 +247,7 @@ def main():
         cli += ' %s-vnet-service ' % service_type
 
     if service_state:
-        cli += service_state
+        cli += ' ' + service_state
 
     if router_type:
         cli += ' router-type ' + router_type

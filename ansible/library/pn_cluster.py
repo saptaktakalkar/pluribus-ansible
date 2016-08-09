@@ -22,6 +22,7 @@ DOCUMENTATION = """
 ---
 module: pn_cluster
 author: "Pluribus Networks"
+version: 1.0
 short_description: CLI command to create/delete a cluster.
 description:
   - Execute cluster-create or cluster-delete command. 
@@ -44,7 +45,7 @@ options:
     type: str
   pn_cliswitch:
     description:
-    - Target switch to run the cli on.
+      - Target switch to run the cli on.
     required: False
     type: str
   pn_command:

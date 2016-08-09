@@ -23,6 +23,7 @@ DOCUMENTATION = """
 module: pn_vlag
 author: "Pluribus Networks"
 short_description: CLI command to create/delete/modify vlag.
+version: 1.0
 description:
   - Execute vlag-create/vlag-delete/vlag-modify command.
   - A virtual link aggregation group (VLAG) allows links that are physically
@@ -172,7 +173,9 @@ def main():
             pn_quiet=dict(default=True, type='bool')
         ),
         required_if=(
-            ["pn_command", "vlag-create", ["pn_port", "pn_peer_port"]]
+            ["pn_command", "vlag-create", ["pn_name", "pn_port", "pn_peer_port"]],
+            ["pn_command", "vlag-delete", ["pn_name"],
+            ["pn_command", "vlag-modify", ["pn_name"]
         )
     )
 
