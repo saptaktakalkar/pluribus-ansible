@@ -22,7 +22,8 @@ DOCUMENTATION = """
 ---
 module: pn_ospfarea
 author: "Pluribus Networks"
-short_description: CLI command to add/remove ospf area to/from to a vrouter.
+version: 1.0
+short_description: CLI command to add/remove ospf area to/from a vrouter.
 description:
   - Execute vrouter-ospf-add, vrouter-ospf-remove command.
   - This command adds/removes Open Shortest Path First(OSPF) area to/from
@@ -40,7 +41,7 @@ options:
     type: str
   pn_cliswitch:
     description:
-    - Target switch(es) to run the CLI on.
+      - Target switch(es) to run the CLI on.
     required: False
     type: str
   pn_command:
@@ -67,15 +68,15 @@ options:
     type: str
   pn_prefix_listin:
     description:
-    - OSPF prefix list for filtering incoming packets.
+      - OSPF prefix list for filtering incoming packets.
     type: str
   pn_prefix_listout:
     description:
-    - OSPF prefix list for filtering outgoing packets.
+      - OSPF prefix list for filtering outgoing packets.
     type: str
   pn_quiet:
     description:
-    - Enable/disable system information.
+      - Enable/disable system information.
     required: false
     type: bool
     default: true
