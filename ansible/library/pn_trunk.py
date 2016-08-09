@@ -23,6 +23,7 @@ DOCUMENTATION = """
 module: pn_trunk
 author: "Pluribus Networks"
 short_description: CLI command to create/delete/modify a trunk.
+version: 1.0
 description:
   - Execute trunk-create or trunk-delete command.
   - Trunks can be used to aggregate network links at Layer 2 on the local
@@ -40,7 +41,7 @@ options:
     type: str
   pn_cliswitch:
     description:
-    - Target switch(es) to run the cli on.
+      - Target switch(es) to run the cli on.
     required: False
     type: str
   pn_command:
