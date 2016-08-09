@@ -22,6 +22,7 @@ DOCUMENTATION = """
 ---
 module: pn_ospf
 author: "Pluribus Networks"
+version: 1.0
 short_description: CLI command to add/remove ospf protocol to a vrouter
 description:
   - Execute vrouter-ospf-add, vrouter-ospf-remove command.
@@ -40,7 +41,7 @@ options:
     type: str
   pn_cliswitch:
     description:
-    - Target switch(es) to run the CLI on.
+      - Target switch(es) to run the CLI on.
     required: False
     type: str
   pn_command:
@@ -72,7 +73,7 @@ options:
     type: str
   pn_quiet:
     description:
-    - Enable/disable system information.
+      - Enable/disable system information.
     required: false
     type: bool
     default: true
