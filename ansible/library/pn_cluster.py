@@ -45,7 +45,7 @@ options:
     type: str
   pn_cliswitch:
     description:
-    - Target switch to run the cli on.
+      - Target switch to run the cli on.
     required: False
     type: str
   pn_command:
