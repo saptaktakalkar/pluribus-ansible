@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI vlan-create/vlan-delete """
+""" PN CLI vlan-create/vlan-delete/vlan-modify """
 
 # Copyright 2016 Pluribus Networks
 #
@@ -22,9 +22,10 @@ DOCUMENTATION = """
 ---
 module: pn_vlan
 author: "Pluribus Networks"
-short_description: CLI command to create/delete a VLAN.
+version: 1.0
+short_description: CLI command to create/delete/modify a VLAN.
 description:
-  - Execute vlan-create or vlan-delete command. 
+  - Execute vlan-create or vlan-delete or vlan-modify command. 
   - VLANs are used to isolate network traffic at Layer 2.The VLAN identifiers
     0 and 4095 are reserved and cannot be used per the IEEE 802.1Q standard.
     The range of configurable VLAN identifiers is 2 through 4092.
@@ -41,14 +42,14 @@ options:
     type: str
   pn_cliswitch:
     description:
-    - Target switch(es) to run the cli on.
+      - Target switch(es) to run the cli on.
     required: False
     type: str
   pn_command:
     description:
-      - The C(pn_command) takes the vlan-create/delete command as value.
+      - The C(pn_command) takes the vlan-create/delete/modify command as value.
     required: true
-    choices: ['vlan-create', 'vlan-delete']
+    choices: ['vlan-create', 'vlan-delete', 'vlan-modify']
     type: str
   pn_vlanid:
     description:
@@ -145,7 +146,8 @@ def main():
         ),
         required_if=(
             ["pn_command", "vlan-create", ["pn_vlanid", "pn_scope"]],
-            ["pn_command", "vlan-delete", ["pn_vlanid"]]
+            ["pn_command", "vlan-delete", ["pn_vlanid"]],
+            ["pn_command", "vlan-modify", ["pn_vlanid"]
         )
     )
 
