@@ -26,7 +26,7 @@ Ansible also has a comprehensive official documentation which is [amazing](#http
 
 # Configuration File
   Custom changes to the ansible workflow and how it behaves are made through the configuration file. If you installed ansible from a package manager, the `ansible.cfg` will be present in `/etc/ansible` directory. If it is not present, you can create one to override default settings. Although the default settings should be sufficient for most of the purposes, you may need to change some of the settings based on your requirements.
-  The default configuration file can be found here: [ansible.cfg](/pluribus-ansible/ansible.cfg)
+  The default configuration file can be found here: [ansible.cfg](../../pluribus-ansible/ansible.cfg)
 
   Changes in relation to configuration are processed and picked up in the the following order:
 ```
