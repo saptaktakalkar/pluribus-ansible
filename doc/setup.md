@@ -1,6 +1,29 @@
 This document aims to help you get started with Pluribus Ansible and provides some tips to make the most of your ansible experience.
 Ansible also has a comprehensive official documentation which is [amazing](#http://docs.ansible.com/ansible/index.html)!. You can refer it for more information. 
 
+## Setup
+
+```
+  $ sudo apt-add-repository ppa:ansible/ansible -y                     
+  $ sudo apt-get update && sudo apt-get install ansible -y
+```
+This will install ansible on your machine. To begin using pluribus-ansible modules or develop modules for pluribus-ansible, clone this repository in your ansible directory.
+
+```
+~$ cd /etc/ansible
+~:/etc/ansible$ git clone <url>
+~:/etc/ansible$ cd pluribus-ansible
+~:/etc/ansible/pluribus-ansible$ git checkout -b <your branch>
+```
+
+Now you can begin working on your branch.
+
+#NOTE: 
+Checklist:
+  1. Make sure you set the library path to point to your library directory in the `ansible.cfg` file.
+  2. Disable host key checking in `ansible.cfg` file. If required, establish SSH keys.
+  3. Make any required configuration changes.
+ 
 ## Index
 + [Directory Layout](#directory-layout)
 + [Configuration File](#configuration-file)
@@ -13,7 +36,7 @@ Ansible also has a comprehensive official documentation which is [amazing](#http
   This section tries to explains a typical directory structure for organizing contents of your project.
   The top level of the directory would contain files and directories like:
 ```
-  ansible/
+  /path/to/ansible/
   |-main.yml
   |-hosts
   |-library/
@@ -69,7 +92,7 @@ Ansible also has a comprehensive official documentation which is [amazing](#http
   Please refer: [Ansible-Inventory](https://docs.ansible.com/ansible/intro_inventory.html) for more on this.
 
 # Group and Host variables
-  Ansible allows you to have different inventory files or different environments. These inventory files contain various host classified into different groups based on environment, geographic location, scope etc. These groups and hosts can be associated with variables relative to the inventory file. Please refer: [Ansible-vars] (http://docs.ansible.com/ansible/playbooks_best_practices.html#how-to-differentiate-staging-vs-production) for more on this.
+  Ansible allows you to have different inventory files for different environments. These inventory files contain various host classified into different groups based on environment, geographic location, scope etc. These groups and hosts can be associated with variables relative to the inventory file. Please refer: [Ansible-vars] (http://docs.ansible.com/ansible/playbooks_best_practices.html#how-to-differentiate-staging-vs-production) for more on this.
 
 # Roles
   Roles are a way to automatically load certain vars_files, tasks and handlers based on the file structure. Roles are good for organizing multiple, related Tasks and encapsulating data needed to accomplish those Tasks. A role contains various optional directories besides `tasks` and each sub-directory contains an entrypoint `main.yml`. The other directories can be handlers, defaults, templates and files.
