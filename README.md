@@ -40,7 +40,7 @@
  Communication with managed nodes is over SSH. By default it uses sftp, but you can switch to scp in ansible.cfg
  As with the control machine, the managed nodes require Python 2.6 or later. (For nodes running Python 2.5 or lesser version, you may need python-simplejson)
  
- ##Pluribus ansible modules
+##Pluribus ansible modules
  Pluribus ansible modules are not included in the core Ansible code base. You will have to clone this repository in your local machine to use Pluribus ansible modules. 
  
  To use pluribus-ansible modules or develop modules for pluribus-ansible, clone this repository in the path where you installed ansible. You can have it in a different project directory but make sure you modify the ansible.cfg file with relevant paths. 
