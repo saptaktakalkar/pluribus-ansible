@@ -8,7 +8,7 @@
     - [Managed Node Requirements](#managed-node-requirements)
   + [Pluribus Ansible Modules](#pluribus-ansible-modules)
   + [Inventory](#inventory)
-  + [Configuration File](#configuration-ile)
+  + [Configuration File](#configuration-file)
   + [Modules](#modules)
   + [Playbooks](#playbooks)
 
