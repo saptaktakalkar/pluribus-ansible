@@ -6,8 +6,9 @@
     - [Installation](#installation)
     - [Control Machine Requirements](#control-machine-requirements)
     - [Managed Node Requirements](#managed-node-requirements)
+  + [Pluribus Ansible Modules](#pluribus-ansible-modules)
   + [Inventory](#inventory)
-  + [Configuration File](#configuration-ile)
+  + [Configuration File](#configuration-file)
   + [Modules](#modules)
   + [Playbooks](#playbooks)
 
@@ -38,6 +39,26 @@
 ##Managed Node Requirements
  Communication with managed nodes is over SSH. By default it uses sftp, but you can switch to scp in ansible.cfg
  As with the control machine, the managed nodes require Python 2.6 or later. (For nodes running Python 2.5 or lesser version, you may need python-simplejson)
+ 
+##Pluribus Ansible Modules
+ Pluribus ansible modules are not included in the core Ansible code base. You will have to clone this repository in your local machine to use Pluribus ansible modules. 
+ 
+ To use pluribus-ansible modules or develop modules for pluribus-ansible, clone this repository in the path where you installed ansible. You can have it in a different project directory but make sure you modify the ansible.cfg file with relevant paths. 
+
+```
+~$ cd /etc/ansible
+~:/etc/ansible$ git clone <url>
+~:/etc/ansible$ cd pluribus-ansible
+~:/etc/ansible/pluribus-ansible$ git checkout -b <your branch>
+```
+
+Now you can begin working on your branch.
+
+#NOTE: 
+Checklist:
+  1. Make sure you set the library path to point to your library directory in the `ansible.cfg` file.
+  2. Disable host key checking in `ansible.cfg` file. If required, establish SSH keys.
+  3. Make other configuration changes as required.
 
 #Inventory
  Ansible can work against multiple nodes in the infrastructure simultaneously. This is done by selecting a group of nodes in the Ansible's inventory file which is by default saved at /etc/ansible/hosts on the control machine. This file (see [hosts](ansible/hosts))is configurable.
