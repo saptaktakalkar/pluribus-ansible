@@ -30,13 +30,13 @@ description:
 options:
   pn_cliusername:
     description:
-      - Login username.
-    required: true
+      - Provide login username if user is not root.
+    required: False
     type: str
   pn_clipassword:
     description:
-      - Login password.
-    required: true
+      - Provide login password if user is not root.
+    required: False
     type: str
   pn_cliswitch:
     description:
@@ -57,35 +57,23 @@ options:
     description:
       - Specify formatting options.
     type: str
-  pn_quiet:
-    description:
-      - The C(pn_quiet) option to enable or disable the initial system message.
-    required: false
-    type: bool
-    default: true
 """
 
 EXAMPLES = """
 - name: run the vlan-show command
   pn_show:
-    pn_cliusername: admin
-    pn_clipassword: admin
     pn_command: 'vlan-show'
     pn_parameters: id,scope,ports
     pn_options: 'layout vertical'
 
 - name: run the vlag-show command
   pn_show:
-    pn_cliusername: admin
-    pn_clipassword: admin
     pn_command: 'vlag-show'
     pn_parameters: 'id,name,cluster,mode'
     pn_options: 'no-show-headers'
 
 - name: run the cluster-show command
   pn_show:
-    pn_cliusername: admin
-    pn_clipassword: admin
     pn_command: 'cluster-show'
 """
 
@@ -107,6 +95,66 @@ changed:
 """
 
 
+def pn_cli(module):
+    """
+    This method is to generate the cli portion to launch the Netvisor cli.
+    It parses the username, password, switch parameters from module.
+    :param module: The Ansible module to fetch username, password and switch
+    :return: returns the cli string for further processing
+    """
+    username = module.params['pn_cliusername']
+    password = module.params['pn_clipassword']
+    cliswitch = module.params['pn_cliswitch']
+
+    if username and password:
+        cli = '/usr/bin/cli --quiet --user %s:%s ' % (username, password)
+    else:
+        cli = '/usr/bin/cli --quiet '
+
+    cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
+    return cli
+
+
+def run_cli(module, cli):
+    """
+    This method executes the cli command on the target node(s) and returns the
+    output. The module then exits based on the output.
+    :param cli: the complete cli string to be executed on the target node(s).
+    :param module: The Ansible module to fetch command
+    """
+    command = module.params['pn_command']
+    cmd = shlex.split(cli)
+    response = subprocess.Popen(cmd, stderr=subprocess.PIPE,
+                                stdout=subprocess.PIPE, universal_newlines=True)
+    # 'out' contains the output
+    # 'err' contains the error messages
+    out, err = response.communicate()
+
+    # Response in JSON format
+    if err:
+        module.exit_json(
+            command=cli,
+            msg='%s: ' % command,
+            stderr=err.strip(),
+            changed=False
+        )
+
+    if out:
+        module.exit_json(
+            command=cli,
+            msg='%s: ' % command,
+            stdout=out.strip(),
+            changed=False
+        )
+
+    else:
+        module.exit_json(
+            command=cli,
+            msg='%s: Nothing to display!!!' % command,
+            changed=False
+        )
+
+
 def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
@@ -116,67 +164,24 @@ def main():
             pn_cliswitch=dict(required=False, type='str'),
             pn_command=dict(required=True, type='str'),
             pn_parameters=dict(default='all', type='str'),
-            pn_options=dict(type='str'),
-            pn_quiet=dict(default=True, type='bool')
+            pn_options=dict(type='str')
         )
     )
 
     # Accessing the arguments
-    cliusername = module.params['pn_cliusername']
-    clipassword = module.params['pn_clipassword']
-    cliswitch = module.params['pn_cliswitch']
     command = module.params['pn_command']
     parameters = module.params['pn_parameters']
     options = module.params['pn_options']
-    quiet = module.params['pn_quiet']
 
     # Building the CLI command string
-    cli = '/usr/bin/cli'
+    cli = pn_cli(module)
 
-    if quiet is True:
-        cli += ' --quiet '
-
-    cli += ' --user %s:%s ' % (cliusername, clipassword)
-
-    if cliswitch:
-        cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
-
-    cli += ' ' + command
-    if parameters:
-        cli += ' format ' + parameters
+    cli += ' %s format %s ' % (command, parameters)
 
     if options:
-        cli += ' ' + options
+        cli += options
 
-    # Run the CLI command
-    showcmd = shlex.split(cli)
-    response = subprocess.Popen(showcmd, stderr=subprocess.PIPE,
-                                stdout=subprocess.PIPE, universal_newlines=True)
-    # 'out' contains the output
-    # 'err; contains the error message
-    out, err = response.communicate()
-
-    # Response in JSON format
-    if err:
-        module.exit_json(
-            command=cli,
-            stderr=err.strip("\r\n"),
-            changed=False
-        )
-
-    if out:
-        module.exit_json(
-            command=cli,
-            stdout=out.strip("\r\n"),
-            changed=False
-        )
-
-    else:
-        module.exit_json(
-            command=cli,
-            msg="Nothing to display!!!",
-            changed=False
-        )
+    run_cli(module, cli)
 
 # AnsibleModule boilerplate
 from ansible.module_utils.basic import AnsibleModule

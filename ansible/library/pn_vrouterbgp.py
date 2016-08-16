@@ -32,13 +32,13 @@ description:
 options:
   pn_cliusername:
     description:
-      - Login username.
-    required: true
+      - Provide login username if user is not root.
+    required: False
     type: str
   pn_clipassword:
     description:
-      - Login password.
-    required: true
+      - Provide login password if user is not root.
+    required: False
     type: str
   pn_cliswitch:
     description:
@@ -48,13 +48,13 @@ options:
   pn_command:
     description:
       - The C(pn_command) takes the vrouter-bgp command as value.
-    required: true
+    required: True
     choices: ['vrouter-bgp-add', 'vrouter-bgp-remove', 'vrouter-bgp-modify']
     type: str
   pn_vrouter_name:
     description:
       - Specify a name for the vRouter service.
-    required: true
+    required: True
     type: str
   pn_neighbor:
     description:
@@ -144,19 +144,11 @@ options:
     description:
       - Specify outbound route map for neighbor.
     type: str
-  pn_quiet:
-    description:
-      - Enable/disable system information.
-    required: false
-    type: bool
-    default: true
 """
 
 EXAMPLES = """
 - name: add vrouter-bgp
   pn_vrouterbgp:
-    pn_cliusername: admin
-    pn_clipassword: admin
     pn_command: 'vrouter-bgp-add'
     pn_vrouter_name: 'ansible-vrouter'
     pn_neighbor: 104.104.104.1
@@ -164,8 +156,6 @@ EXAMPLES = """
 
 - name: remove vrouter-bgp
   pn_vrouterbgp:
-    pn_cliusername: admin
-    pn_clipassword: admin
     pn_command: 'vrouter-delete'
     pn_name: 'ansible-vrouter'
 """
@@ -188,12 +178,111 @@ changed:
 """
 
 
+VROUTER_EXISTS = None
+NEIGHBOR_EXISTS = None
+
+
+def pn_cli(module):
+    """
+    This method is to generate the cli portion to launch the Netvisor cli.
+    It parses the username, password, switch parameters from module.
+    :param module: The Ansible module to fetch username, password and switch
+    :return: returns the cli string for further processing
+    """
+    username = module.params['pn_cliusername']
+    password = module.params['pn_clipassword']
+    cliswitch = module.params['pn_cliswitch']
+
+    if username and password:
+        cli = '/usr/bin/cli --quiet --user %s:%s ' % (username, password)
+    else:
+        cli = '/usr/bin/cli --quiet '
+
+    cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
+    return cli
+
+
+def check_cli(module, cli):
+    """
+    This method checks if vRouter exists on the target node.
+    This method also checks for idempotency using the vrouter-bgp-show command.
+    If the given vRouter exists, return VROUTER_EXISTS as True else False.
+    If a BGP neighbor with the given ip exists on the given vRouter,
+    return NEIGHBOR_EXISTS as True else False.
+
+    :param module: The Ansible module to fetch input parameters
+    :param cli: The CLI string
+    :return Global Booleans: VROUTER_EXISTS, NEIGHBOR_EXISTS
+    """
+    vrouter_name = module.params['pn_vrouter_name']
+    neighbor = module.params['pn_neighbor']
+    # Global flags
+    global VROUTER_EXISTS, NEIGHBOR_EXISTS
+
+    # Check for vRouter
+    check_vrouter = cli + ' vrouter-show format name no-show-headers '
+    check_vrouter = shlex.split(check_vrouter)
+    out = module.run_command(check_vrouter)[1]
+    out = out.split()
+
+    VROUTER_EXISTS = True if vrouter_name in out else False
+
+    # Check for BGP neighbors
+    show = cli + ' vrouter-bgp-show vrouter-name %s ' % vrouter_name
+    show += 'format neighbor no-show-headers'
+    show = shlex.split(show)
+    out = module.run_command(show)[1]
+    out = out.split()
+
+    NEIGHBOR_EXISTS = True if neighbor in out else False
+
+
+def run_cli(module, cli):
+    """
+    This method executes the cli command on the target node(s) and returns the
+    output. The module then exits based on the output.
+    :param cli: the complete cli string to be executed on the target node(s).
+    :param module: The Ansible module to fetch command
+    """
+    command = module.params['pn_command']
+    cmd = shlex.split(cli)
+    response = subprocess.Popen(cmd, stderr=subprocess.PIPE,
+                                stdout=subprocess.PIPE, universal_newlines=True)
+    # 'out' contains the output
+    # 'err' contains the error messages
+    out, err = response.communicate()
+
+    # Response in JSON format
+    if err:
+        module.exit_json(
+            command=cli,
+            stderr=err.strip(),
+            msg="%s operation failed" % command,
+            changed=False
+        )
+
+    if out:
+        module.exit_json(
+            command=cli,
+            stdout=out.strip(),
+            msg="%s operation completed" % command,
+            changed=True
+        )
+
+    else:
+        module.exit_json(
+            command=cli,
+            msg="%s operation completed" % command,
+            changed=True
+        )
+
+
 def main():
     """ This portion is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str'),
-            pn_clipassword=dict(required=True, type='str'),
+            pn_cliusername=dict(required=False, type='str'),
+            pn_clipassword=dict(required=False, type='str'),
             pn_cliswitch=dict(required=False, type='str'),
             pn_command=dict(required=True, type='str',
                             choices=['vrouter-bgp-add', 'vrouter-bgp-remove',
@@ -219,8 +308,7 @@ def main():
             pn_keepalive=dict(type='str'),
             pn_holdtime=dict(type='str'),
             pn_route_mapin=dict(type='str'),
-            pn_route_mapout=dict(type='str'),
-            pn_quiet=dict(default=True, type='bool')
+            pn_route_mapout=dict(type='str')
         ),
         required_if=(
             ["pn_command", "vrouter-bgp-add",
@@ -232,9 +320,7 @@ def main():
         )
     )
 
-    cliusername = module.params['pn_cliusername']
-    clipassword = module.params['pn_clipassword']
-    cliswitch = module.params['pn_cliswitch']
+    # Accessing the arguments
     command = module.params['pn_command']
     vrouter_name = module.params['pn_vrouter_name']
     neighbor = module.params['pn_neighbor']
@@ -257,119 +343,113 @@ def main():
     holdtime = module.params['pn_holdtime']
     route_mapin = module.params['pn_route_mapin']
     route_mapout = module.params['pn_route_mapout']
-    quiet = module.params['pn_quiet']
 
     # Building the CLI command string
-    cli = '/usr/bin/cli'
+    cli = pn_cli(module)
 
-    if quiet is True:
-        cli += ' --quiet '
-
-    cli += ' --user %s:%s ' % (cliusername, clipassword)
-
-    if cliswitch:
-        cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
-
-    cli += ' %s vrouter-name %s ' % (command, vrouter_name)
-
-    if neighbor:
-        cli += ' neighbor ' + neighbor
-
-    if remote_as:
-        cli += ' remote-as ' + str(remote_as)
-
-    if next_hop_self is True:
-        cli += ' next-hop-self '
-    if next_hop_self is False:
-        cli += ' no-next-hop-self '
-
-    if password:
-        cli += ' password ' + password
-
-    if ebgp:
-        cli += ' ebgp-multihop ' + str(ebgp)
-
-    if prefix_listin:
-        cli += ' prefix-list-in ' + prefix_listin
-
-    if prefix_listout:
-        cli += ' prefix-list-out ' + prefix_listout
-
-    if route_reflector is True:
-        cli += ' route-reflector-client '
-    if route_reflector is False:
-        cli += ' no-route-reflector-client '
-
-    if override_capability is True:
-        cli += ' override-capability '
-    if override_capability is False:
-        cli += ' no-override-capability '
-
-    if soft_reconfig is True:
-        cli += ' soft-reconfig-inbound '
-    if soft_reconfig is False:
-        cli += ' no-soft-reconfig-inbound '
-
-    if max_prefix:
-        cli += ' max-prefix ' + str(max_prefix)
-
-    if max_prefix_warn is True:
-        cli += ' max-prefix-warn-only '
-    if max_prefix_warn is False:
-        cli += ' no-max-prefix-warn-only '
-
-    if bfd is True:
-        cli += ' bfd '
-    if bfd is False:
-        cli += ' no-bfd '
-
-    if multiprotocol:
-        cli += ' multi-protocol ' + multiprotocol
-
-    if weight:
-        cli += ' weight ' + str(weight)
-
-    if default_originate is True:
-        cli += ' default-originate '
-    if default_originate is False:
-        cli += ' no-default-originate '
-
-    if keepalive:
-        cli += ' neighbor-keepalive-interval ' + keepalive
-
-    if holdtime:
-        cli += ' neighbor-holdtime ' + holdtime
-
-    if route_mapin:
-        cli += ' route-map-in ' + route_mapin
-
-    if route_mapout:
-        cli += ' route-map-out ' + route_mapout
-
-    # Run the CLI command
-    vrouterbgpcmd = shlex.split(cli)
-    response = subprocess.Popen(vrouterbgpcmd, stderr=subprocess.PIPE,
-                                stdout=subprocess.PIPE, universal_newlines=True)
-
-    # 'out' contains the output
-    # 'err' contains the err messages
-    out, err = response.communicate()
-
-    # Response in JSON format
-    if err:
-        module.exit_json(
-            command=cli,
-            stderr=err.rstrip("\r\n"),
-            changed=False
-        )
+    if command == 'vrouter-bgp-remove':
+        check_cli(module, cli)
+        if NEIGHBOR_EXISTS is False:
+            module.exit_json(
+                skipped=True,
+                msg=('BGP neighbor with IP %s does not exist on %s'
+                     % (neighbor, vrouter_name))
+            )
+        cli += (' %s vrouter-name %s neighbor %s '
+                % (command, vrouter_name, neighbor))
 
     else:
-        module.exit_json(
-            command=cli,
-            stdout=out.rstrip("\r\n"),
-            changed=True
-        )
 
+        if command == 'vrouter-bgp-add':
+            check_cli(module, cli)
+            if VROUTER_EXISTS is False:
+                module.exit_json(
+                    skipped=True,
+                    msg=('vRouter %s does not exist. Please create a vRouter '
+                         'first' % vrouter_name)
+                )
+            if NEIGHBOR_EXISTS is True:
+                module.exit_json(
+                    skipped=True,
+                    msg=('BGP neighbor with IP %s already exists on %s'
+                         % (neighbor, vrouter_name))
+                )
+
+        cli += (' %s vrouter-name %s neighbor %s '
+                % (command, vrouter_name, neighbor))
+
+        if remote_as:
+            cli += ' remote-as ' + str(remote_as)
+
+        if next_hop_self is True:
+            cli += ' next-hop-self '
+        if next_hop_self is False:
+            cli += ' no-next-hop-self '
+
+        if password:
+            cli += ' password ' + password
+
+        if ebgp:
+            cli += ' ebgp-multihop ' + str(ebgp)
+
+        if prefix_listin:
+            cli += ' prefix-list-in ' + prefix_listin
+
+        if prefix_listout:
+            cli += ' prefix-list-out ' + prefix_listout
+
+        if route_reflector is True:
+            cli += ' route-reflector-client '
+        if route_reflector is False:
+            cli += ' no-route-reflector-client '
+
+        if override_capability is True:
+            cli += ' override-capability '
+        if override_capability is False:
+            cli += ' no-override-capability '
+
+        if soft_reconfig is True:
+            cli += ' soft-reconfig-inbound '
+        if soft_reconfig is False:
+            cli += ' no-soft-reconfig-inbound '
+
+        if max_prefix:
+            cli += ' max-prefix ' + str(max_prefix)
+
+        if max_prefix_warn is True:
+            cli += ' max-prefix-warn-only '
+        if max_prefix_warn is False:
+            cli += ' no-max-prefix-warn-only '
+
+        if bfd is True:
+            cli += ' bfd '
+        if bfd is False:
+            cli += ' no-bfd '
+
+        if multiprotocol:
+            cli += ' multi-protocol ' + multiprotocol
+
+        if weight:
+            cli += ' weight ' + str(weight)
+
+        if default_originate is True:
+            cli += ' default-originate '
+        if default_originate is False:
+            cli += ' no-default-originate '
+
+        if keepalive:
+            cli += ' neighbor-keepalive-interval ' + keepalive
+
+        if holdtime:
+            cli += ' neighbor-holdtime ' + holdtime
+
+        if route_mapin:
+            cli += ' route-map-in ' + route_mapin
+
+        if route_mapout:
+            cli += ' route-map-out ' + route_mapout
+
+    run_cli(module, cli)
 # Ansible boiler-plate
 from ansible.module_utils.basic import AnsibleModule
 
