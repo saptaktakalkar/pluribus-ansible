@@ -1,36 +1,32 @@
-# This Playbook performs following operations:
-#        
-# 1. Teardown Fabric configuration:
-#     Tags: "teardown"
-#     a. Delete VLANs     
-#     b. Delete VLAGs
-#     c. Delete Trunks
-#     d. Delete Clusters
-#
-# Modules used:
-# 1. pn_cluster
-# 2. pn_trunk
-# 3. pn_vlag
-# 4. pn_vlan
-#
-
-
-- name: "Teardown Fabric configuration..."
+---
+- name: "Teardown Fabric configurations..."
   hosts: testswitches[0]
   user: root
   tags: teardown
 
+  vars_files:
+  - cli_vault.yml
+
   tasks:
 
+    - name: "Delete vRouter and interfaces"
+      pn_vrouter: pn_cliusername={{ USERNAME }} pn_clipassword={{ PASSWORD }} pn_command=vrouter-delete pn_name={{ item }} 
+      with_items: 
+        - spine1vrouter
+        - spine2vrouter
+      register: vrouter_delete
+    - debug: var=vrouter_delete
+
+    
     - name: "Delete VLANs..."
-      pn_vlan: pn_cliusername=network-admin pn_clipassword=test123 pn_command=vlan-create pn_vlanid={{ item }}
+      pn_vlan: pn_cliusername={{ USERNAME }} pn_clipassword={{ PASSWORD }} pn_command=vlan-delete pn_vlanid={{ item }}
       with_sequence: start=100 end=105
       register: vlan_delete
     - debug: var=vlan_delete
   
     
     - name: "Delete VLAGs..."
-      pn_vlag: pn_cliusername=network-admin pn_clipassword=test123 pn_cliswitch={{ item.switch }} pn_command=vlag-delete pn_name={{ item.name }}
+      pn_vlag: pn_cliusername={{ USERNAME }} pn_clipassword={{ PASSWORD }} pn_cliswitch={{ item.switch }} pn_command=vlag-delete pn_name={{ item.name }}
       with_items:
         - {switch: 'local', name: 'spine-to-leaf' }
         - {switch: 'local', name: 'spine-to-leaf3'}
@@ -41,7 +37,7 @@
 
 
     - name: "Delete Trunks..."
-      pn_trunk: pn_cliusername=network-admin pn_clipassword=test123 pn_cliswitch={{ item.switch }} pn_command=trunk-delete pn_name={{ item.name }} 
+      pn_trunk: pn_cliusername={{ USERNAME }} pn_clipassword={{ PASSWORD }} pn_cliswitch={{ item.switch }} pn_command=trunk-delete pn_name={{ item.name }} 
       with_items:
         - {switch: 'local', name: 'spine1-to-leaf'}
         - {switch: 'local', name: 'spine1-to-leaf3'}
@@ -56,7 +52,7 @@
 
 
     - name: "Delete Clusters..."
-      pn_cluster: pn_cliusername=network-admin pn_clipassword=test123 pn_cliswitch={{ item.switch }} pn_command=cluster-delete pn_name={{ item.name }}
+      pn_cluster: pn_cliusername={{ USERNAME }} pn_clipassword={{ PASSWORD }} pn_cliswitch={{ item.switch }} pn_command=cluster-delete pn_name={{ item.name }}
       with_items:
         - {switch: 'local', name: 'spinecluster'}
         - {switch: 'pikachu', name: 'leafcluster'}

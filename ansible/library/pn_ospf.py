@@ -1,20 +1,6 @@
 #!/usr/bin/python
 """ PN-CLI vrouter-ospf-add/remove """
 
-# Copyright 2016 Pluribus Networks
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import subprocess
 import shlex
 
@@ -23,7 +9,7 @@ DOCUMENTATION = """
 module: pn_ospf
 author: "Pluribus Networks"
 version: 1.0
-short_description: CLI command to add/remove ospf protocol to a vrouter
+short_description: CLI command to add/remove ospf protocol to a vRouter.
 description:
   - Execute vrouter-ospf-add, vrouter-ospf-remove command.
   - This command adds/removes Open Shortest Path First(OSPF) routing
@@ -31,59 +17,45 @@ description:
 options:
   pn_cliusername:
     description:
-      - Login username.
-    required: true
+      - Provide login username if user is not root.
+    required: False
     type: str
   pn_clipassword:
     description:
-      - Login password.
-    required: true
+      - Provide login password if user is not root.
+    required: False
     type: str
   pn_cliswitch:
     description:
-      - Target switch(es) to run the CLI on.
+      - Target switch to run the CLI on.
     required: False
     type: str
   pn_command:
     description:
       - The C(pn_command) takes the vrouter-ospf add/remove
         command as value.
-    required: true
+    required: True
     choices: ['vrouter-ospf-add', 'vrouter-ospf-remove']
     type: str
   pn_vrouter_name:
     description:
-      - Specify the name of the vRouter.
-    required: true
+      - specify the name of the vRouter.
+    required: True
     type: str
   pn_network_ip:
     description:
       - Specify the network IP address.
-      - Required for vrouter-ospf-add.
-    type: str
-  pn_netmask:
-    description:
-      - Specify the netmask of the IP address.
-      - Required for vrouter-ospf-add.
+    required: True
     type: str
   pn_ospf_area:
     description:
-      - Stub area number for the configuration.
-      - Required for vrouter-ospf-add.
+    - Stub area number for the configuration. Required for vrouter-ospf-add.
     type: str
-  pn_quiet:
-    description:
-      - Enable/disable system information.
-    required: false
-    type: bool
-    default: true
 """
 
 EXAMPLES = """
 - name: "Add OSPF to vrouter"
   pn_ospf:
-    pn_cliusername: admin
-    pn_clipassword: admin
     pn_command: vrouter-ospf-add
     pn_vrouter_name: name-string
     pn_network_ip: 192.168.11.2/24
@@ -91,8 +63,6 @@ EXAMPLES = """
 
 - name: "Remove OSPF from vrouter"
   pn_ospf:
-    pn_cliusername: admin
-    pn_clipassword: admin
     pn_command: vrouter-ospf-remove
     pn_vrouter_name: name-string
 """
@@ -115,87 +85,173 @@ changed:
 """
 
 
+VROUTER_EXISTS = None
+NETWORK_EXISTS = None
+
+
+def pn_cli(module):
+    """
+    This method is to generate the cli portion to launch the Netvisor cli.
+    It parses the username, password, switch parameters from module.
+    :param module: The Ansible module to fetch username, password and switch
+    :return: returns the cli string for further processing
+    """
+    username = module.params['pn_cliusername']
+    password = module.params['pn_clipassword']
+    cliswitch = module.params['pn_cliswitch']
+
+    if username and password:
+        cli = '/usr/bin/cli --quiet --user %s:%s ' % (username, password)
+    else:
+        cli = '/usr/bin/cli --quiet '
+
+    cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
+    return cli
+
+
+def check_cli(module, cli):
+    """
+    This method checks if vRouter exists on the target node.
+    This method also checks for idempotency using the vrouter-ospf-show command.
+    If the given vRouter exists, return VROUTER_EXISTS as True else False.
+    If an OSPF network with the given ip exists on the given vRouter,
+    return NETWORK_EXISTS as True else False.
+
+    :param module: The Ansible module to fetch input parameters
+    :param cli: The CLI string
+    :return Global Booleans: VROUTER_EXISTS, NETWORK_EXISTS
+    """
+    vrouter_name = module.params['pn_vrouter_name']
+    network_ip = module.params['pn_network_ip']
+    # Global flags
+    global VROUTER_EXISTS, NETWORK_EXISTS
+
+    # Check for vRouter
+    check_vrouter = cli + ' vrouter-show format name no-show-headers '
+    check_vrouter = shlex.split(check_vrouter)
+    out = module.run_command(check_vrouter)[1]
+    out = out.split()
+
+    VROUTER_EXISTS = True if vrouter_name in out else False
+
+    # Check for OSPF networks
+    show = cli + ' vrouter-ospf-show vrouter-name %s ' % vrouter_name
+    show += 'format network no-show-headers'
+    show = shlex.split(show)
+    out = module.run_command(show)[1]
+    out = out.split()
+
+    NETWORK_EXISTS = True if network_ip in out else False
+
+
+def run_cli(module, cli):
+    """
+    This method executes the cli command on the target node(s) and returns the
+    output. The module then exits based on the output.
+    :param cli: the complete cli string to be executed on the target node(s).
+    :param module: The Ansible module to fetch command
+    """
+    cliswitch = module.params['pn_cliswitch']
+    command = module.params['pn_command']
+    cmd = shlex.split(cli)
+    response = subprocess.Popen(cmd, stderr=subprocess.PIPE,
+                                stdout=subprocess.PIPE, universal_newlines=True)
+    # 'out' contains the output
+    # 'err' contains the error messages
+    out, err = response.communicate()
+
+    print_cli = cli.split(cliswitch)[1]
+
+    # Response in JSON format
+    if err:
+        module.exit_json(
+            command=print_cli,
+            stderr=err.strip(),
+            msg="%s operation failed" % command,
+            changed=False
+        )
+
+    if out:
+        module.exit_json(
+            command=print_cli,
+            stdout=out.strip(),
+            msg="%s operation completed" % command,
+            changed=True
+        )
+
+    else:
+        module.exit_json(
+            command=print_cli,
+            msg="%s operation completed" % command,
+            changed=True
+        )
+
+
 def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str'),
-            pn_clipassword=dict(required=True, type='str'),
-            pn_cliswitch=dict(required=False, type='str'),
+            pn_cliusername=dict(required=False, type='str'),
+            pn_clipassword=dict(required=False, type='str'),
+            pn_cliswitch=dict(required=False, type='str', default='local'),
             pn_command=dict(required=True, type='str',
                             choices=['vrouter-ospf-add',
                                      'vrouter-ospf-remove']),
             pn_vrouter_name=dict(required=True, type='str'),
-            pn_network_ip=dict(type='str'),
-            pn_netmask=dict(type='str'),
-            pn_ospf_area=dict(type='str'),
-            pn_quiet=dict(default=True, type='bool')
+            pn_network_ip=dict(required=True, type='str'),
+            pn_ospf_area=dict(type='str')
         ),
         required_if=(
             ['pn_command', 'vrouter-ospf-add',
-             ['pn_network_ip', 'pn_netmask', 'pn_ospf_area']],
+             ['pn_network_ip', 'pn_ospf_area']],
             ['pn_command', 'vrouter-ospf-remove', ['pn_network_ip']]
         )
     )
 
     # Accessing the arguments
-    cliusername = module.params['pn_cliusername']
-    clipassword = module.params['pn_clipassword']
-    cliswitch = module.params['pn_cliswitch']
     command = module.params['pn_command']
     vrouter_name = module.params['pn_vrouter_name']
     network_ip = module.params['pn_network_ip']
-    netmask = module.params['pn_netmask']
     ospf_area = module.params['pn_ospf_area']
-    quiet = module.params['pn_quiet']
 
     # Building the CLI command string
-    cli = '/usr/bin/cli'
+    cli = pn_cli(module)
+    check_cli(module, cli)
 
-    if quiet is True:
-        cli += ' --quiet '
+    if command == 'vrouter-ospf-add':
+        if VROUTER_EXISTS is False:
+            module.exit_json(
+                skipped=True,
+                msg='vRouter %s does not exist' % vrouter_name
+            )
+        if NETWORK_EXISTS is True:
+            module.exit_json(
+                skipped=True,
+                msg=('OSPF with network ip %s already exists on %s'
+                     % (network_ip, vrouter_name))
+            )
+        cli += (' %s vrouter-name %s network %s ospf-area %s'
+                % (command, vrouter_name, network_ip, ospf_area))
 
-    cli += ' --user %s:%s ' % (cliusername, clipassword)
+    if command == 'vrouter-ospf-remove':
+        if VROUTER_EXISTS is False:
+            module.exit_json(
+                skipped=True,
+                msg='vRouter %s does not exist' % vrouter_name
+            )
+        if NETWORK_EXISTS is False:
+            module.exit_json(
+                skipped=True,
+                msg=('OSPF with network ip %s already exists on %s'
+                     % (network_ip, vrouter_name))
+            )
+        cli += (' %s vrouter-name %s network %s'
+                % (command, vrouter_name, network_ip))
 
-    if cliswitch:
-        cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
-
-    cli += ' %s vrouter-name %s ' % (command, vrouter_name)
-
-    cli += ' network ' + network_ip
-
-    if netmask:
-        cli += ' netmask ' + netmask
-
-    if ospf_area:
-        cli += ' ospf-area ' + ospf_area
-
-    # Run the CLI command
-    ospfcommand = shlex.split(cli)
-    response = subprocess.Popen(ospfcommand, stderr=subprocess.PIPE,
-                                stdout=subprocess.PIPE, universal_newlines=True)
-
-    # 'out' contains the output
-    # 'err' contains the error messages
-    out, err = response.communicate()
-
-    # Response in JSON format
-    if err:
-        module.exit_json(
-            command=cli,
-            stderr=err.rstrip("\r\n"),
-            changed=False
-        )
-
-    else:
-        module.exit_json(
-            command=cli,
-            stdout=out.rstrip("\r\n"),
-            changed=True
-        )
-
+    run_cli(module, cli)
 # AnsibleModule boilerplate
 from ansible.module_utils.basic import AnsibleModule
 
 if __name__ == '__main__':
     main()
+

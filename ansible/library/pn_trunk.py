@@ -22,8 +22,8 @@ DOCUMENTATION = """
 ---
 module: pn_trunk
 author: "Pluribus Networks"
-short_description: CLI command to create/delete/modify a trunk.
 version: 1.0
+short_description: CLI command to create/delete/modify a trunk.
 description:
   - Execute trunk-create or trunk-delete command.
   - Trunks can be used to aggregate network links at Layer 2 on the local
@@ -31,13 +31,13 @@ description:
 options:
   pn_cliusername:
     description:
-      - Login username.
-    required: true
+      - Provide login username if user is not root.
+    required: False
     type: str
   pn_clipassword:
     description:
-      - Login password.
-    required: true
+      - Provide login password if user is not root.
+    required: False
     type: str
   pn_cliswitch:
     description:
@@ -147,27 +147,17 @@ options:
     description:
       - Host facing port control setting.
     type: bool
-  pn_quiet:
-    description:
-      - Enable/disable system information.
-    required: false
-    type: bool
-    default: true
 """
 
 EXAMPLES = """
 - name: create trunk
   pn_trunk:
-    pn_cliusername: admin
-    pn_clipassword: admin
     pn_command: 'trunk-create'
     pn_name: 'spine-to-leaf'
     pn_ports: '11,12,13,14'
 
 - name: delete trunk
   pn_trunk:
-    pn_cliusername: admin
-    pn_clipassword: admin
     pn_command: 'trunk-delete'
     pn_name: 'spine-to-leaf'
 """
@@ -188,15 +178,99 @@ changed:
   returned: always
   type: bool
 """
+TRUNK_EXISTS = None
+
+
+def pn_cli(module):
+    """
+    This method is to generate the cli portion to launch the Netvisor cli.
+    It parses the username, password, switch parameters from module.
+    :param module: The Ansible module to fetch username, password and switch
+    :return: returns the cli string for further processing
+    """
+    username = module.params['pn_cliusername']
+    password = module.params['pn_clipassword']
+    cliswitch = module.params['pn_cliswitch']
+
+    if username and password:
+        cli = '/usr/bin/cli --quiet --user %s:%s ' % (username, password)
+    else:
+        cli = '/usr/bin/cli --quiet '
+
+    cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
+    return cli
+
+
+def check_cli(module, cli):
+    """
+    This method checks for idempotency using the trunk-show command.
+    If a trunk with given name exists, return TRUNK_EXISTS as True else False.
+    :param module: The Ansible module to fetch input parameters
+    :param cli: The CLI string
+    :return Global Booleans: TRUNK_EXISTS
+    """
+    name = module.params['pn_name']
+
+    show = cli + ' trunk-show format switch,name no-show-headers'
+    show = shlex.split(show)
+    out = module.run_command(show)[1]
+
+    out = out.split()
+    # Global flags
+    global TRUNK_EXISTS
+    TRUNK_EXISTS = True if name in out else False
+
+
+def run_cli(module, cli):
+    """
+    This method executes the cli command on the target node(s) and returns the
+    output. The module then exits based on the output.
+    :param cli: the complete cli string to be executed on the target node(s).
+    :param module: The Ansible module to fetch command
+    """
+    cliswitch = module.params['pn_cliswitch']
+    command = module.params['pn_command']
+    cmd = shlex.split(cli)
+    response = subprocess.Popen(cmd, stderr=subprocess.PIPE,
+                                stdout=subprocess.PIPE, universal_newlines=True)
+    # 'out' contains the output
+    # 'err' contains the error messages
+    out, err = response.communicate()
+
+    print_cli = cli.split(cliswitch)[1]
+
+    # Response in JSON format
+    if err:
+        module.exit_json(
+            command=print_cli,
+            stderr=err.strip(),
+            msg="%s operation failed" % command,
+            changed=False
+        )
+
+    if out:
+        module.exit_json(
+            command=print_cli,
+            stdout=out.strip(),
+            msg="%s operation completed" % command,
+            changed=True
+        )
+
+    else:
+        module.exit_json(
+            command=print_cli,
+            msg="%s operation completed" % command,
+            changed=True
+        )
 
 
 def main():
     """ This portion is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str'),
-            pn_clipassword=dict(required=True, type='str'),
-            pn_cliswitch=dict(required=False, type='str'),
+            pn_cliusername=dict(required=False, type='str'),
+            pn_clipassword=dict(required=False, type='str'),
+            pn_cliswitch=dict(required=False, type='str', default='local'),
             pn_command=dict(required=True, type='str',
                             choices=['trunk-create', 'trunk-delete',
                                      'trunk-modify']),
@@ -223,8 +297,7 @@ def main():
             pn_port_macaddr=dict(type='str'),
             pn_loopvlans=dict(type='str'),
             pn_routing=dict(type='bool'),
-            pn_host=dict(type='bool'),
-            pn_quiet=dict(default=True, type='bool')
+            pn_host=dict(type='bool')
         ),
         required_if=(
             ["pn_command", "trunk-create", ["pn_name", "pn_ports"]],
@@ -233,9 +306,7 @@ def main():
         )
     )
 
-    cliusername = module.params['pn_cliusername']
-    clipassword = module.params['pn_clipassword']
-    cliswitch = module.params['pn_cliswitch']
+    # Accessing the arguments
     command = module.params['pn_command']
     name = module.params['pn_name']
     ports = module.params['pn_ports']
@@ -259,125 +330,112 @@ def main():
     loopvlans = module.params['pn_loopvlans']
     routing = module.params['pn_routing']
     host = module.params['pn_host']
-    quiet = module.params['pn_quiet']
 
     # Building the CLI command string
-    cli = '/usr/bin/cli'
+    cli = pn_cli(module)
 
-    if quiet is True:
-        cli += ' --quiet '
+    if command == 'trunk-delete':
 
-    cli += ' --user %s:%s ' % (cliusername, clipassword)
-
-    if cliswitch:
-        cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
-
-    cli += ' %s name %s ' % (command, name)
-
-    if ports:
-        cli += ' ports ' + ports
-
-    if speed:
-        cli += ' speed ' + speed
-
-    if egress_rate_limit:
-        cli += ' egress-rate-limit ' + egress_rate_limit
-
-    if jumbo is True:
-        cli += ' jumbo '
-    if jumbo is False:
-        cli += ' no-jumbo '
-
-    if lacp_mode:
-        cli += ' lacp-mode ' + lacp_mode
-
-    if lacp_priority:
-        cli += ' lacp-priority ' + lacp_priority
-
-    if lacp_timeout:
-        cli += ' lacp-timeout ' + lacp_timeout
-
-    if lacp_fallback:
-        cli += ' lacp-fallback ' + lacp_fallback
-
-    if lacp_fallback_timeout:
-        cli += ' lacp-fallback-timeout ' + lacp_fallback_timeout
-
-    if edge_switch is True:
-        cli += ' edge-switch '
-    if edge_switch is False:
-        cli += ' no-edge-switch '
-
-    if pause is True:
-        cli += ' pause '
-    if pause is False:
-        cli += ' no-pause '
-
-    if description:
-        cli += ' description ' + description
-
-    if loopback is True:
-        cli += ' loopback '
-    if loopback is False:
-        cli += ' no-loopback '
-
-    if mirror_receive is True:
-        cli += ' mirror-receive-only '
-    if mirror_receive is False:
-        cli += ' no-mirror-receive-only '
-
-    if unknown_ucast_level:
-        cli += ' unknown-ucast-level ' + unknown_ucast_level
-
-    if unknown_mcast_level:
-        cli += ' unknown-mcast-level ' + unknown_mcast_level
-
-    if broadcast_level:
-        cli += ' broadcast-level ' + broadcast_level
-
-    if port_macaddr:
-        cli += ' port-mac-address ' + port_macaddr
-
-    if loopvlans:
-        cli += ' loopvlans ' + loopvlans
-
-    if routing is True:
-        cli += ' routing '
-    if routing is False:
-        cli += ' no-routing '
-
-    if host is True:
-        cli += ' host-enable '
-    if host is False:
-        cli += ' host-disable '
-
-    # Run the CLI command
-    trunkcmd = shlex.split(cli)
-    response = subprocess.Popen(trunkcmd, stderr=subprocess.PIPE,
-                                stdout=subprocess.PIPE, universal_newlines=True)
-
-    # 'out' contains the output
-    # 'err' contains the err messages
-    out, err = response.communicate()
-
-    # Response in JSON format
-    if err:
-        module.exit_json(
-            command=cli,
-            stderr=err.rstrip("\r\n"),
-            changed=False
-        )
+        check_cli(module, cli)
+        if TRUNK_EXISTS is False:
+            module.exit_json(
+                skipped=True,
+                msg='Trunk with name %s does not exist' % name
+            )
+        cli += ' %s name %s ' % (command, name)
 
     else:
-        module.exit_json(
-            command=cli,
-            stdout=out.rstrip("\r\n"),
-            changed=True
-        )
+        if command == 'trunk-create':
+            check_cli(module, cli)
+            if TRUNK_EXISTS is True:
+                module.exit_json(
+                    skipped=True,
+                    msg='Trunk with name %s already exists' % name
+                )
+        cli += ' %s name %s ' % (command, name)
+
+        # Appending options
+        if ports:
+            cli += ' ports ' + ports
+
+        if speed:
+            cli += ' speed ' + speed
+
+        if egress_rate_limit:
+            cli += ' egress-rate-limit ' + egress_rate_limit
+
+        if jumbo is True:
+            cli += ' jumbo '
+        if jumbo is False:
+            cli += ' no-jumbo '
+
+        if lacp_mode:
+            cli += ' lacp-mode ' + lacp_mode
+
+        if lacp_priority:
+            cli += ' lacp-priority ' + lacp_priority
+
+        if lacp_timeout:
+            cli += ' lacp-timeout ' + lacp_timeout
+
+        if lacp_fallback:
+            cli += ' lacp-fallback ' + lacp_fallback
+
+        if lacp_fallback_timeout:
+            cli += ' lacp-fallback-timeout ' + lacp_fallback_timeout
+
+        if edge_switch is True:
+            cli += ' edge-switch '
+        if edge_switch is False:
+            cli += ' no-edge-switch '
+
+        if pause is True:
+            cli += ' pause '
+        if pause is False:
+            cli += ' no-pause '
+
+        if description:
+            cli += ' description ' + description
+
+        if loopback is True:
+            cli += ' loopback '
+        if loopback is False:
+            cli += ' no-loopback '
+
+        if mirror_receive is True:
+            cli += ' mirror-receive-only '
+        if mirror_receive is False:
+            cli += ' no-mirror-receive-only '
+
+        if unknown_ucast_level:
+            cli += ' unknown-ucast-level ' + unknown_ucast_level
+
+        if unknown_mcast_level:
+            cli += ' unknown-mcast-level ' + unknown_mcast_level
+
+        if broadcast_level:
+            cli += ' broadcast-level ' + broadcast_level
+
+        if port_macaddr:
+            cli += ' port-mac-address ' + port_macaddr
+
+        if loopvlans:
+            cli += ' loopvlans ' + loopvlans
+
+        if routing is True:
+            cli += ' routing '
+        if routing is False:
+            cli += ' no-routing '
+
+        if host is True:
+            cli += ' host-enable '
+        if host is False:
+            cli += ' host-disable '
+
+    run_cli(module, cli)
 
 # Ansible boiler-plate
 from ansible.module_utils.basic import AnsibleModule
 
 if __name__ == '__main__':
     main()
-
