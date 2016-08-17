@@ -8,7 +8,8 @@ DOCUMENTATION = """
 ---
 module: pn_vrouterif
 author: "Pluribus Networks"
-short_description: CLI command to add/remove/modify vrouter-interface
+version: 1.0
+short_description: CLI command to add/remove/modify vrouter-interface.
 description:
   - Execute vrouter-interface-add, vrouter-interface-remove,
     vrouter-interface-modify command.
@@ -17,59 +18,52 @@ description:
 options:
   pn_cliusername:
     description:
-      - Login username
-    required: true
+      - Provide login username if user is not root.
+    required: False
     type: str
   pn_clipassword:
     description:
-      - Login password
-    required: true
+      - Provide login password if user is not root.
+    required: False
     type: str
   pn_cliswitch:
     description:
-    - Target switch to run the cli on.
+      - Target switch to run the cli on.
     required: False
     type: str
   pn_command:
     description:
       - The C(pn_command) takes the vrouter-interface command as value.
-    required: true
-    choices: vrouter-interface-add, vrouter-interface-remove,
-             vrouter-interface-modify
+    required: True
+    choices: ['vrouter-interface-add', 'vrouter-interface-remove',
+             'vrouter-interface-modify']
     type: str
   pn_vrouter_name:
     description:
       - Specify the name of the vRouter interface.
-    required: true
+    required: True
     type: str
   pn_vlan:
     description:
-      - interface Specify the VLAN identifier. This is a value between 1 and
-        4092.
+      - Specify the VLAN identifier. This is a value between 1 and 4092.
     type: int
   pn_interface_ip:
     description:
-      - Specify the IP address of the interface.
-      - For VRRP interface, specify the IP in pn_vrrp_ip. Specify the IP of the
-        primary interface here.
-    type: str
-  pn_netmask:
-    description:
-      - Specify the netmask.
+      - Specify the IP address of the interface in x.x.x.x/n format.
     type: str
   pn_assignment:
     description:
       - Specify the DHCP method for IP address assignment.
-    choices: none, dhcp, dhcpv6, autov6
+    choices:['none', 'dhcp', 'dhcpv6', 'autov6']
     type: str
   pn_vxlan:
     description:
       - Specify the VXLAN identifier. This is a value between 1 and 16777215.
-    type: str
+    type: int
   pn_interface:
     description:
       - Specify if the interface is management, data or span interface.
-    choices: mgmt, data, span
+    choices: ['mgmt', 'data', 'span']
     type: str
   pn_alias:
     description:
@@ -86,15 +80,11 @@ options:
     description:
       - Specify if the NIC is enabled or not
     type: bool
-  pn_vrrpid:
+  pn_vrrp_id:
     description:
       - Specify the ID for the VRRP interface. The IDs on both vRouters must be
         the same IS number.
     type: int
-  pn_vrrp_ip:
-    description:
-      - Specify the IP for VRRP interface.
-    type: str
   pn_vrrp_priority:
     description:
       - Speicfies the priority for the VRRP interface. This is a value between
@@ -332,7 +322,7 @@ def main():
             pn_interface_ip=dict(required=True, type='str'),
             pn_assignment=dict(type='str',
                                choices=['none', 'dhcp', 'dhcpv6', 'autov6']),
-            pn_vxlan=dict(type='str'),
+            pn_vxlan=dict(type='int'),
             pn_interface=dict(type='str', choices=['mgmt', 'data', 'span']),
             pn_alias=dict(type='str'),
             pn_exclusive=dict(type='bool'),
@@ -393,7 +383,7 @@ def main():
             cli += (' ip %s vrrp-primary %s vrrp-id %s '
                     % (interface_ip, vrrp_primary, str(vrrp_id)))
             if vrrp_priority:
-                cli += ' vrrp-priority %s ' % vrrp_priority
+                cli += ' vrrp-priority %s ' % str(vrrp_priority)
             if vrrp_adv_int:
                 cli += ' vrrp-adv-int %s ' % vrrp_adv_int
 
@@ -417,7 +407,7 @@ def main():
             cli += ' assignment ' + assignment
 
         if vxlan:
-            cli += ' vxlan ' + vxlan
+            cli += ' vxlan ' + str(vxlan)
 
         if interface:
             cli += ' if ' + interface

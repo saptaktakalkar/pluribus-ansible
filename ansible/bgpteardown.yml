@@ -1,23 +1,4 @@
 ---
-########## Secured Authentication ##########
-# CLI requires username and password to execute commands.
-# The credentials are provided as input to parameters
-# pn_cliusername and pn_clipassword.
-# For Security concerns, these credentials are stored in
-# an encrypted file and accessed during run time using the
-# ansible-vault feature.
-# The first play achieves this goal.
-
-- name: Get username and password
-  hosts: localhost
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - set_fact: cliusername={{ USERNAME }} clipassword={{ PASSWORD }}
-
-
 ########## Delete vRouters and Interfaces ##########
 
 - name: Delete vRouters and interfaces
@@ -25,11 +6,14 @@
   user: root
   tags: router
 
+  vars_files:
+  - cli_vault.yml
+
   tasks:
     - name: Remove vRouters and interfaces
       pn_vrouter:
-        pn_cliusername: cliusername
-        pn_clipassword: clipassword
+        pn_cliusername: "{{ USERNAME }}" 
+        pn_clipassword: "{{ PASSWORD }}"
         pn_cliswitch: "{{ item.switch }}"
         pn_command: vrouter-delete
         pn_name: "{{ item.name }}"
@@ -51,11 +35,14 @@
   user: root
   tags: vlans
   
+  vars_files:
+  - cli_vault.yml
+
   tasks:
     - name: Delete vLANs
       pn_vlan: 
-        pn_cliusername: cliusername
-        pn_clipassword: clipassword
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
         pn_cliswitch: "{{ item.switch }}"
         pn_command: vlan-delete
         pn_vlanid: "{{ item.id }}"

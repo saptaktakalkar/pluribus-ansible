@@ -1,0 +1,133 @@
+# pn_cluster
+
+Module for CLI cluster configurations. Supports `cluster-create`  and `cluster-delete` commands with options. 
+
+ - [Synopsis](#synopsis)
+ - [Options](#options)
+ - [Usage](#usage)
+ - [Examples](#examples)
+ - [Return Values](#return-values)
+
+## Synopsis
+  
+  A cluster allows two switches to cooperate in high-availability (HA) deployments. The nodes that
+  form the cluster must be members of the same fabric. Clusters are typically used in conjunction
+  with a virtual link aggregation group (VLAG) that allows links physically connected to two
+  separate switches appear as a single trunk to a third device. The third device can be a switch,
+  server, or any Ethernet device. 
+  
+  A cluster has two and **only two** members. A dedicated physical link must exist between cluster members. This link provides an alternate path if one of the VLAG interface fails. 
+  
+ 
+ **_Informational Note_**: You may configure multiple clusters of switches within a single fabric. However,
+    a switch can participate in only one cluster configuration. For example, switch-1 and switch-2 can
+    participate in cluster-1, and switch-3 and switch-4 can participate in cluster-2, but switch-1 and
+    switch-2 cannot participate in cluster-2 or any other cluster. 
+
+ For a complete discussion of all the features, please refer to the Pluribus Networks technical product documentation.
+
+## Options
+
+| parameter        | required       | default       | type        | choices       | comments                                                   |
+|------------------|----------------|---------------|-------------|---------------|------------------------------------------------------------|
+| pn_cliusername   | see comments   |               | str         |               | Provide login username if user is not root.                |
+| pn_clipassword   | see comments   |               | str         |               | Provide login password if user is not root.                |
+| pn_cliswitch     | no             | local         | str         |               | Target switch(es) to run command on.                       |
+| pn_command       | yes            |               | str         | cluster-create, cluster-delete| Create or delete cluster configuration.    |
+| pn_name          | yes            |               | str         |               | Specify the name of the cluster.                           |
+| pn_cluster_node1 | for cluster-create    |        | str         |               | Specify the name of the first switch in the cluster.       |
+| pn_cluster_node2 | for cluster-create    |        | str         |               | Specify the name of the second switch in the cluster.      |
+| pn_validate      | no             |               | bool        |               | Validate the inter-switch links and state of the switches in the cluster. |
+
+
+## Usage
+
+```
+- name: "Playbook for CLI Cluster"
+  hosts: <hosts>
+  user: <user>
+  
+  vars_files:
+  - foo_vault.yml
+  
+  tasks:
+  - name: "PN cluster command"
+    pn_cluster:  
+     [pn_cliusername: <username>] 
+     [pn_clipassword: <password>]
+     pn_command: <cluster-create/delete> 
+     pn_name: <cluster name>  
+     [pn_cluster_node1: <cluster-node-1>] 
+     [pn_cluster_node2: <cluster-node-2>] 
+     [pn_validate: <True/False>]
+  
+```
+
+## Examples
+
+# cluster-create
+Sample playbook for **_creating_** a Cluster configuration with `user: pluribus`.
+
+Equivalent CLI:
+```
+CLI......> cluster-create name spine-cluster cluster-node-1 spine01 cluster-node-2 spine02
+```
+
+```
+---
+- name: "Playbook for Cluster Create"
+  hosts: spine[0]
+  user: pluribus
+  
+  vars_files:
+  - foo_vault.yml
+  
+  tasks:
+  - name: "Create spine cluster"
+    pn_cluster: 
+      pn_cliusername: "{{ USERNAME }}" 
+      pn_clipassword: "{{ PASSWORD }}"
+      pn_command: cluster-create 
+      pn_name: spine-cluster 
+      pn_cluster_node1: spine01 
+      pn_cluster_node2: spine02 
+      pn_validate: True 
+    register: cmd_output
+  - debug: var=cmd_output
+  
+```
+
+
+# cluster-delete
+Sampe Playbook for **_deleting_** a Cluster Configuration with `user: root`.
+
+Equivalent CLI:
+```
+CLI......> cluster-delete name spine-cluster
+```
+
+```
+---
+- name: "Playbook for Cluster Delete"
+  hosts: spine[0]
+  user: root
+  
+  tasks:
+  - name: "Delete spine cluster"
+    pn_cluster:
+      pn_command: cluster-delete 
+      pn_name: spine-cluster
+    register: cmd_output
+  - debug: var=cmd_output
+  
+```
+
+## Return Values
+
+| name | description | returned | type |
+|--------|------------|----------|---------|
+| command | The CLI command run on target nodes. | always | string |
+| stdout | Output of the CLI command. | on success | string |
+| stderr | Error message from the CLI command. | on failure | string |
+| changed | Indicates whether the CLI caused changes in the target node.| always | bool |
+

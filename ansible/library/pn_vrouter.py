@@ -280,7 +280,7 @@ def main():
             pn_service_type=dict(type='str', choices=['dedicated', 'shared']),
             pn_service_state=dict(type='str', choices=['enable', 'disable']),
             pn_router_type=dict(type='str', choices=['hardware', 'software']),
-            pn_hw_vrrp_id=dict(type='str'),
+            pn_hw_vrrp_id=dict(type='int'),
             pn_router_id=dict(type='str'),
             pn_bgp_as=dict(type='int'),
             pn_bgp_redistribute=dict(type='str', choices=['static', 'connected',
@@ -361,7 +361,7 @@ def main():
             cli += ' router-type ' + router_type
 
         if hw_vrrp_id:
-            cli += ' hw-vrrp-id ' + hw_vrrp_id
+            cli += ' hw-vrrp-id ' + str(hw_vrrp_id)
 
         if router_id:
             cli += ' router-id ' + router_id

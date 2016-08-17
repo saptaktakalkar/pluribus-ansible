@@ -1,33 +1,16 @@
 ---
-########## Secured Authentication ##########
-# CLI requires username and password to execute commands.
-# The credentials are provided as input to parameters
-# pn_cliusername and pn_clipassword.
-# For Security concerns, these credentials are stored in
-# an encrypted file and accessed during run time using the
-# ansible-vault feature.
-# The first play achieves this goal.
-
-- name: Get username and password
-  hosts: localhost
-
-  vars_files:
-  - cli_vault.yml
-
-  tasks:
-    - set_fact: cliusername={{ USERNAME }} clipassword={{ PASSWORD }}
-
-
-
 - name: "Teardown Fabric configurations..."
   hosts: testswitches[0]
   user: root
   tags: teardown
 
+  vars_files:
+  - cli_vault.yml
+
   tasks:
 
     - name: "Delete vRouter and interfaces"
-      pn_vrouter: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vrouter-delete pn_name={{ item }} 
+      pn_vrouter: pn_cliusername={{ USERNAME }} pn_clipassword={{ PASSWORD }} pn_command=vrouter-delete pn_name={{ item }} 
       with_items: 
         - spine1vrouter
         - spine2vrouter
@@ -36,14 +19,14 @@
 
     
     - name: "Delete VLANs..."
-      pn_vlan: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vlan-delete pn_vlanid={{ item }}
+      pn_vlan: pn_cliusername={{ USERNAME }} pn_clipassword={{ PASSWORD }} pn_command=vlan-delete pn_vlanid={{ item }}
       with_sequence: start=100 end=105
       register: vlan_delete
     - debug: var=vlan_delete
   
     
     - name: "Delete VLAGs..."
-      pn_vlag: pn_cliusername=cliusername pn_clipassword=clipassword pn_cliswitch={{ item.switch }} pn_command=vlag-delete pn_name={{ item.name }}
+      pn_vlag: pn_cliusername={{ USERNAME }} pn_clipassword={{ PASSWORD }} pn_cliswitch={{ item.switch }} pn_command=vlag-delete pn_name={{ item.name }}
       with_items:
         - {switch: 'local', name: 'spine-to-leaf' }
         - {switch: 'local', name: 'spine-to-leaf3'}
@@ -54,7 +37,7 @@
 
 
     - name: "Delete Trunks..."
-      pn_trunk: pn_cliusername=cliusername pn_clipassword=clipassword pn_cliswitch={{ item.switch }} pn_command=trunk-delete pn_name={{ item.name }} 
+      pn_trunk: pn_cliusername={{ USERNAME }} pn_clipassword={{ PASSWORD }} pn_cliswitch={{ item.switch }} pn_command=trunk-delete pn_name={{ item.name }} 
       with_items:
         - {switch: 'local', name: 'spine1-to-leaf'}
         - {switch: 'local', name: 'spine1-to-leaf3'}
@@ -69,7 +52,7 @@
 
 
     - name: "Delete Clusters..."
-      pn_cluster: pn_cliusername=cliusername pn_clipassword=clipassword pn_cliswitch={{ item.switch }} pn_command=cluster-delete pn_name={{ item.name }}
+      pn_cluster: pn_cliusername={{ USERNAME }} pn_clipassword={{ PASSWORD }} pn_cliswitch={{ item.switch }} pn_command=cluster-delete pn_name={{ item.name }}
       with_items:
         - {switch: 'local', name: 'spinecluster'}
         - {switch: 'pikachu', name: 'leafcluster'}
