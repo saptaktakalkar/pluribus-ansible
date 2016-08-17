@@ -1,0 +1,77 @@
+---
+########## Secured Authentication ##########
+# CLI requires username and password to execute commands.
+# The credentials are provided as input to parameters
+# pn_cliusername and pn_clipassword.
+# For Security concerns, these credentials are stored in
+# an encrypted file and accessed during run time using the
+# ansible-vault feature.
+# The first play achieves this goal.
+
+- name: Get username and password
+  hosts: localhost
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - set_fact: cliusername={{ USERNAME }} clipassword={{ PASSWORD }}
+
+
+
+- name: "Teardown Fabric configurations..."
+  hosts: testswitches[0]
+  user: root
+  tags: teardown
+
+  tasks:
+
+    - name: "Delete vRouter and interfaces"
+      pn_vrouter: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vrouter-delete pn_name={{ item }} 
+      with_items: 
+        - spine1vrouter
+        - spine2vrouter
+      register: vrouter_delete
+    - debug: var=vrouter_delete
+
+    
+    - name: "Delete VLANs..."
+      pn_vlan: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vlan-delete pn_vlanid={{ item }}
+      with_sequence: start=100 end=105
+      register: vlan_delete
+    - debug: var=vlan_delete
+  
+    
+    - name: "Delete VLAGs..."
+      pn_vlag: pn_cliusername=cliusername pn_clipassword=clipassword pn_cliswitch={{ item.switch }} pn_command=vlag-delete pn_name={{ item.name }}
+      with_items:
+        - {switch: 'local', name: 'spine-to-leaf' }
+        - {switch: 'local', name: 'spine-to-leaf3'}
+        - {switch: 'local', name: 'spine-to-leaf4'}
+        - {switch: 'pikachu', name: 'leafcluster-to-spinecluster'}
+      register: vlag_delete
+    - debug: var=vlag_delete
+
+
+    - name: "Delete Trunks..."
+      pn_trunk: pn_cliusername=cliusername pn_clipassword=clipassword pn_cliswitch={{ item.switch }} pn_command=trunk-delete pn_name={{ item.name }} 
+      with_items:
+        - {switch: 'local', name: 'spine1-to-leaf'}
+        - {switch: 'local', name: 'spine1-to-leaf3'}
+        - {switch: 'local', name: 'spine1-to-leaf4'}
+        - {switch: 'squirtle', name: 'spine2-to-leaf'} 
+        - {switch: 'squirtle', name: 'spine2-to-leaf3'} 
+        - {switch: 'squirtle', name: 'spine2-to-leaf4'}
+        - {switch: 'pikachu', name: 'leaf1-to-spine'}
+        - {switch: 'gyarados', name: 'leaf2-to-spine'}
+      register: trunk_delete
+    - debug: var=trunk_delete
+
+
+    - name: "Delete Clusters..."
+      pn_cluster: pn_cliusername=cliusername pn_clipassword=clipassword pn_cliswitch={{ item.switch }} pn_command=cluster-delete pn_name={{ item.name }}
+      with_items:
+        - {switch: 'local', name: 'spinecluster'}
+        - {switch: 'pikachu', name: 'leafcluster'}
+      register: cluster_delete
+    - debug: var=cluster_delete

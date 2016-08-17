@@ -25,17 +25,16 @@ Module for CLI cluster configurations. Supports `cluster-create`  and `cluster-d
 
 ## Options
 
-| parameter       | required       | default      |choices       |comments                                                    |
-|-----------------|----------------|--------------|--------------|------------------------------------------------------------|
-|pn_cliusername   | yes            |              |              | Login username.                                            |
-|pn_clipassword   | yes            |              |              | Login password.                                            |
-|pn_cliswitch     | no             |              |              | Target switch(es) to run command on.                       |
-|pn_command       | yes            |              | cluster-create, cluster-delete| Create or delete cluster configuration.   |
-|pn_name          | yes            |              |              | Specify the name of the cluster.                           |
-|pn_cluster_node1 | for cluster-create    |       |              | Specify the name of the first switch in the cluster.       |
-|pn_cluster_node2 | for cluster-create    |       |              | Specify the name of the second switch in the cluster.      |
-|pn_validate      | no             |              |validate, no-validate | Validate the inter-switch links and state of the switches in the cluster. |
-|pn_quiet         | no             | true         |              | Enable/disable system information.                         |
+| parameter       | required       | default      | type         | choices       | comments                                                   |
+|-----------------|----------------|--------------|--------------|----------------------------------------------------------------------------|
+|pn_cliusername   | see comments   |              | str          |               | Provide login username if user is not root.                |
+|pn_clipassword   | see comments   |              | str          |               | Provide login password if user is not root                 |
+|pn_cliswitch     | no             | local        | str          |               | Target switch(es) to run command on.                       |
+|pn_command       | yes            |              | str          | cluster-create, cluster-delete| Create or delete cluster configuration.    |
+|pn_name          | yes            |              | str          |               | Specify the name of the cluster.                           |
+|pn_cluster_node1 | for cluster-create    |       | str          |               | Specify the name of the first switch in the cluster.       |
+|pn_cluster_node2 | for cluster-create    |       | str          |               | Specify the name of the second switch in the cluster.      |
+|pn_validate      | no             |              | bool         |               | Validate the inter-switch links and state of the switches in the cluster. |
 
 
 ## Usage
@@ -48,8 +47,8 @@ Module for CLI cluster configurations. Supports `cluster-create`  and `cluster-d
   tasks:
   - name: "PN cluster command"
     pn_cluster: > 
-     pn_cliusername=<username> 
-     pn_clipassword=<password>
+     [pn_cliusername=<username>] 
+     [pn_clipassword=<password>]
      pn_command=<cluster-create/delete> 
      pn_name=<cluster name>  
      [pn_cluster_node1=<cluster-node-1>] 
@@ -62,13 +61,13 @@ Module for CLI cluster configurations. Supports `cluster-create`  and `cluster-d
 ## Examples
 
 # cluster-create
-Sample playbook for **_creating_** a Cluster configuration.
+Sample playbook for **_creating_** a Cluster configuration with `user: pluribus`.
 
 ```
 ---
 - name: "Playbook for Cluster Create"
   hosts: spine[0]
-  user: root
+  user: pluribus
   tasks:
   - name: "Create spine cluster"
     pn_cluster: >
@@ -87,7 +86,7 @@ Sample playbook for **_creating_** a Cluster configuration.
 
 
 # cluster-delete
-Sampe Playbook for **_deleting_** a Cluster Configuration.
+Sampe Playbook for **_deleting_** a Cluster Configuration with `user: root`.
 
 ```
 ---
@@ -97,8 +96,6 @@ Sampe Playbook for **_deleting_** a Cluster Configuration.
   tasks:
   - name: "Delete spine cluster"
     pn_cluster:
-      pn_cliusername=<username> 
-      pn_clipassword=<password>
       pn_command=cluster-delete 
       pn_name=spine-cluster 
       pn_quiet=True

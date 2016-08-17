@@ -27,9 +27,8 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=True, type='str'),
             pn_clipassword=dict(required=True, type='str'),
-            pn_cliswitch=dict(required=False, type='str'),
-            pn_command=dict(required=True, type='str'),
-            pn_quiet=dict(default=True, type='bool')
+            pn_cliswitch=dict(required=False, type='str', default='local'),
+            pn_command=dict(required=True, type='str')
         )
     )
 
@@ -37,13 +36,9 @@ def main():
     clipassword = module.params['pn_clipassword']
     cliswitch = module.params['pn_cliswitch']
     command = module.params['pn_command']
-    quiet = module.params['pn_quiet']
 
     # Building the CLI command string
-    cli = '/usr/bin/cli'
-
-    if quiet is True:
-        cli += ' --quiet '
+    cli = '/usr/bin/cli --quiet '
 
     cli += ' --user %s:%s ' % (cliusername, clipassword)
 

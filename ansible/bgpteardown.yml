@@ -1,0 +1,68 @@
+---
+########## Secured Authentication ##########
+# CLI requires username and password to execute commands.
+# The credentials are provided as input to parameters
+# pn_cliusername and pn_clipassword.
+# For Security concerns, these credentials are stored in
+# an encrypted file and accessed during run time using the
+# ansible-vault feature.
+# The first play achieves this goal.
+
+- name: Get username and password
+  hosts: localhost
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - set_fact: cliusername={{ USERNAME }} clipassword={{ PASSWORD }}
+
+
+########## Delete vRouters and Interfaces ##########
+
+- name: Delete vRouters and interfaces
+  hosts: testswitches[0]
+  user: root
+  tags: router
+
+  tasks:
+    - name: Remove vRouters and interfaces
+      pn_vrouter:
+        pn_cliusername: cliusername
+        pn_clipassword: clipassword
+        pn_cliswitch: "{{ item.switch }}"
+        pn_command: vrouter-delete
+        pn_name: "{{ item.name }}"
+      with_items:
+        - {switch: 'local', name: 'spine1vrouter'}
+        - {switch: 'squirtle', name: 'spine2vrouter'}
+        - {switch: 'pikachu', name: 'leaf1vrouter'}
+        - {switch: 'gyarados', name: 'leaf2vrouter'}
+        - {switch: 'lapras', name: 'leaf3vrouter'}
+        - {switch: 'jigglypuff', name: 'leaf4vrouter'}
+      register: router
+    - debug: var=router
+
+
+########## Delete vLANs ##########
+
+- name: Delete vLANs
+  hosts: testswitches[0]
+  user: root
+  tags: vlans
+  
+  tasks:
+    - name: Delete vLANs
+      pn_vlan: 
+        pn_cliusername: cliusername
+        pn_clipassword: clipassword
+        pn_cliswitch: "{{ item.switch }}"
+        pn_command: vlan-delete
+        pn_vlanid: "{{ item.id }}"
+      with_items:
+        - {switch: 'pikachu', id: 101}
+        - {switch: 'gyarados', id: 102}
+        - {switch: 'lapras', id: 103}
+        - {switch: 'jigglypuff', id: 104}
+      register: vlans
+    - debug: var=vlans
