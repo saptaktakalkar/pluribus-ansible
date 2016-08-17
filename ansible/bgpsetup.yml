@@ -1,3 +1,24 @@
+---
+
+########## Secured Authentication ##########
+# CLI requires username and password to execute commands.
+# The credentials are provided as input to parameters
+# pn_cliusername and pn_clipassword.
+# For Security concerns, these credentials are stored in
+# an encrypted file and accessed during run time using the
+# ansible-vault feature.
+# The first play achieves this goal.
+
+- name: Get username and password
+  hosts: localhost
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - set_fact: cliusername={{ USERNAME }} clipassword={{ PASSWORD }}
+
+
 ########## vRouter ##########
 
 
@@ -11,8 +32,8 @@
 
     - name: Create vRouter
       pn_vrouter:
-        pn_cliusername: network-admin
-        pn_clipassword: test123
+        pn_cliusername: cliusername
+        pn_clipassword: clipassword
         pn_command: vrouter-create
         pn_name: spine1vrouter
         pn_vnet: no-fail-fab-global
@@ -23,7 +44,7 @@
         pn_bgp_max_paths: 16
       register: spine1_vrouter
     - debug: var=spine1_vrouter
-    - pause: seconds=5
+    - pause: seconds=2
 
 
 - name: "Create vRouter"
@@ -37,8 +58,8 @@
 
     - name: Create vRouter
       pn_vrouter:
-        pn_cliusername: network-admin
-        pn_clipassword: test123
+        pn_cliusername: cliusername
+        pn_clipassword: clipassword
         pn_command: vrouter-create
         pn_name: spine2vrouter
         pn_vnet: no-fail-fab-global
@@ -49,7 +70,7 @@
         pn_bgp_max_paths: 16
       register: spine2_vrouter
     - debug: var=spine2_vrouter
-    - pause: seconds=5
+    - pause: seconds=2
 
 
 - name: "Create vRouter"
@@ -63,8 +84,8 @@
 
     - name: Create vRouter
       pn_vrouter:
-        pn_cliusername: network-admin
-        pn_clipassword: test123
+        pn_cliusername: cliusername
+        pn_clipassword: clipassword
         pn_command: vrouter-create
         pn_name: leaf1vrouter
         pn_vnet: no-fail-fab-global
@@ -75,7 +96,7 @@
         pn_bgp_max_paths: 16
       register: leaf1_vrouter
     - debug: var=leaf1_vrouter
-    - pause: seconds=5
+    - pause: seconds=2
 
 
 
@@ -89,8 +110,8 @@
 
     - name: Create vRouter
       pn_vrouter:
-        pn_cliusername: network-admin
-        pn_clipassword: test123
+        pn_cliusername: cliusername
+        pn_clipassword: clipassword
         pn_command: vrouter-create
         pn_name: leaf2vrouter
         pn_vnet: no-fail-fab-global
@@ -101,7 +122,7 @@
         pn_bgp_max_paths: 16
       register: leaf2_vrouter
     - debug: var=leaf2_vrouter
-    - pause: seconds=5
+    - pause: seconds=2
 
 
 
@@ -115,8 +136,8 @@
 
     - name: Create vRouter
       pn_vrouter:
-        pn_cliusername: network-admin
-        pn_clipassword: test123
+        pn_cliusername: cliusername
+        pn_clipassword: clipassword
         pn_command: vrouter-create
         pn_name: leaf3vrouter
         pn_vnet: no-fail-fab-global
@@ -127,7 +148,7 @@
         pn_bgp_max_paths: 16
       register: leaf3_vrouter
     - debug: var=leaf3_vrouter
-    - pause: seconds=5
+    - pause: seconds=2
 
 
 - name: "Create vRouter"
@@ -140,8 +161,8 @@
 
     - name: Create vRouter
       pn_vrouter:
-        pn_cliusername: network-admin
-        pn_clipassword: test123
+        pn_cliusername: cliusername
+        pn_clipassword: clipassword
         pn_command: vrouter-create
         pn_name: leaf4vrouter
         pn_vnet: no-fail-fab-global
@@ -152,7 +173,7 @@
         pn_bgp_max_paths: 16
       register: leaf4_vrouter
     - debug: var=leaf4_vrouter
-    - pause: seconds=5
+    - pause: seconds=2
 
 
 
@@ -178,8 +199,8 @@
 
     - name: Add vRouter loopback interface
       pn_vrouterlbif:
-        pn_cliusername: network-admin
-        pn_clipassword: test123
+        pn_cliusername: cliusername
+        pn_clipassword: clipassword
         pn_cliswitch: "{{ item.switch }}"
         pn_command: vrouter-loopback-interface-add
         pn_vrouter_name: "{{ item.name }}"
@@ -193,7 +214,7 @@
         - {switch: 'jigglypuff', name: 'leaf4vrouter', ip: '172.16.1.6'}
       register: loopback
     - debug: var=loopback
-    - pause: seconds=5
+    - pause: seconds=2
 
 ########## L3 ports ##########
 - name: Gathering system facts
@@ -217,8 +238,8 @@
 
     - name: Add vRouter interface L3
       pn_vrouterif:
-        pn_cliusername: network-admin
-        pn_clipassword: test123
+        pn_cliusername: cliusername
+        pn_clipassword: clipassword
         pn_cliswitch: "{{ item.switch }}"
         pn_command: vrouter-interface-add
         pn_vrouter_name: "{{ item.name }}"
@@ -243,7 +264,7 @@
         - {switch: 'jigglypuff', name: 'leaf4vrouter', ip: '172.168.10.50/30', port: 3}
       register: l3
     - debug: var=l3
-    - pause: seconds=5
+    - pause: seconds=2
 
 
 
@@ -270,8 +291,8 @@
 
     - name: Add vRouter BGP 
       pn_vrouterbgp:
-        pn_cliusername: network-admin
-        pn_clipassword: test123
+        pn_cliusername: cliusername
+        pn_clipassword: clipassword
         pn_cliswitch: "{{ item.switch }}"
         pn_command: vrouter-bgp-add
         pn_vrouter_name: "{{ item.name }}"
@@ -296,7 +317,7 @@
         - {switch: 'jigglypuff', name: 'leaf4vrouter', ip: '172.168.10.49', remote: 65000}
       register: bgp
     - debug: var=bgp
-    - pause: seconds=5
+    - pause: seconds=2
 
 
 
@@ -321,7 +342,7 @@
   tasks: 
 
     - name: Create VLAN
-      pn_vlan: pn_cliusername=network-admin pn_clipassword=test123 pn_cliswitch={{ item.switch }} pn_command=vlan-create pn_vlanid={{ item.id }} pn_scope=local
+      pn_vlan: pn_cliusername=cliusername pn_clipassword=clipassword pn_cliswitch={{ item.switch }} pn_command=vlan-create pn_vlanid={{ item.id }} pn_scope=local
       with_items:
         - {switch: 'pikachu', id: 101}
         - {switch: 'gyarados', id: 102}
@@ -329,7 +350,7 @@
         - {switch: 'jigglypuff', id: 104}
       register: vlan
     - debug: var=vlan
-    - pause: seconds=5
+    - pause: seconds=2
 
 
 ########## vRouter interface ##########
@@ -354,8 +375,8 @@
 
     - name: Add vRouter interface 
       pn_vrouterif:
-        pn_cliusername: network-admin
-        pn_clipassword: test123
+        pn_cliusername: cliusername
+        pn_clipassword: clipassword
         pn_cliswitch: "{{ item.switch }}"
         pn_command: vrouter-interface-add
         pn_vrouter_name: "{{ item.name }}"
@@ -368,4 +389,4 @@
         - {switch: 'jigglypuff', name: 'leaf4vrouter', ip: '104.104.104.2/24', vlan: 104}
       register: interface
     - debug: var=interface
-    - pause: seconds=5
+    - pause: seconds=2

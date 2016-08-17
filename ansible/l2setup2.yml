@@ -1,0 +1,329 @@
+---
+
+- name: Get username and password
+  hosts: localhost
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - set_fact: cliusername={{ USERNAME }} clipassword={{ PASSWORD }}
+
+######## CLUSTERS #########
+
+- name: "Cluster config"
+  hosts: testswitches[0]
+  user: root
+
+  tasks:
+    - name: Create Spine Cluster
+      pn_cluster: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=cluster-create pn_name=spinecluster pn_cluster_node1=charmander pn_cluster_node2=squirtle
+      register: cluster1
+    - debug: var=cluster1 
+
+
+- name: "Cluster config"
+  hosts: testswitches[2]
+  user: pluribus
+
+  tasks:
+    - name: Create Leaf Cluster
+      pn_cluster: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=cluster-create pn_name=leafcluster pn_cluster_node1=pikachu pn_cluster_node2=gyarados
+      register: cluster2
+    - debug: var=cluster2
+
+###### TRUNKS ######
+
+- name: "Trunk config"
+  hosts: testswitches[0]
+  user: root
+
+  tasks:
+    - name: Create spine1-to-leaf trunk
+      pn_trunk: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=trunk-create pn_name='spine1-to-leaf' pn_ports='41,42,43,44'
+      register: trunk1
+    - debug: var=trunk1
+
+- name: "Trunk config"
+  hosts: testswitches[1]
+  user: root
+
+  tasks:
+    - name: Create spine2-to-leaf trunk
+      pn_trunk: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=trunk-create pn_name='spine2-to-leaf' pn_ports='39,42,43,44'
+      register: trunk2
+    - debug: var=trunk2
+
+- name: "Trunk config"
+  hosts: testswitches[2]
+  user: pluribus
+
+  tasks:
+    - name: Create leaf1-to-spine trunk
+      pn_trunk: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=trunk-create pn_name='leaf1-to-spine' pn_ports='1,2,3,4'
+      register: trunk3
+    - debug: var=trunk3
+
+
+- name: "Trunk config"
+  hosts: testswitches[3]
+  user: pluribus
+
+  tasks:
+    - name: Create leaf2-to-spine trunk
+      pn_trunk: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=trunk-create pn_name='leaf2-to-spine' pn_ports='1,2,3,4'
+      register: trunk4
+    - debug: var=trunk4
+
+
+- name: "Trunk config"
+  hosts: testswitches[0]
+  user: root
+
+  tasks:
+    - name: Create spine1-to-leaf3 trunk
+      pn_trunk: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=trunk-create pn_name='spine1-to-leaf3' pn_ports='45,46'
+      register: trunk5
+    - debug: var=trunk5
+
+
+- name: "Trunk config"
+  hosts: testswitches[0]
+  user: root
+
+  tasks:
+    - name: Create spine1-to-leaf4 trunk
+      pn_trunk: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=trunk-create pn_name='spine1-to-leaf4' pn_ports='47,48'
+      register: trunk6
+    - debug: var=trunk6
+
+
+- name: "Trunk config"
+  hosts: testswitches[1]
+  user: root
+
+  tasks:
+    - name: Create spine2-to-leaf3 trunk
+      pn_trunk: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=trunk-create pn_name='spine2-to-leaf3' pn_ports='45,46'
+      register: trunk7
+    - debug: var=trunk7
+
+
+- name: "Trunk config"
+  hosts: testswitches[1]
+  user: root
+
+  tasks:
+    - name: Create spine1-to-leaf4 trunk
+      pn_trunk: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=trunk-create pn_name='spine2-to-leaf4' pn_ports='47,48'
+      register: trunk8
+    - debug: var=trunk8
+
+##### VLAGS #####
+
+- name: "VLAG config"
+  hosts: testswitches[0]
+  user: root
+
+  tasks:
+
+    - name: Create vlag
+      pn_vlag: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vlag-create pn_name=spine-to-leaf pn_port=spine1-to-leaf pn_peer_port=spine2-to-leaf pn_peer_switch=squirtle pn_mode=active-active
+      register: vlag1
+    - debug: var=vlag1
+
+- name: "VLAG config"
+  hosts: testswitches[0]
+  user: root
+
+  tasks:
+    - name: Create vlag
+      pn_vlag: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vlag-create pn_name=spine-to-leaf3 pn_port=spine1-to-leaf3 pn_peer_port=spine2-to-leaf3 pn_peer_switch=squirtle pn_mode=active-active
+      register: vlag2
+    - debug: var=vlag2
+
+- name: "VLAG config"
+  hosts: testswitches[0]
+  user: root
+
+  tasks:
+
+    - name: Create vlag
+      pn_vlag: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vlag-create pn_name=spine-to-leaf4 pn_port=spine1-to-leaf4 pn_peer_port=spine2-to-leaf4 pn_peer_switch=squirtle pn_mode=active-active
+      register: vlag3
+    - debug: var=vlag3
+
+- name: "VLAG config"
+  hosts: testswitches[2]
+  user: pluribus
+
+  tasks:
+    - name: Create leafcluster-to-spinecluster VLAG
+      pn_vlag: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vlag-create pn_name='leafcluster-to-spinecluster' pn_port='leaf1-to-spine' pn_peer_port='leaf2-to-spine' pn_peer_switch=gyarados pn_mode=active-active
+      register: vlag4
+    - debug: var=vlag4
+
+##### VLANs #####
+
+- name: "VLAN config"
+  hosts: testswitches[0]
+  user: root
+
+  tasks:
+    - name: "Create VLANs..."
+      pn_vlan: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vlan-create pn_vlanid={{ item }} pn_scope=fabric
+      with_sequence: start=101 end=105
+      register: vlan
+    - debug: var=vlan
+
+
+##### VROUTERS ######
+
+- name: "Create vRouters"
+  hosts: testswitches[0]
+  user: root
+
+  tasks:
+    - name: "Spine1vrouter"
+      pn_vrouter: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vrouter-create pn_name=spine1vrouter pn_vnet=no-fail-fab-global pn_service_state=enable pn_hw_vrrp_id=18
+      register: vrouter1
+    - debug: var=vrouter1
+
+- name: "Create vRouters"
+  hosts: testswitches[1]
+  user: root
+
+  tasks:
+    - name: "Spine2vrouter"
+      pn_vrouter: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vrouter-create pn_name=spine2vrouter pn_vnet=no-fail-fab-global pn_service_state=enable pn_hw_vrrp_id=18
+      register: vrouter2
+    - debug: var=vrouter2
+
+
+##### VROUTER VRRP INTERFACES #####
+
+- name: "Create vRouter Interfaces"
+  hosts: testswitches[0]
+  user: root
+
+  tasks:
+    - name: Add vRouter interface
+      pn_vrouterif: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vrouter-interface-add pn_vrouter_name=spine1vrouter pn_interface_ip={{ item.ip }} pn_vlan={{ item.vlan }} pn_interface=data
+      with_items:
+        - {ip: '101.101.101.2/24', vlan: 101}
+        - {ip: '102.102.102.2/24', vlan: 102}
+        - {ip: '103.103.103.2/24', vlan: 103}
+        - {ip: '104.104.104.2/24', vlan: 104}
+        - {ip: '105.105.105.2/24', vlan: 105}
+      register: interface1 
+    - debug: var=interface1
+
+    - name: Add VRRP interface
+      pn_vrouterif: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vrouter-interface-add pn_vrouter_name=spine1vrouter pn_interface_ip={{ item.ip }} pn_vrrp_priority={{ item.priority }} pn_vrrp_id=18 pn_vlan={{ item.vlan }} pn_interface=data
+      with_items:
+        - {ip: '101.101.101.1/24', priority: '110', vlan: 101}
+        - {ip: '102.102.102.1/24', priority: '110', vlan: 102}
+        - {ip: '103.103.103.1/24', priority: '110', vlan: 103}
+        - {ip: '104.104.104.1/24', priority: '110', vlan: 104}
+        - {ip: '105.105.105.1/24', priority: '110', vlan: 105}
+      register: vrrp1 
+    - debug: var=vrrp1
+
+- name: "Create vRouter Interfaces"
+  hosts: testswitches[1]
+  user: root
+
+  tasks:
+    - name: Add vRouter interface
+      pn_vrouterif: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vrouter-interface-add pn_vrouter_name=spine2vrouter pn_interface_ip={{ item.ip }} pn_vlan={{ item.vlan }} pn_interface=data
+      with_items:
+        - {ip: '101.101.101.3/24', vlan: 101}
+        - {ip: '102.102.102.3/24', vlan: 102}
+        - {ip: '103.103.103.3/24', vlan: 103}
+        - {ip: '104.104.104.3/24', vlan: 104}
+        - {ip: '105.105.105.3/24', vlan: 105}
+      register: interface2 
+    - debug: var=interface2
+
+    - name: Add VRRP interface
+      pn_vrouterif: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vrouter-interface-add pn_vrouter_name=spine2vrouter pn_interface_ip={{ item.ip }} pn_vrrp_priority={{ item.priority }} pn_vrrp_id=18 pn_vlan={{ item.vlan }} pn_interface=data
+      with_items:
+        - {ip: '101.101.101.1/24', priority: '110', vlan: 101}
+        - {ip: '102.102.102.1/24', priority: '110', vlan: 102}
+        - {ip: '103.103.103.1/24', priority: '110', vlan: 103}
+        - {ip: '104.104.104.1/24', priority: '110', vlan: 104}
+        - {ip: '105.105.105.1/24', priority: '110', vlan: 105}
+      register: vrrp2 
+    - debug: var=vrrp2
+
+##### VROUTER OSPF #####
+
+
+- name: "Add vRouter OSPF"
+  hosts: testswitches[0]
+  user: root
+
+  tasks:
+    - name: "Add vRouter OSPF interface..."
+      pn_ospf: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vrouter-ospf-add pn_vrouter_name=spine1vrouter pn_network_ip=172.26.1.0/24 pn_ospf_area=0
+      register: ospf1 
+    - debug: var=ospf1
+
+- name: "Add vRouter OSPF"
+  hosts: testswitches[1]
+  user: root
+
+  tasks:
+    - name: "Add vRouter OSPF interface..."
+      pn_ospf: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vrouter-ospf-add pn_vrouter_name=spine2vrouter pn_network_ip=172.26.2.0/24 pn_ospf_area=0
+      register: ospf2 
+    - debug: var=ospf2
+
+
+#####  Loopback Interface #####
+
+- name: "Add loopback interface"
+  hosts: testswitches[0]
+  user: root
+  
+  tasks:
+    - name: "Add vRouter loopback interface..."
+      pn_vrouterlbif: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vrouter-loopback-interface-add pn_vrouter_name=spine1vrouter pn_interface_ip=192.168.11.12
+      register: loopback1
+    - debug: var=loopback1
+  
+
+- name: "Add loopback interface"
+  hosts: testswitches[1]
+  user: root
+  
+  tasks:
+    - name: "Add vRouter loopback interface..."
+      pn_vrouterlbif: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vrouter-loopback-interface-add pn_vrouter_name=spine2vrouter pn_interface_ip=192.168.21.12
+      register: loopback2
+    - debug: var=loopback2
+
+
+##### L3 port #####
+
+
+- name: "Add l3 port"
+  hosts: testswitches[0]
+  user: root
+
+  tasks: 
+    - name: "Add L3 interface"
+      pn_vrouterif: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vrouter-interface-add pn_vrouter_name=spine1vrouter pn_interface_ip=172.16.1.1/24 pn_l3port=7
+      register: l3iface1
+    - debug: var=l3iface1
+
+- name: "Add l3 port"
+  hosts: testswitches[1]
+  user: root
+
+  tasks: 
+    - name: "Add L3 interface"
+      pn_vrouterif: pn_cliusername=cliusername pn_clipassword=clipassword pn_command=vrouter-interface-add pn_vrouter_name=spine2vrouter pn_interface_ip=172.16.2.1/24 pn_l3port=8
+      register: l3iface2
+    - debug: var=l3iface2
+

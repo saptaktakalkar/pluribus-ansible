@@ -110,8 +110,9 @@ def pn_cli(module):
         cli = '/usr/bin/cli --quiet --user %s:%s ' % (username, password)
     else:
         cli = '/usr/bin/cli --quiet '
-
-    cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
+    if cliswitch:
+        cli += (' switch-local ' if cliswitch == 'local' else ' switch ' +
+                cliswitch)
     return cli
 
 
@@ -122,6 +123,7 @@ def run_cli(module, cli):
     :param cli: the complete cli string to be executed on the target node(s).
     :param module: The Ansible module to fetch command
     """
+    cliswitch = module.params['pn_cliswitch']
     command = module.params['pn_command']
     cmd = shlex.split(cli)
     response = subprocess.Popen(cmd, stderr=subprocess.PIPE,
@@ -130,10 +132,13 @@ def run_cli(module, cli):
     # 'err' contains the error messages
     out, err = response.communicate()
 
+    if cli
+    print_cli = cli.split(cliswitch)[1]
+
     # Response in JSON format
     if err:
         module.exit_json(
-            command=cli,
+            command=print_cli,
             msg='%s: ' % command,
             stderr=err.strip(),
             changed=False
@@ -141,7 +146,7 @@ def run_cli(module, cli):
 
     if out:
         module.exit_json(
-            command=cli,
+            command=print_cli,
             msg='%s: ' % command,
             stdout=out.strip(),
             changed=False

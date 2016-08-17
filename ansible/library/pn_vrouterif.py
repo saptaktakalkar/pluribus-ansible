@@ -1,56 +1,41 @@
 #!/usr/bin/python
-""" PN-CLI vrouter-interface-add/remove """
-
-# Copyright 2016 Pluribus Networks
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+""" PN-CLI vrouter-interface-add/remove/modify """
 
 import subprocess
 import shlex
-import re
 
 DOCUMENTATION = """
 ---
 module: pn_vrouterif
 author: "Pluribus Networks"
-version: 1.0
-short_description: CLI command to add/remove vrouter-interface.
+short_description: CLI command to add/remove/modify vrouter-interface
 description:
-  - Execute vrouter-interface-add, vrouter-interface-remove
-    command.
-  - You can configure interfaces to vRouter services on a fabric,
-    cluster, standalone switch or virtual network(VNET).
+  - Execute vrouter-interface-add, vrouter-interface-remove,
+    vrouter-interface-modify command.
+  - You configure interfaces to vRouter services on a fabric, cluster,
+    standalone switch or virtula network(VNET).
 options:
   pn_cliusername:
     description:
-      - Login username.
+      - Login username
     required: true
     type: str
   pn_clipassword:
     description:
-      - Login password.
+      - Login password
     required: true
     type: str
   pn_cliswitch:
     description:
-      - Target switch to run the cli on.
+    - Target switch to run the cli on.
     required: False
     type: str
   pn_command:
     description:
       - The C(pn_command) takes the vrouter-interface command as value.
     required: true
-    choices: ['vrouter-interface-add', 'vrouter-interface-remove']
+    choices: vrouter-interface-add, vrouter-interface-remove,
+             vrouter-interface-modify
     type: str
   pn_vrouter_name:
     description:
@@ -59,7 +44,7 @@ options:
     type: str
   pn_vlan:
     description:
-      - Specify the VLAN identifier. This is a value between 1 and
+      - interface Specify the VLAN identifier. This is a value between 1 and
         4092.
     type: int
   pn_interface_ip:
@@ -75,16 +60,16 @@ options:
   pn_assignment:
     description:
       - Specify the DHCP method for IP address assignment.
-    choices: ['none', 'dhcp', 'dhcpv6', 'autov6']
+    choices: none, dhcp, dhcpv6, autov6
     type: str
   pn_vxlan:
     description:
       - Specify the VXLAN identifier. This is a value between 1 and 16777215.
-    type: int
+    type: str
   pn_interface:
     description:
       - Specify if the interface is management, data or span interface.
-    choices: ['mgmt', 'data', 'span']
+    choices: mgmt, data, span
     type: str
   pn_alias:
     description:
@@ -132,12 +117,6 @@ options:
     description:
       - Specify the type of NIC. Used for vrouter-interface remove/modify.
     type: str
-  pn_quiet:
-    description:
-      - Enable/disable system information.
-    required: false
-    type: bool
-    default: true
 """
 
 EXAMPLES = """
@@ -150,7 +129,7 @@ EXAMPLES = """
     pn_interface_ip: 101.101.101.2/24
     pn_vlan: 101
 
-- name: Add VRRP...
+- name: Add VRRP..
   pn_vrouterif:
     pn_cliusername: admin
     pn_clipassword: admin
@@ -171,16 +150,16 @@ EXAMPLES = """
 """
 
 RETURN = """
-command:
+vrouterifcmd:
   description: the CLI command run on the target node(s).
-stdout:
+stdout/msg:
   description: the set of responses from the vrouterif command.
-  returned: always
+  returned: on success
   type: list
-stderr:
+stderr/msg:
   description: the set of error responses from the vrouterif command.
   returned: on error
-  type: list
+  type: str
 changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
@@ -188,24 +167,172 @@ changed:
 """
 
 
+VROUTER_EXISTS = None
+INTERFACE_EXISTS = None
+NIC_EXISTS = None
+VRRP_EXISTS = None
+
+
+def pn_cli(module):
+    """
+    This method is to generate the cli portion to launch the Netvisor cli.
+    It parses the username, password, switch parameters from module.
+    :param module: The Ansible module to fetch username, password and switch
+    :return: returns the cli string for further processing
+    """
+    username = module.params['pn_cliusername']
+    password = module.params['pn_clipassword']
+    cliswitch = module.params['pn_cliswitch']
+
+    if username and password:
+        cli = '/usr/bin/cli --quiet --user %s:%s ' % (username, password)
+    else:
+        cli = '/usr/bin/cli --quiet '
+
+    cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
+    return cli
+
+
+def check_cli(module, cli):
+    """
+    This method checks if vRouter exists on the target node.
+    This method also checks for idempotency using the vrouter-interface-show
+    command.
+    If the given vRouter exists, return VROUTER_EXISTS as True else False.
+
+    If an interface with the given ip exists on the given vRouter,
+    return INTERFACE_EXISTS as True else False. This is required for
+    vrouter-interface-add.
+
+    If nic_str exists on the given vRouter, return NIC_EXISTS as True else
+    False. This is required for vrouter-interface-remove.
+
+    :param module: The Ansible module to fetch input parameters
+    :param cli: The CLI string
+    :return Global Booleans: VROUTER_EXISTS, INTERFACE_EXISTS, NIC_EXISTS
+    """
+    vrouter_name = module.params['pn_vrouter_name']
+    interface_ip = module.params['pn_interface_ip']
+    nic_str = module.params['pn_nic_str']
+
+    # Global flags
+    global VROUTER_EXISTS, INTERFACE_EXISTS, NIC_EXISTS
+
+    # Check for vRouter
+    check_vrouter = cli + ' vrouter-show format name no-show-headers '
+    check_vrouter = shlex.split(check_vrouter)
+    out = module.run_command(check_vrouter)[1]
+    out = out.split()
+
+    VROUTER_EXISTS = True if vrouter_name in out else False
+
+    if interface_ip:
+        # Check for interface and VRRP and fetch nic for VRRP
+        show = cli + ' vrouter-interface-show vrouter-name %s ' % vrouter_name
+        show += 'ip %s format ip,nic no-show-headers' % interface_ip
+        show = shlex.split(show)
+        out = module.run_command(show)[1]
+        INTERFACE_EXISTS = True if out else False
+
+    if nic_str:
+        # Check for nic
+        show = cli + ' vrouter-interface-show vrouter-name %s ' % vrouter_name
+        show += ' format nic no-show-headers'
+        show = shlex.split(show)
+        out = module.run_command(show)[1]
+        NIC_EXISTS = True if nic_str in out else False
+
+
+def get_nic(module, cli):
+    """
+    This module checks if VRRP interface can be added. If No, return VRRP_EXISTS
+    as True.
+    If Yes, fetch the nic string from the primary interface and return nic and
+    VRRP_EXISTS as False.
+    :param module:
+    :param cli:
+    :return: nic, Global Boolean: VRRP_EXISTS
+    """
+    vrouter_name = module.params['pn_vrouter_name']
+    interface_ip = module.params['pn_interface_ip']
+
+    global VRRP_EXISTS
+
+    # Check for interface and VRRP and fetch nic for VRRP
+    show = cli + ' vrouter-interface-show vrouter-name %s ' % vrouter_name
+    show += 'ip %s format ip,nic no-show-headers' % interface_ip
+    show = shlex.split(show)
+    out = module.run_command(show)[1]
+    out = out.split()
+
+    if len(out) > 3:
+        VRRP_EXISTS = True
+        return None
+    else:
+        nic = out[2]
+        VRRP_EXISTS = False
+        return nic
+
+
+def run_cli(module, cli):
+    """
+    This method executes the cli command on the target node(s) and returns the
+    output. The module then exits based on the output.
+    :param cli: the complete cli string to be executed on the target node(s).
+    :param module: The Ansible module to fetch command
+    """
+    cliswitch = module.params['pn_cliswitch']
+    command = module.params['pn_command']
+    cmd = shlex.split(cli)
+    response = subprocess.Popen(cmd, stderr=subprocess.PIPE,
+                                stdout=subprocess.PIPE, universal_newlines=True)
+    # 'out' contains the output
+    # 'err' contains the error messages
+    out, err = response.communicate()
+
+    print_cli = cli.split(cliswitch)[1]
+
+    # Response in JSON format
+    if err:
+        module.exit_json(
+            command=print_cli,
+            stderr=err.strip(),
+            msg="%s operation failed" % command,
+            changed=False
+        )
+
+    if out:
+        module.exit_json(
+            command=print_cli,
+            stdout=out.strip(),
+            msg="%s operation completed" % command,
+            changed=True
+        )
+
+    else:
+        module.exit_json(
+            command=print_cli,
+            msg="%s operation completed" % command,
+            changed=True
+        )
+
+
 def main():
     """ This portion is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_cliusername=dict(required=True, type='str'),
-            pn_clipassword=dict(required=True, type='str'),
-            pn_cliswitch=dict(required=False, type='str'),
+            pn_cliusername=dict(required=False, type='str'),
+            pn_clipassword=dict(required=False, type='str'),
+            pn_cliswitch=dict(required=False, type='str', default='local'),
             pn_command=dict(required=True, type='str',
                             choices=['vrouter-interface-add',
                                      'vrouter-interface-remove']),
             pn_vrouter_name=dict(required=True, type='str'),
             pn_vlan=dict(type='int'),
-            pn_interface_ip=dict(type='str'),
-            pn_vrrp_ip=dict(type='str'),
-            pn_netmask=dict(type='str'),
+            pn_interface_ip=dict(required=True, type='str'),
             pn_assignment=dict(type='str',
                                choices=['none', 'dhcp', 'dhcpv6', 'autov6']),
-            pn_vxlan=dict(type='int'),
+            pn_vxlan=dict(type='str'),
             pn_interface=dict(type='str', choices=['mgmt', 'data', 'span']),
             pn_alias=dict(type='str'),
             pn_exclusive=dict(type='bool'),
@@ -215,8 +342,7 @@ def main():
             pn_vrrp_adv_int=dict(type='str'),
             pn_l3port=dict(type='str'),
             pn_secondary_macs=dict(type='str'),
-            pn_nic_str=dict(type='str'),
-            pn_quiet=dict(default=True, type='bool')
+            pn_nic_str=dict(type='str')
         ),
         required_if=(
             ["pn_command", "vrouter-interface-add",
@@ -226,14 +352,11 @@ def main():
         ),
     )
 
-    cliusername = module.params['pn_cliusername']
-    clipassword = module.params['pn_clipassword']
-    cliswitch = module.params['pn_cliswitch']
+    # Accessing the arguments
     command = module.params['pn_command']
     vrouter_name = module.params['pn_vrouter_name']
     vlan = module.params['pn_vlan']
     interface_ip = module.params['pn_interface_ip']
-    netmask = module.params['pn_netmask']
     assignment = module.params['pn_assignment']
     vxlan = module.params['pn_vxlan']
     interface = module.params['pn_interface']
@@ -241,79 +364,48 @@ def main():
     exclusive = module.params['pn_exclusive']
     nic_enable = module.params['pn_nic_enable']
     vrrp_id = module.params['pn_vrrp_id']
-    vrrp_ip = module.params['pn_vrrp_ip']
     vrrp_priority = module.params['pn_vrrp_priority']
     vrrp_adv_int = module.params['pn_vrrp_adv_int']
     l3port = module.params['pn_l3port']
     secondary_macs = module.params['pn_secondary_macs']
     nic_str = module.params['pn_nic_str']
-    quiet = module.params['pn_quiet']
 
     # Building the CLI command string
-    if quiet is True:
-        cli = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-               clipassword)
-    else:
-        cli = '/usr/bin/cli --user ' + cliusername + ':' + clipassword
+    cli = pn_cli(module)
 
-    if cliswitch:
-        if cliswitch == 'local':
-            cli += ' switch-local '
-        else:
-            cli += ' switch ' + cliswitch
-
-    cli += ' ' + command + ' vrouter-name ' + vrouter_name
-
-
+    check_cli(module, cli)
     if command == 'vrouter-interface-add':
+        if VROUTER_EXISTS is False:
+            module.exit_json(
+                skipped=True,
+                msg='vRouter %s does not exist' % vrouter_name
+            )
 
-        if vrrp_ip:
-
-            show_cmd = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-                        clipassword + ' vrouter-interface-show vrouter-name ' +
-                        vrouter_name + ' ip ' + vrrp_ip + ' vrrp-id ' + str(vrrp_id))
-
-            show_cmd = shlex.split(show_cmd)
-            result = subprocess.Popen(show_cmd, stderr=subprocess.PIPE,
-                                      stdout=subprocess.PIPE, universal_newlines=True)
-            out, err = result.communicate()
-            if out:
-                module.exit_json(changed=False, msg="Interface already in use")
-            if err:
-                module.exit_json(changed=False, stderr=err.rstrip("\r\n"))
-
-            show_cmd = ('/usr/bin/cli --quiet --user ' + cliusername + ':' +
-                        clipassword + ' vrouter-interface-show vrouter-name ' +
-                        vrouter_name + ' ip ' + interface_ip +
-                        ' format nic no-show-headers parsable-delim % ')
-
-            show_cmd = shlex.split(show_cmd)
-            result = subprocess.Popen(show_cmd, stderr=subprocess.PIPE,
-                                      stdout=subprocess.PIPE, universal_newlines=True)
-            out, err = result.communicate()
-
-            if err:
-                module.exit_json(changed=False, stderr=err.rstrip("\r\n"))
-
-            if out:
-                show = out.rstrip("\r\n")
-                vrouter, vrrp_nic = show.split('%')
-
-            cli += ' ip ' + vrrp_ip
-
-            if vrrp_id:
-                cli += ' vrrp-id ' + str(vrrp_id)
-
-            cli += ' vrrp-primary ' + vrrp_nic
-
+        if vrrp_id:
+            vrrp_primary = get_nic(module, cli)
+            if VRRP_EXISTS is True:
+                module.exit_json(
+                    skipped=True,
+                    msg=('VRRP interface on %s already exists. Check '
+                         'the IP addresses' % vrouter_name)
+                )
+            cli += ' %s vrouter-name %s ' % (command, vrouter_name)
+            cli += (' ip %s vrrp-primary %s vrrp-id %s '
+                    % (interface_ip, vrrp_primary, str(vrrp_id)))
             if vrrp_priority:
-                cli += ' vrrp-priority ' + str(vrrp_priority)
-
+                cli += ' vrrp-priority %s ' % vrrp_priority
             if vrrp_adv_int:
-                cli += ' vrrp-adv-int ' + vrrp_adv_int
+                cli += ' vrrp-adv-int %s ' % vrrp_adv_int
 
         else:
-            cli += ' ip ' + interface_ip
+            if INTERFACE_EXISTS is True:
+                module.exit_json(
+                    skipped=True,
+                    msg=('vRouter interface on %s already exists. Check the '
+                         'IP addresses' % vrouter_name)
+                )
+            cli += ' %s vrouter-name %s ' % (command, vrouter_name)
+            cli += ' ip %s ' % interface_ip
 
         if vlan:
             cli += ' vlan ' + str(vlan)
@@ -321,14 +413,11 @@ def main():
         if l3port:
             cli += ' l3-port ' + l3port
 
-        if netmask:
-            cli += ' netmask ' + netmask
-
         if assignment:
             cli += ' assignment ' + assignment
 
         if vxlan:
-            cli += ' vxlan ' + str(vxlan)
+            cli += ' vxlan ' + vxlan
 
         if interface:
             cli += ' if ' + interface
@@ -350,41 +439,23 @@ def main():
             cli += ' secondary-macs ' + secondary_macs
 
     if command == 'vrouter-interface-remove':
+        if VROUTER_EXISTS is False:
+            module.exit_json(
+                skipped=True,
+                msg='vRouter %s does not exist' % vrouter_name
+            )
+        if NIC_EXISTS is False:
+            module.exit_json(
+                skipped=True,
+                msg='vRouter interface with nic %s does not exist' % nic_str
+            )
+        cli += ' %s vrouter-name %s nic %s ' % (command, vrouter_name, nic_str)
 
-        cli += ' nic ' + nic_str
-
-
-    # Run the CLI command
-    vrouterifcmd = shlex.split(cli)
-    response = subprocess.Popen(vrouterifcmd, stderr=subprocess.PIPE,
-                                stdout=subprocess.PIPE, universal_newlines=True)
-
-    # 'out' contains the output
-    # 'err' contains the err messages
-    out, err = response.communicate()
-
-    exp = re.compile(r'.*(eth\d*.\d*).*')
-    nic = exp.findall(out)
-
-    # Response in JSON format
-    if err:
-        module.exit_json(
-            command=cli,
-            stderr=err.rstrip("\r\n"),
-            changed=False
-        )
-
-    else:
-        module.exit_json(
-            command=cli,
-            stdout=out.rstrip("\r\n"),
-            nic=nic,
-            changed=True
-        )
-
+    run_cli(module, cli)
 # Ansible boiler-plate
 from ansible.module_utils.basic import AnsibleModule
 
 if __name__ == '__main__':
     main()
+
 

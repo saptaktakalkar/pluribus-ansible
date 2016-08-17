@@ -22,7 +22,7 @@ DOCUMENTATION = """
 ---
 module: pn_vrouter
 author: "Pluribus Networks"
-version: 1.0
+version: 1
 short_description: CLI command to create/delete/modify a vrouter.
 description:
   - Execute vrouter-create, vrouter-delete, vrouter-modify command.
@@ -200,7 +200,9 @@ def check_cli(module, cli):
 
     # Get the name of the local switch
     location = cli + ' switch-setup-show format switch-name'
-    location = location.split()[1]
+    location = shlex.split(location)
+    out = module.run_command(location)[1]
+    location = out.split()[1]
 
     # Check for any vRouters on the switch
     check_vrouter = cli + ' vrouter-show location %s ' % location
@@ -227,6 +229,7 @@ def run_cli(module, cli):
     :param cli: the complete cli string to be executed on the target node(s).
     :param module: The Ansible module to fetch command
     """
+    cliswitch = module.params['pn_cliswitch']
     command = module.params['pn_command']
     cmd = shlex.split(cli)
     response = subprocess.Popen(cmd, stderr=subprocess.PIPE,
@@ -235,10 +238,12 @@ def run_cli(module, cli):
     # 'err' contains the error messages
     out, err = response.communicate()
 
+    print_cli = cli.split(cliswitch)[1]
+
     # Response in JSON format
     if err:
         module.exit_json(
-            command=cli,
+            command=print_cli,
             stderr=err.strip(),
             msg="%s operation failed" % command,
             changed=False
@@ -246,7 +251,7 @@ def run_cli(module, cli):
 
     if out:
         module.exit_json(
-            command=cli,
+            command=print_cli,
             stdout=out.strip(),
             msg="%s operation completed" % command,
             changed=True
@@ -254,7 +259,7 @@ def run_cli(module, cli):
 
     else:
         module.exit_json(
-            command=cli,
+            command=print_cli,
             msg="%s operation completed" % command,
             changed=True
         )

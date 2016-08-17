@@ -155,9 +155,9 @@ def check_cli(module, cli):
 
     VROUTER_EXISTS = True if vrouter_name in out else False
 
-    # Check for BGP neighbors
-    show = cli + ' vrouter-bgp-show vrouter-name %s ' % vrouter_name
-    show += 'format neighbor no-show-headers'
+    # Check for loopback interface
+    show = (cli + ' vrouter-loopback-interface-show vrouter-name %s format ip '
+            'no-show-headers' % vrouter_name)
     show = shlex.split(show)
     out = module.run_command(show)[1]
     out = out.split()
@@ -172,6 +172,7 @@ def run_cli(module, cli):
     :param cli: the complete cli string to be executed on the target node(s).
     :param module: The Ansible module to fetch command
     """
+    cliswitch = module.params['pn_cliswitch']
     command = module.params['pn_command']
     cmd = shlex.split(cli)
     response = subprocess.Popen(cmd, stderr=subprocess.PIPE,
@@ -180,10 +181,12 @@ def run_cli(module, cli):
     # 'err' contains the error messages
     out, err = response.communicate()
 
+    print_cli = cli.split(cliswitch)[1]
+
     # Response in JSON format
     if err:
         module.exit_json(
-            command=cli,
+            command=print_cli,
             stderr=err.strip(),
             msg="%s operation failed" % command,
             changed=False
@@ -191,7 +194,7 @@ def run_cli(module, cli):
 
     if out:
         module.exit_json(
-            command=cli,
+            command=print_cli,
             stdout=out.strip(),
             msg="%s operation completed" % command,
             changed=True
@@ -199,7 +202,7 @@ def run_cli(module, cli):
 
     else:
         module.exit_json(
-            command=cli,
+            command=print_cli,
             msg="%s operation completed" % command,
             changed=True
         )
@@ -211,7 +214,7 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str'),
-            pn_cliswitch=dict(required=False, type='str'),
+            pn_cliswitch=dict(required=False, type='str', default='local'),
             pn_command=dict(required=True, type='str',
                             choices=['vrouter-loopback-interface-add',
                                      'vrouter-loopback-interface-remove']),
@@ -246,6 +249,11 @@ def main():
 
     if command == 'vrouter-loopback-interface-remove':
         check_cli(module, cli)
+        if VROUTER_EXISTS is False:
+            module.exit_json(
+                skipped=True,
+                msg='vRouter %s does not exist' % vrouter_name
+            )
         if LB_INTERFACE_EXISTS is False:
             module.exit_json(
                 skipped=True,
@@ -272,8 +280,7 @@ def main():
         if VROUTER_EXISTS is False:
             module.exit_json(
                 skipped=True,
-                msg=('vRouter %s does not exist. Please create a vRouter first'
-                     % vrouter_name)
+                msg=('vRouter %s does not exist' % vrouter_name)
             )
         if LB_INTERFACE_EXISTS is True:
             module.exit_json(
