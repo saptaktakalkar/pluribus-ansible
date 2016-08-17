@@ -42,7 +42,7 @@
  
 
 #Inventory
- Ansible can work against multiple nodes in the infrastructure simultaneously. This is done by selecting a group of nodes in the Ansible's inventory file which is by default saved at /etc/ansible/hosts on the control machine. This file (see [hosts](ansible/hosts.sample))is configurable.
+ Ansible can work against multiple nodes in the infrastructure simultaneously. This is done by selecting a group of nodes in the Ansible's inventory file which is by default saved at /etc/ansible/hosts on the control machine. This file (see [hosts](hosts.sample))is configurable.
 ```
  mail.example.com
 
@@ -126,6 +126,7 @@ Checklist:
  Ansible Vault to the rescue!
    Ansible vault is a feature of ansible that allows keeping sensitive data such as passwords or keys in encrypted files rather than as plain-text in your playbooks or roles. 
    To enable this feature, a command line tool, `ansible-vault` is used to edit files and a command line flag `--ask-vault-pass` is used. If you have different credentials for different devices, you can encrypt them in `group_vars/` or `host_vars/` inventory variables,  variables loaded by `include_vars` or `vars_files`. 
+   Please refer: [Ansible-Vault](http://docs.ansible.com/ansible/playbooks_vault.html) for more on this.
    
  **Creating Encrypted Files**
    To create a new encrypted data file, run the following command:
