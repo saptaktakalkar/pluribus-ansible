@@ -25,16 +25,16 @@ Module for CLI cluster configurations. Supports `cluster-create`  and `cluster-d
 
 ## Options
 
-| parameter       | required       | default      | type         | choices       | comments                                                   |
-|-----------------|----------------|--------------|--------------|----------------------------------------------------------------------------|
-|pn_cliusername   | see comments   |              | str          |               | Provide login username if user is not root.                |
-|pn_clipassword   | see comments   |              | str          |               | Provide login password if user is not root                 |
-|pn_cliswitch     | no             | local        | str          |               | Target switch(es) to run command on.                       |
-|pn_command       | yes            |              | str          | cluster-create, cluster-delete| Create or delete cluster configuration.    |
-|pn_name          | yes            |              | str          |               | Specify the name of the cluster.                           |
-|pn_cluster_node1 | for cluster-create    |       | str          |               | Specify the name of the first switch in the cluster.       |
-|pn_cluster_node2 | for cluster-create    |       | str          |               | Specify the name of the second switch in the cluster.      |
-|pn_validate      | no             |              | bool         |               | Validate the inter-switch links and state of the switches in the cluster. |
+| parameter       | required       | default       | type        | choices       | comments                                                   |
+|-----------------|----------------|---------------|-------------|---------------|------------------------------------------------------------|
+|pn_cliusername   | see comments   |               | str         |               | Provide login username if user is not root.                |
+|pn_clipassword   | see comments   |               | str         |               | Provide login password if user is not root                 |
+|pn_cliswitch     | no             | local         | str         |               | Target switch(es) to run command on.                       |
+|pn_command       | yes            |               | str         | cluster-create, cluster-delete| Create or delete cluster configuration.    |
+|pn_name          | yes            |               | str         |               | Specify the name of the cluster.                           |
+|pn_cluster_node1 | for cluster-create    |        | str         |               | Specify the name of the first switch in the cluster.       |
+|pn_cluster_node2 | for cluster-create    |        | str         |               | Specify the name of the second switch in the cluster.      |
+|pn_validate      | no             |               | bool        |               | Validate the inter-switch links and state of the switches in the cluster. |
 
 
 ## Usage
