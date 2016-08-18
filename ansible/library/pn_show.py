@@ -132,7 +132,6 @@ def run_cli(module, cli):
     # 'err' contains the error messages
     out, err = response.communicate()
 
-    if cli
     print_cli = cli.split(cliswitch)[1]
 
     # Response in JSON format
