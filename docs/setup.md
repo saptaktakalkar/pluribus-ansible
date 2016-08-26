@@ -255,7 +255,7 @@ def main():
    - All members of a list are lines beginning at the same indentation level starting with a `- ` (a dash and a space).
    - [YAML Lint](#http://www.yamllint.com/) can help you debug YAML syntax.
   
-## The Following Modules are supported right now:
+## The Following Modules are supported with Software release 2.4.1:
    - LAG
    - vLAG
    - VLAN
