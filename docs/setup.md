@@ -254,5 +254,16 @@ def main():
    - Generous use of whitespace to break things up, and use of comments (which start with ‘#’), is encouraged.
    - All members of a list are lines beginning at the same indentation level starting with a `- ` (a dash and a space).
    - [YAML Lint](#http://www.yamllint.com/) can help you debug YAML syntax.
+  - The Following Modules are supported right now:
+   - LAG
+   - vLAG
+   - VLAN
+   - Port Configuration
+   - vRouters
+   - VRRP
+   - BGP
+   - OSPF
+   - Pluribus CLI as a parameter (allows to configure any new feature)
+
    
    The official [Ansible doc](#http://docs.ansible.com/ansible/playbooks.html) provides more information on Playbooks and YAML. 
