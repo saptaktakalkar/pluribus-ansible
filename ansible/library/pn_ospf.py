@@ -25,6 +25,7 @@ DOCUMENTATION = """
 ---
 module: pn_ospf
 author: "Pluribus Networks"
+version_added: "2.2"
 version: 1.0
 short_description: CLI command to add/remove ospf protocol to a vRouter.
 description:
