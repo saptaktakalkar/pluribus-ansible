@@ -165,7 +165,10 @@ def main():
     cli += ' --user %s:%s ' % (cliusername, clipassword)
 
     if cliswitch:
-        cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
+        if cliswitch == 'local':
+            cli += ' switch-local '
+        else:
+            cli += ' switch ' + cliswitch
 
     cli += ' %s vrouter-name %s area %s ' % (command, vrouter_name, ospf_area)
 
