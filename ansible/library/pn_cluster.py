@@ -135,7 +135,10 @@ def pn_cli(module):
     else:
         cli = '/usr/bin/cli --quiet '
 
-    cli += ' switch-local ' if cliswitch == 'local' else ' switch ' + cliswitch
+    if cliswitch == 'local':
+        cli += 'switch-local'
+    else:
+        cli += 'switch' + cliswitch
     return cli
 
 
