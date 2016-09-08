@@ -26,6 +26,7 @@ DOCUMENTATION = """
 ---
 module: pn_vlan
 author: "Pluribus Networks"
+version_added: "2.2"
 version: 1.0
 short_description: CLI command to create/delete a VLAN.
 description:
