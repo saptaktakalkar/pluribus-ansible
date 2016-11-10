@@ -1,0 +1,24 @@
+---
+
+########## ZTP ##########
+
+
+- name: "Zerp Touch Provisioning"
+  hosts: testswitches[0]
+  user: root
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+
+    - name: Create ZTP
+      pn_ztp:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_cliswitch: squirtle
+        pn_fabric_name: squirtle-fab
+        pn_vrouter_name: squirtle-vrouter
+      register: ztp_out
+    - debug: var=ztp_out
+    - pause: seconds=2
