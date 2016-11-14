@@ -3,7 +3,7 @@
 ########## ZTP ##########
 
 
-- name: "Zerp Touch Provisioning"
+- name: "Zero Touch Provisioning"
   hosts: testswitches[0]
   user: root
 

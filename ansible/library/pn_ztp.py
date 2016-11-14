@@ -1,38 +1,43 @@
 #!/usr/bin/python
 """ PN CLI Zero Touch Provisioning (ZTP) """
 
-# Copyright 2016 Pluribus Networks
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# This file is part of Ansible
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# Ansible is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Ansible is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
+#
 
-import subprocess
 import shlex
 
 DOCUMENTATION = """
 ---
 module: pn_ztp
-author: "Pluribus Networks"
+author: "Pluribus Networks (@saptaktakalkar)"
 version: 1
 short_description: CLI command to do zero touch provisioning.
 description:
-    - Accept EULA
-    - Disable STP
-    - Enable all ports
-    - Create/Join fabric
-    - For Layer 2 fabric: Auto configure vlags
-    - For layer 3 fabric: Auto configure link IPs
-    - Change fabric type to in-band
-    - Enable STP
+    Zero Touch Provisioning (ZTP) allows you to provision new switches in your
+    network automatically, without manual intervention.
+    It performs following steps:
+        - Accept EULA
+        - Disable STP
+        - Enable all ports
+        - Create/Join fabric
+        - For Layer 2 fabric: Auto configure vlags
+        - For layer 3 fabric: Auto configure link IPs
+        - Change fabric type to in-band
+        - Enable STP
 options:
     pn_cliusername:
         description:
@@ -56,9 +61,11 @@ options:
       type: str
     pn_fabric_network:
       description:
-        - Specify fabric network type as eiter mgmt or inband.
+        - Specify fabric network type as either mgmt or in-band.
         required: False
         type: str
+        choices: ['mgmt', 'in-band']
+        default: 'mgmt'
 """
 
 EXAMPLES = """
@@ -73,7 +80,7 @@ EXAMPLES = """
 
 RETURN = """
 msg:
-  description: the set of responses for each command.
+  description: The set of responses for each command.
   returned: always
   type: str
 changed:
@@ -106,25 +113,26 @@ def pn_cli(module):
     return cli
 
 
-def run_cli(cli):
+def run_cli(module, cli):
     """
     This method executes the cli command on the target node(s) and returns the
     output.
+    :param module: The Ansible module to fetch input parameters.
     :param cli: the complete cli string to be executed on the target node(s).
     :return: Output/Error or Success message depending upon the response from cli.
     """
-    cmd = shlex.split(cli)
-    response = subprocess.Popen(cmd, stderr=subprocess.PIPE,
-                                stdout=subprocess.PIPE, universal_newlines=True)
-    # 'out' contains the output
-    # 'err' contains the error messages
-    out, err = response.communicate()
+    cli = shlex.split(cli)
+    rc, out, err = module.run_command(cli)
 
     if out:
         return out
 
     if err:
-        return err
+        module.exit_json(
+            stderr=err.strip(),
+            msg="Operation Failed: " + cli,
+            changed=False
+        )
     else:
         return 'Success'
 
@@ -139,7 +147,7 @@ def auto_accept_eula(module):
     cli = '/usr/bin/cli --quiet '
     cli += ' --skip-setup --script-password switch-setup-modify '
     cli += ' eula-accepted true password ' + password
-    return run_cli(cli)
+    return run_cli(module, cli)
 
 
 def modify_stp(module, modify_flag):
@@ -151,7 +159,7 @@ def modify_stp(module, modify_flag):
     """
     cli = pn_cli(module)
     cli += ' stp-modify ' + modify_flag
-    return run_cli(cli)
+    return run_cli(module, cli)
 
 
 def enable_ports(module):
@@ -162,18 +170,18 @@ def enable_ports(module):
     """
     cli = pn_cli(module)
     cli += ' port-config-show format port no-show-headers '
-    out = run_cli(cli)
+    out = run_cli(module, cli)
 
     if out:
         ports = ','.join(out.split())
         cli = pn_cli(module)
         cli += ' port-config-modify port %s enable ' % ports
-        return run_cli(cli)
+        return run_cli(module, cli)
 
 
 def create_fabric(module, fabric_name, fabric_network):
     """
-    This method is to create a fabric with default fabric network of mgmt.
+    This method is to create a fabric with default fabric type as mgmt.
     :param module: The Ansible module to fetch input parameters.
     :param fabric_name: Name of the fabric to create.
     :param fabric_network: Type of the fabric to create (mgmt/inband). Default value: mgmt
@@ -182,7 +190,7 @@ def create_fabric(module, fabric_name, fabric_network):
     cli = pn_cli(module)
     cli += ' fabric-create name ' + fabric_name
     cli += ' fabric-network ' + fabric_network
-    return run_cli(cli)
+    return run_cli(module, cli)
 
 
 def join_fabric(module, fabric_name):
@@ -194,7 +202,7 @@ def join_fabric(module, fabric_name):
     """
     cli = pn_cli(module)
     cli += ' fabric-join name ' + fabric_name
-    return run_cli(cli)
+    return run_cli(module, cli)
 
 
 def update_fabric_network_to_inband(module):
@@ -205,7 +213,7 @@ def update_fabric_network_to_inband(module):
     """
     cli = pn_cli(module)
     cli += ' modify fabric-local fabric-network in-band '
-    return run_cli(cli)
+    return run_cli(module, cli)
 
 
 def calculate_subnet_supernet(address_str, cidr_str, supernet_str):
@@ -279,14 +287,14 @@ def create_vrouter_and_interface(module):
     vrouter_name = module.params['pn_vrouter_name']
     vnet_name = module.params['pn_fabric_name'] + '-global'
     cli += 'vrouter-create name %s vnet %s ' % (vrouter_name, vnet_name)
-    out = run_cli(cli)
+    out = run_cli(module, cli)
 
     if out:
         cli = pn_cli(module)
         cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
-        cli += ' ip %s vlan %s ' 
-        #TODO: Call calculate_subnet_supernet() and get the ips and assign it above.
-        return run_cli(cli)
+        cli += ' ip %s vlan %s '
+        # TODO: Call calculate_subnet_supernet() and get the ips and assign it above.
+        return run_cli(module, cli)
 
 
 def main():
@@ -298,7 +306,8 @@ def main():
             pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_cliswitch=dict(required=False, type='str'),
             pn_fabric_name=dict(required=True, type='str'),
-            pn_fabric_network=dict(required=False, type='str', default='mgmt'),
+            pn_fabric_network=dict(required=False, type='str', default='mgmt',
+                                   choices=['mgmt', 'in-band']),
             pn_fabric_type=dict(required=False, type='str'),
             pn_vrouter_name=dict(required=True, type='str'),
         )
@@ -325,8 +334,9 @@ def main():
     message += ' ' + msg4 + ' ' + msg5
 
     module.exit_json(
-        changed=True,
-        msg=message
+        stdout=message,
+        msg="Operation Completed",
+        changed=True
     )
 
 # AnsibleModule boilerplate
