@@ -177,6 +177,8 @@ def enable_ports(module):
         cli = pn_cli(module)
         cli += ' port-config-modify port %s enable ' % ports
         return run_cli(module, cli)
+    else:
+        return out
 
 
 def create_fabric(module, fabric_name, fabric_network):
@@ -216,7 +218,7 @@ def update_fabric_network_to_inband(module):
     return run_cli(module, cli)
 
 
-def calculate_subnet_supernet(address_str, cidr_str, supernet_str):
+def calculate_link_ip_addresses(address_str, cidr_str, supernet_str):
     """
     This method is to calculate link IPs for layer 3 fabric
     :param address_str: Host/network address.
@@ -254,47 +256,97 @@ def calculate_subnet_supernet(address_str, cidr_str, supernet_str):
 
     last_ip = list(broadcast)
     i, count, hostmin, hostmax = 0, 0, 0, 0
-    hostmin_list = []
-    hostmax_list = []
+    ips_list = []
 
     while count < last_ip[3]:
         hostmin = i + 1
         hostmax = hostmin + supernet_range - 1
+        while hostmin <= hostmax:
+            ips_list.append(hostmin)
+            hostmin += 1
+
         i = hostmax + 2
         count = i
-        hostmin_list.append(hostmin)
-        hostmax_list.append(hostmax)
 
     available_ips = []
     list_index = 0
     ip_address = str(last_ip[0]) + '.' + str(last_ip[1]) + '.' + str(last_ip[2])
-    while list_index < len(hostmax_list):
-        ip_min = ip_address + '.' + str(hostmin_list[list_index])
-        ip_max = ip_address + '.' + str(hostmax_list[list_index])
-        available_ips.append((ip_min, ip_max))
+    while list_index < len(ips_list):
+        ip = ip_address + '.' + str(ips_list[list_index])
+        available_ips.append(ip)
         list_index += 1
 
     return available_ips
 
 
-def create_vrouter_and_interface(module):
+def create_vrouter_and_interface(module, switch, available_ips):
     """
     This method is to create vrouter and vrouter interface and assign IP to it.
     :param module: The Ansible module to fetch input parameters.
-    :return: returns the output of run_cli() method.
+    :param switch: The switch name on which vrouter will be created.
+    :param available_ips: List of available IP addresses to be assigned to vrouter interfaces.
+    :return: returns output string informing details of vrouter created and
+    interface added or if vrouter already exists.
+    """
+    vrouter_name = switch + '-vrouter'
+    vnet_name = module.params['pn_fabric_name'] + '-global'
+    cli = pn_cli(module).rpartition('switch')[0]
+    cli += ' switch ' + switch
+    cli_copy = cli
+
+    # Check if vrouter already exists
+    cli += ' vrouter-show format name no-show-headers '
+    existing_vrouter_names = run_cli(module, cli).split()
+
+    # If vrouter doesn't exists then create it
+    if vrouter_name not in existing_vrouter_names:
+        cli = cli_copy
+        cli += ' vrouter-create name %s vnet %s ' % (vrouter_name, vnet_name)
+        run_cli(module, cli)
+        output = ' Created vrouter %s on switch %s ' % (vrouter_name, switch)
+
+        # Create vrouter interface and assign first available ip to it
+        ip = available_ips[0]
+        cli = cli_copy
+        cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
+        cli += ' ip ' + ip
+        run_cli(module, cli)
+        available_ips.remove(ip)
+        output += ' and added vrouter interface with ip: ' + ip
+    else:
+        output = ' Vrouter name %s on switch %s already exists.' % (vrouter_name, switch)
+
+    return output
+
+
+def auto_configure_link_ips(module):
+    """
+    This method is to auto configure link IPs for layer3 fabric.
+    :param module: The Ansible module to fetch input parameters.
+    :return: returns the output of create_vrouter_and_interface() method.
     """
     cli = pn_cli(module)
-    vrouter_name = module.params['pn_vrouter_name']
-    vnet_name = module.params['pn_fabric_name'] + '-global'
-    cli += 'vrouter-create name %s vnet %s ' % (vrouter_name, vnet_name)
-    out = run_cli(module, cli)
+    cli += ' lldp-show format sys-name no-show-headers '
+    switch_names = run_cli(module, cli).split()
 
-    if out:
-        cli = pn_cli(module)
-        cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
-        cli += ' ip %s vlan %s '
-        # TODO: Call calculate_subnet_supernet() and get the ips and assign it above.
-        return run_cli(module, cli)
+    address = module.params['pn_net_address']
+    cidr = module.params['pn_cidr']
+    supernet = module.params['pn_supernet']
+    available_ips = calculate_link_ip_addresses(address, cidr, supernet)
+    output = ' '
+
+    for switch in switch_names:
+        output += create_vrouter_and_interface(module, switch, available_ips)
+
+    cli = pn_cli(module).rpartition('switch')[0]
+    for switch in switch_names:
+        cli += ' switch %s lldp-show format sys-name no-show-headers ' % switch
+        sys_names = run_cli(module, cli).split()
+
+        for sys in sys_names:
+            output += create_vrouter_and_interface(module, sys, available_ips)
+
+    return output
 
 
 def main():
@@ -305,33 +357,46 @@ def main():
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_cliswitch=dict(required=False, type='str'),
-            pn_fabric_name=dict(required=True, type='str'),
-            pn_fabric_network=dict(required=False, type='str', default='mgmt',
-                                   choices=['mgmt', 'in-band']),
-            pn_fabric_type=dict(required=False, type='str'),
-            pn_vrouter_name=dict(required=True, type='str'),
+            pn_fabric_name=dict(required=False, type='str'),
+            pn_fabric_network=dict(required=False, type='str',
+                                   choices=['mgmt', 'in-band'],
+                                   default='mgmt'),
+            pn_fabric_type=dict(required=False, type='str',
+                                choices=['layer2', 'layer3'],
+                                default='layer2'),
+            pn_run_l2_l3=dict(required=False, type='bool', default=False),
+            pn_net_address=dict(required=False, type='str'),
+            pn_cidr=dict(required=False, type='str'),
+            pn_supernet=dict(required=False, type='str'),
         )
     )
 
     fabric_name = module.params['pn_fabric_name']
     fabric_network = module.params['pn_fabric_network']
     fabric_type = module.params['pn_fabric_type']
-    vrouter_name = module.params['pn_vrouter_name']
+    run_l2_l3 = module.params['pn_run_l2_l3']
+    message = ''
 
-    msg = auto_accept_eula(module)
+    if not run_l2_l3:
+        message += auto_accept_eula(module)
+        message += ' '
+        message += modify_stp(module, 'disable')
+        message += ' '
+        message += enable_ports(module)
+        message += ' '
+        message += create_fabric(module, fabric_name, fabric_network)
+        message += ' '
+    else:
+        if fabric_type == 'layer2':
+            pass     # TODO: For L2: Call Auto vlag module
+        elif fabric_type == 'layer3':
+            message += auto_configure_link_ips(module)
 
-    msg1 = modify_stp(module, 'disable')
-    msg2 = enable_ports(module)
-
-    msg3 = create_fabric(module, fabric_name, fabric_network)
-
-    # TODO: For L2: Call Auto vlag module
-    # TODO: For L3: Auto configure link IPs
-
-    msg4 = update_fabric_network_to_inband(module)
-    msg5 = modify_stp(module, 'enable')
-    message = msg + ' ' + msg1 + ' ' + msg2 + ' ' + msg3
-    message += ' ' + msg4 + ' ' + msg5
+        message += ' '
+        message += update_fabric_network_to_inband(module)
+        message += ' '
+        message += modify_stp(module, 'enable')
+        message += ' '
 
     module.exit_json(
         stdout=message,

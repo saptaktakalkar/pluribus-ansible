@@ -3,7 +3,26 @@
 ########## ZTP ##########
 
 
-- name: "Zero Touch Provisioning"
+- name: "Zero Touch Provisioning - Initial setup"
+  hosts: testswitches
+  user: root
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+
+    - name: Auto accept EULA, Disable STP, enable ports and create/join fabric
+      pn_ztp:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_fabric_name: ztp-fabric
+        pn_run_l2_l3: False
+      register: ztp_out
+    - debug: var=ztp_out
+    - pause: seconds=2
+
+- name: "Zero Touch Provisioning - Layer2/Layer3 setup"
   hosts: testswitches[0]
   user: root
 
@@ -12,13 +31,13 @@
 
   tasks:
 
-    - name: Create ZTP
+    - name: Auto vlag or Auto configure link IPs
       pn_ztp:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
         pn_cliswitch: squirtle
-        pn_fabric_name: squirtle-fab
-        pn_vrouter_name: squirtle-vrouter
+        pn_fabric_type: layer3
+        pn_run_l2_l3: True
       register: ztp_out
     - debug: var=ztp_out
     - pause: seconds=2
