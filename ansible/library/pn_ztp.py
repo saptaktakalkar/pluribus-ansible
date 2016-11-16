@@ -62,20 +62,58 @@ options:
     pn_fabric_network:
       description:
         - Specify fabric network type as either mgmt or in-band.
-        required: False
-        type: str
-        choices: ['mgmt', 'in-band']
-        default: 'mgmt'
+      required: False
+      type: str
+      choices: ['mgmt', 'in-band']
+      default: 'mgmt'
+    pn_fabric_type:
+      description:
+        - Specify fabric type as either layer2 or layer3.
+      required: False
+      type: str
+      choices: ['layer2', 'layer3']
+      default: 'layer2'
+    pn_run_l2_l3:
+      description:
+        - Boolean flag to decide whether to configure vlag and link IPs or not.
+      required: False
+      type: bool
+      default: False
+    pn_net_address:
+      description:
+        - Specify network address to be used in configuring link IPs for layer3.
+      required: False
+      type: str
+    pn_cidr:
+      description:
+        - Specify CIDR value to be used in configuring link IPs for layer3.
+      required: False
+      type: str
+    pn_supernet:
+      description:
+        - Specify supernet value to be used in configuring link IPs for layer3.
+      required: False
+      type: str
 """
 
 EXAMPLES = """
-- name: Perform ZTP
+- name: Zero Touch Provisioning - Initial setup
+  pn_ztp:
+    pn_cliusername: "{{ USERNAME }}"
+    pn_clipassword: "{{ PASSWORD }}"
+    pn_fabric_name: ztp-fabric
+    pn_run_l2_l3: False
+
+- name: Zero Touch Provisioning - Layer2/Layer3 setup
   pn_ztp:
     pn_cliusername: "{{ USERNAME }}"
     pn_clipassword: "{{ PASSWORD }}"
     pn_cliswitch: squirtle
-    pn_fabric_name: squirtle-fab
-    pn_vrouter_name: squirtle-vrouter
+    pn_fabric_type: layer3
+    pn_run_l2_l3: True
+    pn_net_address: '192.168.0.1'
+    pn_cidr: '24'
+    pn_supernet: '30'
 """
 
 RETURN = """
@@ -95,7 +133,7 @@ def pn_cli(module):
     This method is to generate the cli portion to launch the Netvisor cli.
     It parses the username, password, switch parameters from module.
     :param module: The Ansible module to fetch username, password and switch
-    :return: returns the cli string for further processing
+    :return: The cli string for further processing
     """
     username = module.params['pn_cliusername']
     password = module.params['pn_clipassword']
@@ -141,7 +179,7 @@ def auto_accept_eula(module):
     """
     This method is to accept the EULA when we first login to new switch.
     :param module: The Ansible module to fetch input parameters.
-    :return: returns the output of run_cli() method.
+    :return: The output of run_cli() method.
     """
     password = module.params['pn_clipassword']
     cli = '/usr/bin/cli --quiet '
@@ -155,7 +193,7 @@ def modify_stp(module, modify_flag):
     This method is to enable/disable STP (Spanning Tree Protocol) of a switch.
     :param module: The Ansible module to fetch input parameters.
     :param modify_flag: Enable/disable flag to set.
-    :return: returns the output of run_cli() method.
+    :return: The output of run_cli() method.
     """
     cli = pn_cli(module)
     cli += ' stp-modify ' + modify_flag
@@ -166,7 +204,7 @@ def enable_ports(module):
     """
     This method is to enable all ports of a switch.
     :param module: The Ansible module to fetch input parameters.
-    :return: returns the output of run_cli() method.
+    :return: The output of run_cli() method.
     """
     cli = pn_cli(module)
     cli += ' port-config-show format port no-show-headers '
@@ -187,7 +225,7 @@ def create_fabric(module, fabric_name, fabric_network):
     :param module: The Ansible module to fetch input parameters.
     :param fabric_name: Name of the fabric to create.
     :param fabric_network: Type of the fabric to create (mgmt/inband). Default value: mgmt
-    :return: returns the output of run_cli() method.
+    :return: The output of run_cli() method.
     """
     cli = pn_cli(module)
     cli += ' fabric-create name ' + fabric_name
@@ -200,7 +238,7 @@ def join_fabric(module, fabric_name):
     This method is for a switch to join already existing fabric.
     :param module: The Ansible module to fetch input parameters.
     :param fabric_name: Name of the fabric to join.
-    :return: returns the output of run_cli() method.
+    :return: The output of run_cli() method.
     """
     cli = pn_cli(module)
     cli += ' fabric-join name ' + fabric_name
@@ -211,7 +249,7 @@ def update_fabric_network_to_inband(module):
     """
     This method is to update fabric network type to in-band
     :param module: The Ansible module to fetch input parameters.
-    :return: returns the output of run_cli() method.
+    :return: The output of run_cli() method.
     """
     cli = pn_cli(module)
     cli += ' modify fabric-local fabric-network in-band '
@@ -224,7 +262,8 @@ def calculate_link_ip_addresses(address_str, cidr_str, supernet_str):
     :param address_str: Host/network address.
     :param cidr_str: Subnet mask.
     :param supernet_str: Supernet mask
-    :return: IP address.
+    :return: List of available IP addresses that can be assigned to vrouter
+    interfaces for layer 3 fabric.
     """
     # Split address into octets and turn CIDR, supernet mask into int
     address = address_str.split('.')
@@ -285,7 +324,7 @@ def create_vrouter_and_interface(module, switch, available_ips):
     :param module: The Ansible module to fetch input parameters.
     :param switch: The switch name on which vrouter will be created.
     :param available_ips: List of available IP addresses to be assigned to vrouter interfaces.
-    :return: returns output string informing details of vrouter created and
+    :return: The output string informing details of vrouter created and
     interface added or if vrouter already exists.
     """
     vrouter_name = switch + '-vrouter'
@@ -314,7 +353,7 @@ def create_vrouter_and_interface(module, switch, available_ips):
         available_ips.remove(ip)
         output += ' and added vrouter interface with ip: ' + ip
     else:
-        output = ' Vrouter name %s on switch %s already exists.' % (vrouter_name, switch)
+        output = ' Vrouter name %s on switch %s already exists. ' % (vrouter_name, switch)
 
     return output
 
@@ -323,7 +362,7 @@ def auto_configure_link_ips(module):
     """
     This method is to auto configure link IPs for layer3 fabric.
     :param module: The Ansible module to fetch input parameters.
-    :return: returns the output of create_vrouter_and_interface() method.
+    :return: The output of create_vrouter_and_interface() method.
     """
     cli = pn_cli(module)
     cli += ' lldp-show format sys-name no-show-headers '
@@ -338,8 +377,8 @@ def auto_configure_link_ips(module):
     for switch in switch_names:
         output += create_vrouter_and_interface(module, switch, available_ips)
 
-    cli = pn_cli(module).rpartition('switch')[0]
     for switch in switch_names:
+        cli = pn_cli(module).rpartition('switch')[0]
         cli += ' switch %s lldp-show format sys-name no-show-headers ' % switch
         sys_names = run_cli(module, cli).split()
 
@@ -347,6 +386,82 @@ def auto_configure_link_ips(module):
             output += create_vrouter_and_interface(module, sys, available_ips)
 
     return output
+
+
+def create_cluster(module, switch, name, node1, node2):
+    """
+    This method is to create a cluster between two switches.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch: Name of the local switch.
+    :param name: The name of the cluster to create.
+    :param node1: First node of the cluster.
+    :param node2: Second node of the cluster.
+    :return: The output of run_cli() method.
+    """
+    cli = pn_cli(module).rpartition('switch')[0]
+    cli += ' switch %s cluster-create name %s ' % (switch, name)
+    cli += ' cluster-node-1 %s cluster-node-2 %s ' % (node1, node2)
+    return run_cli(module, cli)
+
+
+def get_ports(module, switch, peer_switch):
+    """
+    This method is to figure out connected ports between two switches.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch: Name of the local switch.
+    :param peer_switch: Name of the connected peer switch.
+    :return: List of connected ports.
+    """
+    cli = pn_cli(module).rpartition('switch')[0]
+    cli += ' switch %s port-show hostname %s' % (switch, peer_switch)
+    cli += ' format port no-show-headers '
+    return run_cli(module, cli).split()
+
+
+def create_trunk(module, switch, name, ports):
+    """
+    This method is to create a trunk on a switch.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch: Name of the local switch.
+    :param name: The name of the trunk to create.
+    :param ports: List of connected ports.
+    :return: The output of run_cli() method.
+    """
+    cli = pn_cli(module).rpartition('switch')[0]
+    cli += ' switch %s trunk-create name %s ' % (switch, name)
+    cli += ' ports %s ' % ports
+    return run_cli(module, cli)
+
+
+def create_vlag(module, switch, name, port, peer_switch, peer_port):
+    """
+    This method is to create virtual link aggregation groups.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch: Name of the local switch.
+    :param name: The name of the vlag to create.
+    :param port: List of local switch ports.
+    :param peer_switch: Name of the peer switch.
+    :param peer_port: List of peer switch ports.
+    :return: The output of run_cli() method.
+    """
+    cli = pn_cli(module).rpartition('switch')[0]
+    cli += ' switch %s vlag-create name %s port %s ' % (switch, name, port)
+    cli += ' peer-switch %s peer-port %s mode active-active' % (peer_switch, peer_port)
+    return run_cli(module, cli)
+
+
+def configure_auto_vlag(module):
+    """
+    This method is to create and configure vlag.
+    :param module: The Ansible module to fetch input parameters.
+    :return: The output of run_cli() method.
+    """
+    spine_list = module.params['pn_spine_list']
+    leaf_list = module.params['pn_leaf_list']
+    spine1 = spine_list[0]
+    spine2 = spine_list[1]
+
+    # TODO: Call create cluster, trunk, get ports and create vlag.
 
 
 def main():
@@ -368,6 +483,8 @@ def main():
             pn_net_address=dict(required=False, type='str'),
             pn_cidr=dict(required=False, type='str'),
             pn_supernet=dict(required=False, type='str'),
+            pn_spine_list=dict(required=False, type='list'),
+            pn_leaf_list=dict(required=False, type='list')
         )
     )
 
@@ -388,7 +505,7 @@ def main():
         message += ' '
     else:
         if fabric_type == 'layer2':
-            pass     # TODO: For L2: Call Auto vlag module
+            message += configure_auto_vlag(module)
         elif fabric_type == 'layer3':
             message += auto_configure_link_ips(module)
 
