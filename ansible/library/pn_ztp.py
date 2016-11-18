@@ -144,10 +144,11 @@ def pn_cli(module):
     else:
         cli = '/usr/bin/cli --quiet '
 
-    if cliswitch == 'local':
-        cli += ' switch-local '
-    else:
+    if cliswitch:
         cli += ' switch ' + cliswitch
+    else:
+        cli += ' switch-local '
+
     return cli
 
 
@@ -168,7 +169,7 @@ def run_cli(module, cli):
     if err:
         module.exit_json(
             stderr=err.strip(),
-            msg="Operation Failed: " + cli,
+            msg="Operation Failed: " + str(cli),
             changed=False
         )
     else:
@@ -329,7 +330,10 @@ def create_vrouter_and_interface(module, switch, available_ips):
     """
     vrouter_name = switch + '-vrouter'
     vnet_name = module.params['pn_fabric_name'] + '-global'
-    cli = pn_cli(module).rpartition('switch')[0]
+    cli = pn_cli(module)
+    if 'switch' in cli:
+        cli = cli.rpartition('switch')[0]
+
     cli += ' switch ' + switch
     cli_copy = cli
 
@@ -378,7 +382,10 @@ def auto_configure_link_ips(module):
         output += create_vrouter_and_interface(module, switch, available_ips)
 
     for switch in switch_names:
-        cli = pn_cli(module).rpartition('switch')[0]
+        cli = pn_cli(module)
+        if 'switch' in cli:
+            cli = cli.rpartition('switch')[0]
+
         cli += ' switch %s lldp-show format sys-name no-show-headers ' % switch
         sys_names = run_cli(module, cli).split()
 
@@ -398,7 +405,10 @@ def create_cluster(module, switch, name, node1, node2):
     :param node2: Second node of the cluster.
     :return: The output of run_cli() method.
     """
-    cli = pn_cli(module).rpartition('switch')[0]
+    cli = pn_cli(module)
+    if 'switch' in cli:
+        cli = cli.rpartition('switch')[0]
+
     cli += ' switch %s cluster-create name %s ' % (switch, name)
     cli += ' cluster-node-1 %s cluster-node-2 %s ' % (node1, node2)
     return run_cli(module, cli)
@@ -412,7 +422,10 @@ def get_ports(module, switch, peer_switch):
     :param peer_switch: Name of the connected peer switch.
     :return: List of connected ports.
     """
-    cli = pn_cli(module).rpartition('switch')[0]
+    cli = pn_cli(module)
+    if 'switch' in cli:
+        cli = cli.rpartition('switch')[0]
+
     cli += ' switch %s port-show hostname %s' % (switch, peer_switch)
     cli += ' format port no-show-headers '
     return run_cli(module, cli).split()
@@ -427,7 +440,10 @@ def create_trunk(module, switch, name, ports):
     :param ports: List of connected ports.
     :return: The output of run_cli() method.
     """
-    cli = pn_cli(module).rpartition('switch')[0]
+    cli = pn_cli(module)
+    if 'switch' in cli:
+        cli = cli.rpartition('switch')[0]
+
     cli += ' switch %s trunk-create name %s ' % (switch, name)
     cli += ' ports %s ' % ports
     return run_cli(module, cli)
@@ -444,7 +460,10 @@ def create_vlag(module, switch, name, port, peer_switch, peer_port):
     :param peer_port: List of peer switch ports.
     :return: The output of run_cli() method.
     """
-    cli = pn_cli(module).rpartition('switch')[0]
+    cli = pn_cli(module)
+    if 'switch' in cli:
+        cli = cli.rpartition('switch')[0]
+
     cli += ' switch %s vlag-create name %s port %s ' % (switch, name, port)
     cli += ' peer-switch %s peer-port %s mode active-active' % (peer_switch, peer_port)
     return run_cli(module, cli)
@@ -460,8 +479,35 @@ def configure_auto_vlag(module):
     leaf_list = module.params['pn_leaf_list']
     spine1 = spine_list[0]
     spine2 = spine_list[1]
+    spine1_ports = []
+    spine2_ports = []
 
-    # TODO: Call create cluster, trunk, get ports and create vlag.
+    create_cluster(module, spine1, 'spine-cluster', spine1, spine2)
+
+    for leaf in leaf_list:
+        spine1_ports = get_ports(module, spine1, leaf)
+        spine2_ports = get_ports(module, spine2, leaf)
+
+    create_trunk(module, spine1, 'spine1-to-leaf', spine1_ports)
+    create_trunk(module, spine2, 'spine2-to-leaf', spine2_ports)
+
+    create_vlag(module, spine1, 'spine-to-spine', spine2, 'spine1-to-leaf', 'spine2-to-leaf')
+
+    cli = pn_cli(module)
+    if 'switch' in cli:
+        cli = cli.rpartition('switch')[0]
+
+    first_leaf = leaf_list[0]
+    cli += ' switch %s lldp-show format sys-name no-show-headers ' % first_leaf
+    sys_names = run_cli(module, cli).split()
+
+    for sys in sys_names:
+        if sys not in spine_list:
+            ports = get_ports(module, first_leaf, sys)
+            create_trunk(module, sys, 'leaf-to-spine', ports)
+            create_vlag(module, first_leaf, 'leaf-to-leaf', sys, 'leaf-to-spine', 'spine1-to-leaf')
+
+    # TODO: Not much sure about the above logic. Need to test.
 
 
 def main():
@@ -495,8 +541,8 @@ def main():
     message = ''
 
     if not run_l2_l3:
-        message += auto_accept_eula(module)
-        message += ' '
+        # message += auto_accept_eula(module)
+        # message += ' '
         message += modify_stp(module, 'disable')
         message += ' '
         message += enable_ports(module)
@@ -506,6 +552,7 @@ def main():
     else:
         if fabric_type == 'layer2':
             message += configure_auto_vlag(module)
+            pass
         elif fabric_type == 'layer3':
             message += auto_configure_link_ips(module)
 

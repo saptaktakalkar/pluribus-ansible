@@ -4,7 +4,7 @@
 
 
 - name: "Zero Touch Provisioning - Initial setup"
-  hosts: testswitches
+  hosts: all
   user: root
 
   vars_files:
@@ -23,7 +23,7 @@
     - pause: seconds=2
 
 - name: "Zero Touch Provisioning - Layer2/Layer3 setup"
-  hosts: testswitches[0]
+  hosts: spine[0]
   user: root
 
   vars_files:
@@ -35,7 +35,7 @@
       pn_ztp:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_cliswitch: squirtle
+        pn_fabric_name: ztp-fabric
         pn_fabric_type: layer3
         pn_run_l2_l3: True
         pn_net_address: '192.168.0.1'
