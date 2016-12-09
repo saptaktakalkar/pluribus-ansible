@@ -1,0 +1,109 @@
+---
+
+
+####### ZTP ##########
+
+- name: "Zero Touch Provisioning - Initial setup"
+  hosts: spine,leaf
+  serial: 1
+  user: root
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+
+    - name: Auto accept EULA, Disable STP, enable ports and create/join fabric
+      pn_ztp:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        #pn_fabric_retry: 1
+        pn_fabric_name: ztp-fabric
+        pn_run_l2_l3: False
+
+      register: ztp_out
+      until: ztp_out.failed != true              # if the above code fails it will retry the code
+      retries: 3                                # ztp_out.retry can be used in place of 3 if the value is given as pn_fabric_retry
+      delay: 1
+      ignore_errors: yes
+    - debug: var=ztp_out
+    - pause: seconds=2
+
+
+
+- name: "Zero Touch Provisioning - Layer3 setup"
+  hosts: spine[0]
+  serial: 1
+  user: root
+
+  vars_files:
+  - cli_vault.yml
+
+  #vars:
+  #  protocol: 'ebgp'
+
+  tasks:
+
+    - name: Auto configure link IPs
+      pn_ztp:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_fabric_name: ztp-fabric
+      # pn_fabric_retry: 1
+        pn_spine_list: "{{ groups['spine'] }}"
+        pn_leaf_list: "{{ groups['leaf'] }}"
+        pn_fabric_type: layer3
+        pn_run_l2_l3: True
+        pn_net_address: '172.168.0.0'
+        pn_cidr: '24'
+        pn_supernet: '30'
+        pn_assign_loopback: True                                 #default:False
+        #pn_loopback_ip:                                     #default:101.101.101.0/32
+        #pn_inband_ip:                                       #default:172.16.0.0/24
+        #pn_fabric_control_network:                          #default:mgmt       
+        #pn_protocol: 'ebgp'
+      when: ztp_out.failed != true                        # if the above task fails then this task will not run
+      register: ztp_out1
+      until:  ztp_out1.failed != true                    # if orror pops up it will retry the code
+      retries: 3                                       # ztp_out1.retry can be used in place of 3 if the value is given as pn_fabric_retry
+      delay: 1
+      ignore_errors: yes
+    - debug: var=ztp_out1
+    - pause: seconds=2
+
+       #- include: pn_ebgp.yml
+       #when: protocol == 'ebgp'
+       #ignore_errors: True
+      
+     
+- name: "Zero Touch Provisioning - BGP setup"
+  hosts: spine[0]
+  serial: 1
+  user: root
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+
+    - name: BGP MODULE
+      pn_ztp2:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        #pn_fabric_retry: 1
+        pn_fabric_name: ztp-fabric
+        pn_run_l2_l3: False
+        pn_spine_list: "{{ groups['spine'] }}"
+        pn_leaf_list: "{{ groups['leaf'] }}"
+        #pn_bgp_maxpath:                                               #default 16
+        #pn_bgp_redistribute:                                          #default connected
+        #pn_bgp_as_range:                                              #default 65000
+      register: ztp_out2
+      until: ztp_out2.failed != true              # if the above code fails it will retry the code
+      retries: 3                                # ztp_out.retry can be used in place of 3 if the value is given as pn_fabric_retry
+      delay: 1
+      ignore_errors: yes
+
+    - debug: var=ztp_out2
+    - pause: seconds=2
+
