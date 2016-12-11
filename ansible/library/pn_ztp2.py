@@ -1,6 +1,19 @@
 import shlex
 import json
 
+
+DOCUMENTATION = """
+---
+module: pn_ztp
+author: "Pluribus Networks (@gauravbajaj)"
+version: 1
+short_description: CLI command to do zero touch provisioning with ebgp.
+description: TO DO
+"""
+
+
+
+
 def pn_cli(module):
     """
     This method is to generate the cli portion to launch the Netvisor cli.
