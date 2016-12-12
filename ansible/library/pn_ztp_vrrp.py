@@ -9,7 +9,15 @@ module: pn_ztp
 author: "Pluribus Networks (@gauravbajaj)"
 version: 1
 short_description: CLI command to do zero touch provisioning with vrrp.
-description: TO DO
+description: 
+    Zero Touch Provisioning (ZTP) allows you to provision new switches in your
+    network automatically, without manual intervention.
+    It performs following steps:
+        - Configure VRRP for the gateway(extension of l2 
+          in the ZTP module)
+
+options: TO DO
+
 """
 
 
@@ -80,27 +88,13 @@ def run_cli(module, cli):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def create_vlan(module, start, end):
     """
     This method is to create vlans
-    :param module: The Ansible module to fetch input parameters and the range.
-    :return: Success or failure message for the whole range.
+    :param module: The Ansible module to fetch input parameters.
+    :param start: Start of the vlan range for vlans to be created.
+    :param end: End of the vlan range for vlans to be created.
+    :return: Success or failure message for the vlans.
     """
     vlan = []
     output = ' '
@@ -109,9 +103,7 @@ def create_vlan(module, start, end):
     clicopy += ' vlan-show format id no-show-headers '
     already_vlan_id = run_cli(module, clicopy).split()
     already_vlan_id = list(set(already_vlan_id))
-    #already_vlan_id = ','.join(already_vlan_id)
-    #already_vlan_id = already_vlan_id.split(',')
-    #count = 0
+    
     vlan_id = int(start)
     while vlan_id < int(end):
         id_str = str(vlan_id)
@@ -123,8 +115,7 @@ def create_vlan(module, start, end):
             clicopy += id_str
             clicopy += ' scope fabric '
             output += run_cli(module, clicopy)
-            output += ' '
-            #count += 1
+            output += ' '            
 
         vlan_id += 1
 
@@ -139,17 +130,17 @@ def create_vlan(module, start, end):
 
 def create_l2_vrouter(module, switch, vrrp_id):
     """
-    This method is to create vrouter and vrouter interface and assign IP to it.
+    This method is to create vrouter and assign vrrp_id to the switches.
     :param module: The Ansible module to fetch input parameters.
     :param switch: The switch name on which vrouter will be created.
-    :param available_ips: List of available IP addresses to be assigned to vrouter interfaces.
+    :param vrrp_id: The vrrp_id to be assigned.
     :return: The output string informing details of vrouter created and
     interface added or if vrouter already exists.
     """
-    """
-    code changed
-    removing first character from the vrouter name
-    """
+    
+    #code changed
+    #removing first character from the vrouter name
+    
     output = ' '
     switch_temp = switch[3:]
     vrouter_name = switch_temp + '-vrouter'
@@ -180,6 +171,18 @@ def create_l2_vrouter(module, switch, vrrp_id):
 
 
 def create_l2_interface(module, switch, ip, vlan_id, vrrp_id, ip_count, vrrp_priority):
+    """
+    This method is to add vrouter interface and assign IP to it along with
+    vrrp_id and vrrp_priority.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch: The switch name on which vrouter will be created.
+    :param ip: IP address to be assigned to vrouter interface.
+    :param vlan_id: vlan_id to be assigned
+    :vrrp_priority: priority to be given(110 for active switch).
+    :ip_count: The value of fourth octet in the ip
+    :return: The output string informing details of vrouter created and
+    interface added or if vrouter already exists.
+    """
 
     output = ' '
     vnet_name = module.params['pn_fabric_name'] + '-global'
@@ -197,19 +200,12 @@ def create_l2_interface(module, switch, ip, vlan_id, vrrp_id, ip_count, vrrp_pri
     ip1 = first + '1' + '/' + subnet
     ip2 = first + ip_count + '/' + subnet
 
-#    cli += ' switch ' + switch
-#    cli_copy = cli
-
-    # Check if vrouter already exists
-#    cli += ' vrouter-interface-show format switch no-show-headers '
-#    existing_vrouter_names = run_cli(module, cli).split()
     cli = clicopy
     cli += ' vrouter-interface-show vlan %s ip %s format switch no-show-headers ' % (vlan_id, ip2)
     existing_vrouter = run_cli(module, cli).split()
     existing_vrouter = list(set(existing_vrouter))
 
     if vrouter_name[0] not in existing_vrouter:
-
         cli = clicopy
         cli += ' vrouter-interface-add vrouter-name ' + vrouter_name[0]
         cli += ' ip ' + ip2
@@ -225,30 +221,18 @@ def create_l2_interface(module, switch, ip, vlan_id, vrrp_id, ip_count, vrrp_pri
     eth_port = run_cli(module, cli).split()
     eth_port.remove(vrouter_name[0])
 
-
-
     cli = clicopy
     cli += ' vrouter-interface-show vlan %s ip %s vrrp-primary %s format switch no-show-headers ' % (vlan_id, ip1, eth_port[0])
     existing_vrouter = run_cli(module, cli).split()
     existing_vrouter = list(set(existing_vrouter))
 
-
-
-
-
-
     if vrouter_name[0] not in existing_vrouter:
-
-
-
         cli = clicopy
         cli += ' vrouter-interface-add vrouter-name ' + vrouter_name[0]
         cli += ' ip ' + ip1
         cli += ' vlan %s if data vrrp-id %s vrrp-primary %s vrrp-priority %s ' % (vlan_id, vrrp_id, eth_port[0], vrrp_priority)
-
         output += run_cli(module, cli)
         output += ' '
-
     else:
         output += ' interface already added for vrouter %s ' % (vrouter_name[0])
 
@@ -260,23 +244,26 @@ def create_l2_interface(module, switch, ip, vlan_id, vrrp_id, ip_count, vrrp_pri
 
 
 
-
-
-
-
-
-
-
-def configure_vrrp(module):
+def configure_vrrp(module, vrrp_id, no_interface, vrrp_ip, active_switch, vlan_range):
+    """
+    This method is to configure vrrp.
+    :param module: The Ansible module to fetch input parameters.
+    :param vrrp_id: The vrrp_id need to be assigned.
+    :param no_interfaces: The number of interfaces to be added.
+    :param vrrp_ip: The vrrp_ip needed to be assigned.
+    :param active_switch: The name of the active switch.
+    :param vlan_range: The vlan_range for creating the vlans.
+    :return: It returns the output of the configuration
+    """
     output = ' '
     spine_list = module.params['pn_spine_list']
     leaf_list = module.params['pn_leaf_list']
 
-    vrrp_id = module.params['pn_vrrp_id']
-    no_interface = module.params['pn_vrrp_no_interface']
-    vrrp_ip = module.params['pn_vrrp_ip']
-    active_switch = module.params['pn_active_switch']
-    vlan_range = module.params['pn_vlan_range']
+    #vrrp_id = module.params['pn_vrrp_id']
+    #no_interface = module.params['pn_vrrp_no_interface']
+    #vrrp_ip = module.params['pn_vrrp_ip']
+    #active_switch = module.params['pn_active_switch']
+    #vlan_range = module.params['pn_vlan_range']
     #no_interface = '4'
     #vlan_range = '101-200'
     vlan_range_split = vlan_range.split('-')
@@ -293,7 +280,6 @@ def configure_vrrp(module):
     #vrrp_ip = '101.101.$.0/24'
     #active_switch = 'auto-spine1'
     vrrp_ip_segment = vrrp_ip.split('.')
-    #dict_count = { 'auto-spine1':'2' , 'auto-spine2':'3' }
     host_count = 1
     for spine in spine_list:
         host_count += 1
@@ -301,20 +287,15 @@ def configure_vrrp(module):
             vrrp_priority = '110'
         else:
             vrrp_priority = '100'
+
         for vlan_id in vlan:
-
             ip = vrrp_ip_segment[0] + '.' + vrrp_ip_segment[1] + '.' + vlan_id + '.' + vrrp_ip_segment[3]
-
             output += create_l2_interface(module, spine, ip, vlan_id, vrrp_id, str(host_count), vrrp_priority)
             if (int(vlan_id) % 15 == 0):
                 output += ' waiting for 2 sec '
                 time.sleep(2)
 
     return output
-
-
-
-
 
 
 
@@ -358,16 +339,13 @@ def main():
 
         )
     )
-    fabric_name = module.params['pn_fabric_name']
-    fabric_network = module.params['pn_fabric_network']
-    fabric_type = module.params['pn_fabric_type']
-    run_l2_l3 = module.params['pn_run_l2_l3']
-    control_network = module.params['pn_fabric_control_network']
-    update_fabricto_inband = module.params['pn_update_fabricto_inband']
- #   inband_address = module.params['pn_inband_ip']
 
-    message = ' '
 
+    vrrp_id = module.params['pn_vrrp_id']
+    no_interface = module.params['pn_vrrp_no_interface']
+    vrrp_ip = module.params['pn_vrrp_ip']
+    active_switch = module.params['pn_active_switch']
+    vlan_range = module.params['pn_vlan_range']
 
 
     message += ' '
