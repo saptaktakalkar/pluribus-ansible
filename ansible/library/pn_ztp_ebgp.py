@@ -1,14 +1,32 @@
-import shlex
-import json
+#!/usr/bin/python
+""" PN CLI Zero Touch Provisioning (ZTP) with EBGP"""
 
+#
+# This file is part of Ansible
+#
+# Ansible is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Ansible is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+import shlex
 
 DOCUMENTATION = """
 ---
-module: pn_ztp
+module: pn_ztp_ebgp
 author: "Pluribus Networks (@gauravbajaj)"
 version: 1
 short_description: CLI command to do zero touch provisioning with ebgp.
-description: 
+description:
     Zero Touch Provisioning (ZTP) allows you to provision new switches in your
     network automatically, without manual intervention.
     It performs following steps:
@@ -18,13 +36,7 @@ description:
         - Assign bgp_neighbor
         - Assign router_id
         - Create leaf_cluster
-options: TO DO
-
-
-
 """
-
-
 
 
 def pn_cli(module):
@@ -38,14 +50,12 @@ def pn_cli(module):
     password = module.params['pn_clipassword']
     cliswitch = module.params['pn_cliswitch']
     if username and password:
-        cli = '/usr/bin/cli --quiet --user %s:%s'  % (username, password)
+        cli = '/usr/bin/cli --quiet --user %s:%s' % (username, password)
     else:
         cli = '/usr/bin/cli --quiet '
 
     if cliswitch:
         cli += ' switch ' + cliswitch
-    #else:
-    #    cli += ' switch-local '
 
     return cli
 
@@ -56,167 +66,156 @@ def run_cli(module, cli):
     output.
     :param module: The Ansible module to fetch input parameters.
     :param cli: the complete cli string to be executed on the target node(s).
-    :return: Output/Error or Success message depending upon the response from cli.
+    :return: Output/Error or Success message depending upon the
+    response from cli.
     """
 
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
-#    print "rc",rc
-#    print "out",out
-#    print "err",err
     if out:
         return out
 
     if err:
-
         module.exit_json(
-
             error="1",
             failed=True,
             stderr=err.strip(),
             msg="Operation Failed: " + str(cli),
             changed=False
-            )
-
-
+        )
     else:
         return 'Success'
 
 
-
-
-
-
-def assigning bgp_as(module,bgp_as):
+def assign_bgp_as(module, bgp_as):
     """
     This method assigns bgp_as to vrouter.
     :param module: The Ansible module to fetch input parameters.
     :param bgp_as: The user_input for the bgp_as to be assigned.
     :return: The output message of the assignment of the bgp_as
-    """ 
-    output =' '
-#    loopback_address = module.params['pn_loopback_ip']
+    """
+    output = ' '
     bgp_as_spine = bgp_as
     bgp_leaf = int(bgp_as) + 1
-    leaf_list = module.params['pn_leaf_list']
     spine_list = module.params['pn_spine_list']
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
+
     clicopy = cli
     cli += ' vrouter-show format name no-show-headers '
     vrouter_names = run_cli(module, cli).split()
 
     if len(vrouter_names) > 0:
-
-        for vrouter in vrouter_names:            
-
+        for vrouter in vrouter_names:
+            cli = clicopy
+            cli += ' vrouter-show name ' + vrouter
+            cli += ' format location no-show-headers '
+            switch_vrouter = run_cli(module, cli).split()
+            if switch_vrouter[0] in spine_list:
                 cli = clicopy
-                cli += ' vrouter-show name %s format location no-show-headers ' % (vrouter)
-                switch_vrouter = run_cli(module,cli).split()
-                if switch_vrouter[0] in spine_list:
-                    cli = clicopy
-                    cli += ' vrouter-modify name %s bgp-as %s ' % (vrouter, bgp_as_spine)
-                    output += run_cli(module,cli)
-                    output += ' '
-                else:
-                    cli = clicopy
-                    cli += ' vrouter-modify name %s bgp-as %s ' % (vrouter, str(bgp_leaf))
-                    output += run_cli(module,cli)
-                    output += ' '
-                    bgp_leaf += 1
-    
+                cli += ' vrouter-modify name %s bgp-as %s ' % (vrouter,
+                                                               bgp_as_spine)
+                output += run_cli(module, cli)
+                output += ' '
+            else:
+                cli = clicopy
+                cli += ' vrouter-modify name %s bgp-as %s ' % (vrouter,
+                                                               str(bgp_leaf))
+                output += run_cli(module, cli)
+                output += ' '
+                bgp_leaf += 1
     else:
-        output += "no vrouters present"
+        output += "No vrouters present!"
 
     return output
-
-
-
 
 
 def bgp_neighbor(module):
     """
     This method add bgp_neighbor to the vrouter.
     :param module: The Ansible module to fetch input parameters.
-    :return: The output of the adding bgp-neighbor
+    :return: The output of the adding bgp-neighbor.
     """
-    
     output = ' '
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
+
     clicopy = cli
     cli += ' vrouter-show format name no-show-headers '
     vrouter_names = run_cli(module, cli).split()
 
     if len(vrouter_names) > 0:
         for vrouter in vrouter_names:
-
             cli = clicopy
-            cli += ' vrouter-show name %s format location no-show-headers ' % (vrouter)
+            cli += ' vrouter-show name ' + vrouter
+            cli += ' format location no-show-headers '
             switch = run_cli(module, cli).split()
 
             cli = clicopy
-            cli += ' vrouter-interface-show vrouter-name %s format l3-port no-show-headers ' % (vrouter)
+            cli += ' vrouter-interface-show vrouter-name ' + vrouter
+            cli += ' format l3-port no-show-headers '
             port_num = run_cli(module, cli).split()
             port_num = list(set(port_num))
             port_num.remove(vrouter)
-          
-            
+
             for port in port_num:
- 
                 cli = clicopy
-                cli += ' switch %s port-show port %s format hostname no-show-headers ' % (switch[0], port)               # use port in pl;ace of static port number
+                cli += ' switch %s port-show port %s ' % (switch[0], port)
+                cli += ' format hostname no-show-headers '
                 hostname = run_cli(module, cli).split()
-               
-                cli = clicopy
-                cli += ' vrouter-show location %s format bgp-as no-show-headers ' % (hostname[0])    
-                bgp_hostname = run_cli(module, cli).split()
-        
-                #cli = clicopy
-                #cli += ' switch %s port-show hostname %s format port no-show-headers ' % (hostname[0], switch[0])
-                #port_hostname = run_cli(module, cli).split()
 
                 cli = clicopy
-                cli += ' switch %s port-show port %s format rport no-show-headers ' % (switch[0], port)
+                cli += ' vrouter-show location ' + hostname[0]
+                cli += ' format bgp-as no-show-headers '
+                bgp_hostname = run_cli(module, cli).split()
+
+                cli = clicopy
+                cli += ' switch %s port-show port %s ' % (switch[0], port)
+                cli += ' format rport no-show-headers '
                 port_hostname = run_cli(module, cli)
-        
+
                 cli = clicopy
-                cli += ' vrouter-show location %s format name no-show-headers ' % (hostname[0])
-                vrouter_hostname = run_cli(module,cli).split()
-        
+                cli += ' vrouter-show location ' + hostname[0]
+                cli += ' format name no-show-headers '
+                vrouter_hostname = run_cli(module, cli).split()
+
                 cli = clicopy
-                cli += ' vrouter-interface-show vrouter-name %s l3-port %s format ip no-show-headers ' % (vrouter_hostname[0], port_hostname)
+                cli += ' vrouter-interface-show '
+                cli += ' vrouter-name ' + vrouter_hostname[0]
+                cli += ' l3-port %s format ip no-show-headers ' % port_hostname
                 ip_hostname_subnet = run_cli(module, cli).split()
                 ip_hostname_subnet.remove(vrouter_hostname[0])
-         
+
                 ip_hostname_subnet = ip_hostname_subnet[0].split('/')
                 ip_hostname = ip_hostname_subnet[0]
-        
+
                 cli = clicopy
-                cli += ' vrouter-bgp-show remote-as %s neighbor %s format switch no-show-headers ' %(bgp_hostname[0], ip_hostname)
-                already_added = run_cli(module,cli).split()
+                cli += ' vrouter-bgp-show remote-as %s neighbor %s ' % (
+                    bgp_hostname[0], ip_hostname)
+                cli += ' format switch no-show-headers '
+                already_added = run_cli(module, cli).split()
 
                 if vrouter in already_added:
-                    output += " already exists bgp in %s " % (vrouter)
+                    output += " BGP already exists in " + vrouter
                     output += ' '
                 else:
                     cli = clicopy
-                    cli += ' vrouter-bgp-add vrouter-name %s neighbor %s remote-as %s ' % (vrouter, ip_hostname, bgp_hostname[0])
-                    output += run_cli(module,cli)
-                    output += ' added bgp %s ' % (vrouter)     
+                    cli += ' vrouter-bgp-add vrouter-name ' + vrouter
+                    cli += ' neighbor %s remote-as %s ' % (ip_hostname,
+                                                           bgp_hostname[0])
+                    output += run_cli(module, cli)
+                    output += ' Added bgp ' + vrouter
     else:
-        print "no vrouter created yet"
+        print "No vrouter created yet!"
+
     return output
-
-
-
 
 
 def assign_router_id(module):
     """
-    This method assign router id same as loopback ip.
+    This method assign router id, which is same as loop back ip.
     :param module: The Ansible module to fetch input parameters.
     :return: The output message for the assignment.
     """
@@ -224,96 +223,90 @@ def assign_router_id(module):
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
-    clicopy = cli
 
+    clicopy = cli
     cli += ' vrouter-show format name no-show-headers '
     vrouter_names = run_cli(module, cli).split()
     if len(vrouter_names) > 0:
         for vrouter in vrouter_names:
             cli = clicopy
-            cli += ' vrouter-loopback-interface-show vrouter-name %s format ip no-show-headers ' % (vrouter)
+            cli += ' vrouter-loopback-interface-show vrouter-name ' + vrouter
+            cli += ' format ip no-show-headers '
             loopback_ip = run_cli(module, cli).split()
             loopback_ip.remove(vrouter)
-            
+
             cli = clicopy
-            cli += ' vrouter-modify name %s router-id %s ' % (vrouter,loopback_ip[0])
+            cli += ' vrouter-modify name %s router-id %s ' % (vrouter,
+                                                              loopback_ip[0])
             output += run_cli(module, cli)
             output += ' '
     else:
         print "No vrouters"
-    return output        
+
+    return output
 
 
-
-
-
-
-def bgp_redistribute(module, bgp_redistribute):
+def assign_bgp_redistribute(module, bgp_redistribute):
     """
     This method assigns bgp_redistribute to the vrouter.
     :param module: The Ansible module to fetch input parameters.
     :param bgp_redistribute: It is 'connected' by default.
     :return: The output message for the assignment.
     """
-      
     output = ' '
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
+
     clicopy = cli
-    
     cli += ' vrouter-show format name no-show-headers '
     vrouter_names = run_cli(module, cli).split()
 
     for vrouter in vrouter_names:
         cli = clicopy
-        cli += ' vrouter-modify name %s bgp-redistribute %s ' % (vrouter,bgp_redistribute)
-        output += run_cli(module,cli)
+        cli += ' vrouter-modify name ' + vrouter
+        cli += ' bgp-redistribute ' + bgp_redistribute
+        output += run_cli(module, cli)
         output += ' '
-   return output   
+
+    return output
 
 
-
-
-def bgp_maxpath(module, bgp_maxpath):
+def assign_bgp_maxpath(module, bgp_maxpath):
     """
     This method assigns bgp_maxpath to the vrouter.
     :param module: The Ansible module to fetch input parameters.
     :param bgp_maxpath: It is '16' by default.
     :return: The output message for the assignment.
     """
-   
-   
     output = ' '
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
-    clicopy = cli
 
+    clicopy = cli
     cli += ' vrouter-show format name no-show-headers '
     vrouter_names = run_cli(module, cli).split()
 
     for vrouter in vrouter_names:
         cli = clicopy
-        cli += ' vrouter-modify name %s bgp-max-paths %s ' % (vrouter,bgp_maxpath)
-        output += run_cli(module,cli)
+        cli += ' vrouter-modify name %s bgp-max-paths %s ' % (vrouter,
+                                                              bgp_maxpath)
+        output += run_cli(module, cli)
         output += ' '
+
     return output
-
-
-
-
 
 
 def leaf_no_cluster(module, leaf_list):
     """
-    This method is to find leafs not in any leafs
+    This method is to find leafs not in present in any cluster.
     :param module: The Ansible module to fetch input parameters.
     :param leaf_list: The list of all the leaf switches.
     :return: The list of leaf in no cluster.
     """
     cli = pn_cli(module)
-    noncluster_leaf = []
+    non_cluster_leaf = []
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
 
@@ -326,9 +319,9 @@ def leaf_no_cluster(module, leaf_list):
 
     for leaf in leaf_list:
         if (leaf not in cluster1) and (leaf not in cluster2):
-            noncluster_leaf.append(leaf)
+            non_cluster_leaf.append(leaf)
 
-    return noncluster_leaf
+    return non_cluster_leaf
 
 
 def create_cluster(module, switch, name, node1, node2):
@@ -346,7 +339,7 @@ def create_cluster(module, switch, name, node1, node2):
         cli = cli.rpartition('switch')[0]
 
     clicopy = cli
-    cli += ' switch %s cluster-show format name no-show-headers ' % (node1)
+    cli += ' switch %s cluster-show format name no-show-headers ' % node1
     cluster_list = run_cli(module, cli).split()
     if name not in cluster_list:
         cli = clicopy
@@ -357,35 +350,33 @@ def create_cluster(module, switch, name, node1, node2):
         return "Already part of a cluster"
 
 
-
-
-def leaf_cluster_formation(module, noncluster_leaf, spine_list):
+def leaf_cluster_formation(module, non_cluster_leaf, spine_list):
     """
-    This method uses non-clistered leafs and forms cluster
+    This method uses non-clustered leafs and forms cluster.
     :param module: The Ansible module to fetch input parameters.
-    :param noncluster_leaf: List of all the leaf not in cluster.
+    :param non_cluster_leaf: List of all the leaf not in cluster.
     :param spine_list: The list of spines.
-    :return: The output message of success or error
+    :return: The output message of success or error.
     """
 
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
+
     clicopy = cli
-
     output = ' '
-
     flag = 0
     while flag == 0:
-        if len(noncluster_leaf) == 0:
+        if len(non_cluster_leaf) == 0:
             output += "no more leaf to create cluster"
             output += ' '
             flag += 1
         else:
-            node1 = noncluster_leaf[0]
-            noncluster_leaf.remove(node1)
+            node1 = non_cluster_leaf[0]
+            non_cluster_leaf.remove(node1)
             cli = clicopy
-            cli += ' switch %s lldp-show format sys-name no-show-headers ' % node1
+            cli += ' switch %s lldp-show ' % node1
+            cli += ' format sys-name no-show-headers '
             system_names = run_cli(module, cli).split()
             system_names = list(set(system_names))
 
@@ -394,52 +385,36 @@ def leaf_cluster_formation(module, noncluster_leaf, spine_list):
             while (i < len(system_names)) and (flag1 == 0):
                 switch = system_names[i]
                 if switch not in spine_list:
-                    if switch in noncluster_leaf:
+                    if switch in non_cluster_leaf:
                         name = node1 + '-to-' + switch + '-cluster'
-                        output += create_cluster(module, switch, name, node1, switch)
+                        output += create_cluster(module, switch, name, node1,
+                                                 switch)
                         output += ' '
-                        noncluster_leaf.remove(switch)
+                        non_cluster_leaf.remove(switch)
                         flag1 += 1
                     else:
-                        print "switch already has a cluster"
+                        print "Switch already has a cluster"
                 else:
-                    print "switch is a spine"
+                    print "Switch is a spine"
 
                 i += 1
+
     return output
-
-
-
-
-
 
 
 def create_leaf_cluster(module):
     """
-    This method creates leaf cluster with physical link
+    This method creates leaf cluster with physical link.
     :param module: The Ansible module to fetch input parameters.
     :return: The output message with success or error.
     """
     output = ' '
-
     spine_list = module.params['pn_spine_list']
     leaf_list = module.params['pn_leaf_list']
-
-    noncluster_leaf = leaf_no_cluster(module, leaf_list)
-
-    output += leaf_cluster_formation(module, noncluster_leaf, spine_list)
+    non_cluster_leaf = leaf_no_cluster(module, leaf_list)
+    output += leaf_cluster_formation(module, non_cluster_leaf, spine_list)
     output += ' '
-
     return output
-
-        
-
-
-
-
-
-
-
 
 
 def main():
@@ -457,39 +432,41 @@ def main():
             pn_fabric_type=dict(required=False, type='str',
                                 choices=['layer2', 'layer3'],
                                 default='layer2'),
-            pn_fabric_retry=dict(required=False, type='int' ,default=1),
+            pn_fabric_retry=dict(required=False, type='int', default=1),
             pn_run_l2_l3=dict(required=False, type='bool', default=False),
             pn_net_address=dict(required=False, type='str'),
             pn_cidr=dict(required=False, type='str'),
             pn_supernet=dict(required=False, type='str'),
             pn_spine_list=dict(required=False, type='list'),
             pn_leaf_list=dict(required=False, type='list'),
-            pn_update_fabricto_inband=dict(required=False, type='bool', default=False),
+            pn_update_fabricto_inband=dict(required=False, type='bool',
+                                           default=False),
             pn_assign_loopback=dict(required=False, type='bool', default=False),
-            pn_loopback_ip=dict(required=False, type='str', default='101.101.101.0/32'),
-            pn_inband_ip=dict(required=False, type='str', default='172.16.0.0/24'),
-            pn_fabric_control_network=dict(required=False, type='str',choices=['mgmt', 'in-band'],default='mgmt'),
+            pn_loopback_ip=dict(required=False, type='str',
+                                default='101.101.101.0/32'),
+            pn_inband_ip=dict(required=False, type='str',
+                              default='172.16.0.0/24'),
+            pn_fabric_control_network=dict(required=False, type='str',
+                                           choices=['mgmt', 'in-band'],
+                                           default='mgmt'),
             pn_bgp_as_range=dict(required=False, type='str', default='65000'),
-            pn_bgp_redistribute = dict(required=False, type='str',
-                                       choices=['none','static','connected', 'rip', 'ospf'],
-                                        default='connected'),
-            pn_bgp_maxpath = dict(required=False, type='str', default='16')
+            pn_bgp_redistribute=dict(required=False, type='str',
+                                     choices=['none', 'static', 'connected',
+                                              'rip', 'ospf'],
+                                     default='connected'),
+            pn_bgp_maxpath=dict(required=False, type='str', default='16'),
         )
     )
 
     bgp_as_range = module.params['pn_bgp_as_range']
     bgp_redistribute = module.params['pn_bgp_redistribute']
-    bgp_maxpath = module.params['pn_bgp_maxpath'] 
+    bgp_maxpath = module.params['pn_bgp_maxpath']
     message = ' '
-  
-
-
-    message += ' '
-    message += assigning bgp_as(module,bgp_as_range)
+    message += assign_bgp_as(module, bgp_as_range)
     message += ' bgp_as assigned '
-    message += bgp_redistribute(module, bgp_redistribute)
+    message += assign_bgp_redistribute(module, bgp_redistribute)
     message += ' '
-    message += bgp_maxpath(module, bgp_maxpath)
+    message += assign_bgp_maxpath(module, bgp_maxpath)
     message += ' '
     message += bgp_neighbor(module)
     message += ' '
@@ -498,17 +475,13 @@ def main():
     message += create_leaf_cluster(module)
     message += ' '
 
-
-
-
     module.exit_json(
         stdout=message,
         error="0",
         failed=False,
         msg="Operation Completed",
         changed=True
-        )
-
+    )
 
 # AnsibleModule boilerplate
 from ansible.module_utils.basic import AnsibleModule
@@ -516,4 +489,3 @@ from ansible.module_utils.basic import AnsibleModule
 if __name__ == '__main__':
     main()
 
- 
