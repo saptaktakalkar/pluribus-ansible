@@ -104,7 +104,6 @@ EXAMPLES = """
     pn_clipassword: "{{ PASSWORD }}"
     pn_fabric_name: ztp-fabric
     pn_run_l2_l3: False
-
 - name: Zero Touch Provisioning - Layer2/Layer3 setup
   pn_ztp:
     pn_cliusername: "{{ USERNAME }}"
@@ -205,10 +204,11 @@ def modify_stp(module, modify_flag):
     switch_names = run_cli(module, cli).split()
     for switch in switch_names:
         cli = clicopy
-        cli += ' switch %s ' % (switch)
+        cli += ' switch ' + switch
         cli += ' stp-modify ' + modify_flag
         output += run_cli(module, cli)
         output += ' '
+
     return output
 
 
@@ -237,16 +237,16 @@ def enable_ports(module):
     cli = pn_cli(module)
     cli += ' port-config-show format port speed 40g no-show-headers'
     out_40g = run_cli(module, cli)
+    out_remove10g = []
 
     if out_40g:
-        out_remove10g = []
         out_40g = out_40g.split()
         out_40g = list(set(out_40g))
 
-        for i in out_40g:
-            out_remove10g.append(str(int(i) + int(1)))
-            out_remove10g.append(str(int(i) + int(2)))
-            out_remove10g.append(str(int(i) + int(3)))
+        for port_number in out_40g:
+            out_remove10g.append(str(int(port_number) + int(1)))
+            out_remove10g.append(str(int(port_number) + int(2)))
+            out_remove10g.append(str(int(port_number) + int(3)))
 
     if out:
         out = out.split()
@@ -312,7 +312,7 @@ def update_fabric_network_to_inband(module):
     switch_names = run_cli(module, cli).split()
     for switch in switch_names:
         cli = clicopy
-        cli += ' switch %s ' % (switch)
+        cli += ' switch ' + switch
         cli += ' fabric-local-modify fabric-network in-band '
         output += run_cli(module, cli)
 
@@ -439,7 +439,7 @@ def create_interface(module, switch, ip, port):
         cli = cli.rpartition('switch')[0]
 
     clicopy = cli
-    cli += ' vrouter-show location %s format name no-show-headers ' % (switch)
+    cli += ' vrouter-show location %s format name no-show-headers ' % switch
     vrouter_name = run_cli(module, cli).split()
 
     cli = clicopy
@@ -473,7 +473,7 @@ def disable_trunk(module, switch):
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
 
-    cli += ' switch %s sys-flow-setting-modify no-auto-trunk ' % (switch)
+    cli += ' switch %s sys-flow-setting-modify no-auto-trunk ' % switch
     return run_cli(module, cli)
 
 
@@ -528,10 +528,10 @@ def assign_loopback_ip(module, loopback_address):
     vrouter_names = run_cli(module, cli).split()
 
     if len(vrouter_names) > 0:
-        i = 1
-        if len(vrouter_names) + i - 1 <= 255:
+        vrouter_count = 1
+        if len(vrouter_names) + vrouter_count - 1 <= 255:
             for vrouter in vrouter_names:
-                ip = static_part + str(i)
+                ip = static_part + str(vrouter_count)
                 cli = clicopy
                 cli += ' vrouter-loopback-interface-show ip ' + ip
                 cli += ' format switch no-show-headers '
@@ -541,11 +541,11 @@ def assign_loopback_ip(module, loopback_address):
                     cli = clicopy
                     cli += ' vrouter-loopback-interface-add vrouter-name '
                     cli += vrouter
-                    cli += ' ip %s ' % (ip)
+                    cli += ' ip ' + ip
                     output += run_cli(module, cli)
                     output += ' '
 
-                i += 1
+                vrouter_count += 1
         else:
             output += "Not enough ips for all the vrouters"
     else:
@@ -702,7 +702,7 @@ def leaf_no_cluster(module, leaf_list):
     :return: The leafs which are not part of any cluster.
     """
     cli = pn_cli(module)
-    noncluster_leaf = []
+    non_cluster_leaf = []
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
 
@@ -716,9 +716,9 @@ def leaf_no_cluster(module, leaf_list):
 
     for leaf in leaf_list:
         if (leaf not in cluster1) and (leaf not in cluster2):
-            noncluster_leaf.append(leaf)
+            non_cluster_leaf.append(leaf)
 
-    return noncluster_leaf
+    return non_cluster_leaf
 
 
 def create_vlag(module, switch, name, peer_switch, port, peer_port):
@@ -737,7 +737,7 @@ def create_vlag(module, switch, name, peer_switch, port, peer_port):
         cli = cli.rpartition('switch')[0]
 
     clicopy = cli
-    cli += ' switch %s vlag-show format name no-show-headers ' % (switch)
+    cli += ' switch %s vlag-show format name no-show-headers ' % switch
     vlag_list = run_cli(module, cli).split()
     if name not in vlag_list:
         cli = clicopy
@@ -772,12 +772,12 @@ def create_trunk_vlag(module, node1, dest_list):
     return name
 
 
-def create_leaf_cluster_vlag(module, noncluster_leaf, spine_list):
+def create_leaf_cluster_vlag(module, non_cluster_leaf, spine_list):
     """
     This method is to create clusters, lag and vlag for the switches having
     physical links.
     :param module: The Ansible module to fetch input parameters.
-    :param noncluster_leaf: The list of leaf which are not part of any cluster.
+    :param non_cluster_leaf: The list of leaf which are not part of any cluster.
     :param spine_list: The list of spines.
     :return: The output message related to vlag, lag and cluster creation.
     """
@@ -789,13 +789,13 @@ def create_leaf_cluster_vlag(module, noncluster_leaf, spine_list):
     output = ' '
     flag = 0
     while flag == 0:
-        if len(noncluster_leaf) == 0:
+        if len(non_cluster_leaf) == 0:
             output += "no more leaf to create cluster"
             output += ' '
             flag += 1
         else:
-            node1 = noncluster_leaf[0]
-            noncluster_leaf.remove(node1)
+            node1 = non_cluster_leaf[0]
+            non_cluster_leaf.remove(node1)
 
             cli = clicopy
             cli += ' switch %s lldp-show ' % node1
@@ -803,17 +803,27 @@ def create_leaf_cluster_vlag(module, noncluster_leaf, spine_list):
             system_names = run_cli(module, cli).split()
             system_names = list(set(system_names))
 
+            cli = clicopy
+            cli += ' switch %s fabric-node-show ' % node1
+            cli += ' format name no-show-headers '
+            nodes_in_fabric = run_cli(module, cli).split()
+            nodes_in_fabric = list(set(nodes_in_fabric))
+
+            for system in system_names:
+                if system not in nodes_in_fabric:
+                    system_names.remove(system)
+
             flag1 = 0
-            i = 0
-            while (i < len(system_names)) and (flag1 == 0):
-                node2 = system_names[i]
+            node_count = 0
+            while (node_count < len(system_names)) and (flag1 == 0):
+                node2 = system_names[node_count]
                 if node2 not in spine_list:
-                    if node2 in noncluster_leaf:
+                    if node2 in non_cluster_leaf:
                         name = node1 + '-to-' + node2 + '-cluster'
                         output += create_cluster(module, node2, name,
                                                  node1, node2)
                         output += ' '
-                        noncluster_leaf.remove(node2)
+                        non_cluster_leaf.remove(node2)
                         name1 = create_trunk_vlag(module, node1, spine_list)
                         name2 = create_trunk_vlag(module, node2, spine_list)
 
@@ -822,9 +832,7 @@ def create_leaf_cluster_vlag(module, noncluster_leaf, spine_list):
                                               name1, name2)
                         output += ' '
 
-                        list1 = []
-                        list1.append(node1)
-                        list1.append(node2)
+                        list1 = [node1, node2]
                         spine1 = str(spine_list[0])
                         spine2 = str(spine_list[1])
                         name1 = create_trunk_vlag(module, spine1, list1)
@@ -839,24 +847,22 @@ def create_leaf_cluster_vlag(module, noncluster_leaf, spine_list):
                 else:
                     print "switch is a spine"
 
-                i += 1
+                node_count += 1
     return output
 
 
-def create_nonclusterleaf_vlag(module, noncluster_leaf, spine_list):
+def create_nonclusterleaf_vlag(module, non_cluster_leaf, spine_list):
     """
     This method is to create lag and vlag for noncluster leafs.
     :param module: The Ansible module to fetch input parameters.
-    :param noncluster_leaf: The list of all noncluster leaf.
+    :param non_cluster_leaf: The list of all noncluster leaf.
     :param spine_list: The list of all spine_list.
     :return: The output messages related to vlag creation.
     """
     output = ' '
-    for leaf in noncluster_leaf:
+    for leaf in non_cluster_leaf:
         create_trunk_vlag(module, leaf, spine_list)
-        list1 = []
-        list1.append(leaf)
-
+        list1 = [leaf]
         spine1 = str(spine_list[0])
         spine2 = str(spine_list[1])
         name1 = create_trunk_vlag(module, spine1, list1)
@@ -881,11 +887,11 @@ def configure_auto_vlag(module):
     spine1 = spine_list[0]
     spine2 = spine_list[1]
     create_cluster(module, spine1, 'spine-cluster', spine1, spine2)
-    noncluster_leaf = leaf_no_cluster(module, leaf_list)
-    output += create_leaf_cluster_vlag(module, noncluster_leaf, spine_list)
+    non_cluster_leaf = leaf_no_cluster(module, leaf_list)
+    output += create_leaf_cluster_vlag(module, non_cluster_leaf, spine_list)
     output = ' '
-    noncluster_leaf = leaf_no_cluster(module, leaf_list)
-    output += create_nonclusterleaf_vlag(module, noncluster_leaf, spine_list)
+    non_cluster_leaf = leaf_no_cluster(module, leaf_list)
+    output += create_nonclusterleaf_vlag(module, non_cluster_leaf, spine_list)
     output += ' '
     return output
 
@@ -913,16 +919,16 @@ def assign_inband_ip(module, inband_address):
     switch_names = run_cli(module, cli).split()
 
     if len(switch_names) > 0:
-        i = 1
-        if len(switch_names) + i - 1 <= 255:
+        ip_count = 1
+        if len(switch_names) + ip_count - 1 <= 255:
             for switch in switch_names:
-                ip = static_part + str(i) + '/' + subnet
+                ip = static_part + str(ip_count) + '/' + subnet
                 cli = clicopy
                 cli += ' switch %s switch-setup-modify ' % switch
                 cli += ' in-band-ip ' + ip
                 output += run_cli(module, cli)
                 output += ' '
-                i += 1
+                ip_count += 1
         else:
             output += "Not enough inband ips for all the switches"
     else:
@@ -954,7 +960,7 @@ def main():
             pn_spine_list=dict(required=False, type='list'),
             pn_leaf_list=dict(required=False, type='list'),
             pn_update_fabric_to_inband=dict(required=False, type='bool',
-                                           default=False),
+                                            default=False),
             pn_assign_loopback=dict(required=False, type='bool', default=False),
             pn_loopback_ip=dict(required=False, type='str',
                                 default='101.101.101.0/32'),
