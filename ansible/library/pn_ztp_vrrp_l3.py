@@ -31,9 +31,8 @@ description:
     Zero Touch Provisioning (ZTP) allows you to provision new switches in your
     network automatically, without manual intervention.
     It performs following steps:
-        - Configure VRRP for the gateway(extension of l2
+        - Configure VRRP for the gateway(extension of l3
           in the ZTP module)
-
 options: TO DO
 """
 
@@ -81,7 +80,7 @@ def run_cli(module, cli):
             stderr=err.strip(),
             msg="Operation Failed: " + str(cli),
             changed=False
-            )
+        )
     else:
         return 'Success'
 
@@ -129,7 +128,7 @@ def create_l3_vrouter(module, switch, vrrp_id):
     interface added or if vrouter already exists.
     """
     output = ' '
-    switch_temp = switch[3:]
+    switch_temp = str(switch[3:]) + '-vrouter'
     vrouter_name = switch_temp
     vnet_name = module.params['pn_fabric_name'] + '-global'
     cli = pn_cli(module)
@@ -140,6 +139,7 @@ def create_l3_vrouter(module, switch, vrrp_id):
     cli_copy = cli
 
     # Check if vrouter already exists
+    cli = cli_copy
     cli += ' vrouter-show format name no-show-headers '
     existing_vrouter_names = run_cli(module, cli).split()
 
@@ -177,17 +177,18 @@ def create_l3_interface(module, switch, ip, vlan_id, vrrp_id,
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
-
     clicopy = cli
+
+    cli = clicopy
     cli += ' vrouter-show location %s format name no-show-headers ' % switch
     vrouter_name = run_cli(module, cli).split()
     ip_addr = ip.split('.')
-    fourth = ip_addr[3].split('/')
-    subnet = fourth[1]
+    fourth_octet = ip_addr[3].split('/')
+    subnet = fourth_octet[1]
 
-    first = ip_addr[0] + '.' + ip_addr[1] + '.' + ip_addr[2] + '.'
-    ip1 = first + '1' + '/' + subnet
-    ip2 = first + ip_count + '/' + subnet
+    static_ip = ip_addr[0] + '.' + ip_addr[1] + '.' + ip_addr[2] + '.'
+    ip1 = static_ip + '1' + '/' + subnet
+    ip2 = static_ip + ip_count + '/' + subnet
 
     cli = clicopy
     cli += ' vrouter-interface-show vlan %s ip %s ' % (vlan_id, ip2)
@@ -350,6 +351,94 @@ def create_leaf_cluster(module):
     non_cluster_leaf = leaf_no_cluster(module, leaf_list)
     output += leaf_cluster_formation(module, non_cluster_leaf, spine_list)
     output += ' '
+
+    return output
+
+
+def create_l3_vrouter_novrrp(module, switch):
+    """
+    This method is to create vrouter and assign vrrp_id to the switches.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch: The switch name on which vrouter will be created.
+    :return: The output string informing details of vrouter created and
+    interface added or if vrouter already exists.
+    """
+    output = ' '
+    switch_temp = str(switch[3:]) + '-vrouter'
+    vrouter_name = switch_temp
+    vnet_name = module.params['pn_fabric_name'] + '-global'
+    cli = pn_cli(module)
+    if 'switch' in cli:
+        cli = cli.rpartition('switch')[0]
+
+    cli += ' switch ' + switch
+    cli_copy = cli
+
+    # Check if vrouter already exists
+    cli = cli_copy
+    cli += ' vrouter-show format name no-show-headers '
+    existing_vrouter_names = run_cli(module, cli).split()
+
+    # If vrouter doesn't exists then create it
+    if vrouter_name not in existing_vrouter_names:
+        cli = cli_copy
+        cli += ' vrouter-create name %s vnet %s ' % (
+            vrouter_name, vnet_name)
+        run_cli(module, cli)
+        output += ' Created vrouter %s on switch %s ' % (vrouter_name, switch)
+        output += '\n'
+    else:
+        output += ' Vrouter name %s on switch %s already exists. ' % (
+            vrouter_name, switch)
+        output += '\n'
+
+    return output
+
+
+def vrrp_noncluster_switch(module, ip, noncluster_leaf, vlan_id):
+    """
+    This method is to configure vrrp for non-cluster switches
+    :param module: The Ansible module to fetch input parameters.
+    :param ip: ip address for the default gateway
+    :param noncluster_leaf: name of all the non-cluster leaf
+    :param vlan_id: vlan_id to be assigned.
+    :return: It returns the output in the success or failure
+    """
+    output = ' '
+    cli = pn_cli(module)
+    if 'switch' in cli:
+        cli = cli.rpartition('switch')[0]
+    clicopy = cli
+
+    for switch in noncluster_leaf:
+        cli = clicopy
+        cli += ' vrouter-show location %s format name no-show-headers ' % switch
+        vrouter_name = run_cli(module, cli).split()
+        ip_addr = ip.split('.')
+        fourth_octet = ip_addr[3].split('/')
+        subnet = fourth_octet[1]
+
+        static_ip = ip_addr[0] + '.' + ip_addr[1] + '.' + ip_addr[2] + '.'
+        ip1 = static_ip + '1' + '/' + subnet
+
+        cli = clicopy
+        cli += ' vrouter-interface-show ip %s vlan %s ' % (ip1, vlan_id)
+        cli += ' format switch no-show-headers '
+        existing_vrouter = run_cli(module, cli).split()
+        existing_vrouter = list(set(existing_vrouter))
+
+        if vrouter_name[0] not in existing_vrouter:
+            cli = clicopy
+            cli += ' vrouter-interface-add vrouter-name ' + vrouter_name[0]
+            cli += ' vlan ' + vlan_id
+            cli += ' ip ' + ip1
+            run_cli(module, cli)
+            output += ' and added vrouter interface with ip: ' + ip1
+            output += '\n'
+        else:
+            output += ' interface already exists for vrouter ' + vrouter_name[0]
+            output += '\n'
+
     return output
 
 
@@ -365,6 +454,7 @@ def configure_vrrp(module, vrrp_id, no_interface, vrrp_ip,
     :param vlan_range: The vlan_range for creating the vlans.
     :return: It returns the output of the configuration
     """
+    leaf_list = module.params['pn_leaf_list']
     output = ' '
     cli = pn_cli(module)
     if 'switch' in cli:
@@ -389,13 +479,13 @@ def configure_vrrp(module, vrrp_id, no_interface, vrrp_ip,
         cli = clicopy
         cli += ' cluster-show name %s format cluster-node-1 ' % cluster
         cli += ' no-show-headers '
-        switch1 = run_cli(module, cli)
+        switch1 = run_cli(module, cli).split()
         cli = clicopy
         cli += ' cluster-show name %s format cluster-node-2 ' % cluster
         cli += ' no-show-headers '
-        switch2 = run_cli(module, cli)
-        switch_list.append(switch1)
-        switch_list.append(switch2)
+        switch2 = run_cli(module, cli).split()
+        switch_list.append(switch1[0])
+        switch_list.append(switch2[0])
 
         for switch in switch_list:
             output += create_l3_vrouter(module, switch, vrrp_id)
@@ -417,6 +507,27 @@ def configure_vrrp(module, vrrp_id, no_interface, vrrp_ip,
                 if int(vlan_id) % 15 == 0:
                     output += ' waiting for 2 sec '
                     time.sleep(2)
+
+    noncluster_leaf = leaf_no_cluster(module, leaf_list)
+    for switch in noncluster_leaf:
+        output += create_l3_vrouter_novrrp(module, switch)
+        output += ' '
+
+    # create vlan 61 and 62.
+    # TODO: Get this from the csv file.
+    create_vlan(module, str(61), str(63))
+    ip = vrrp_ip_segment[0] + '.' + vrrp_ip_segment[1] + '.'
+    ip += str(61) + '.' + vrrp_ip_segment[3]
+
+    # To be parsed from csv file
+    noncluster_leaf = ['auto-leaf3']
+    output += vrrp_noncluster_switch(module, ip, noncluster_leaf, str(61))
+    ip = vrrp_ip_segment[0] + '.' + vrrp_ip_segment[1] + '.'
+    ip += str(62) + '.' + vrrp_ip_segment[3]
+
+    # To be parsed from csv file
+    noncluster_leaf = ['auto-leaf4']
+    output += vrrp_noncluster_switch(module, ip, noncluster_leaf, str(62))
 
     return output
 
@@ -480,7 +591,8 @@ def main():
         failed=False,
         msg="Operation Completed",
         changed=True
-        )
+    )
+
 
 # AnsibleModule boilerplate
 from ansible.module_utils.basic import AnsibleModule
