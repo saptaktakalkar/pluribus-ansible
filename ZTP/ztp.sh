@@ -122,6 +122,7 @@ fi
 
 csv_file=""
 processCsv=0
+device_id=()
 
 ##This function validates ipaddress and mac address from CSV file. 
 validate_csv()
@@ -136,6 +137,24 @@ validate_csv()
     echo -e "\nCSV file is not present or not in readable format\n"
       exit 0
     else
+      comma_count=0
+      if  [[ "$params" == *"-dhcp"* ]]; then
+        comma_count=3
+      elif [[ "$params" == *"-onie"* ]] && [[ "$params" == *"-offline"* ]] ; then
+        comma_count=3
+      elif [[ "$params" == *"-onie"* ]] && [[ "$params" == *"-online"* ]]  ; then
+        comma_count=4
+      fi
+    
+      for line in `cat $csv_file` ;
+      do
+        commas=`echo $line | awk -F "," '{print NF-1}'`
+        if ! [ "$comma_count" == "$commas" ];then
+          printf "\n\nPlease provide correct arguments separated by commas. Use ,, inplace of optional value. Check sample csv file from Help\n\n"
+          exit 0
+        fi
+      done
+ 
       #Checking whether user has provided correct mac and ip addresses
       for line in `cat $csv_file` ;
       do
@@ -278,49 +297,51 @@ subnet "$subnet" netmask "$subnet_mask" {  #network
     spine=()
     leaf=()
 
-    INPUT=$csv_file
-    OLDIFS=$IFS
-    IFS=","
-    [ ! -f $INPUT ] &while read mac ip hostname tag
+    for line in `cat $csv_file` ;
     do
+      arr=()
+      IFS=',' read -a arr <<< "$line"
+      mac=${arr[0]}
+      ip=${arr[1]}
+      hostname=${arr[2]}
+      tag=${arr[3]}
+      device_id+=(${arr[4]})
+  
+      check_block_entry_exists=`cat /etc/dhcp/dhcpd.conf | grep "$mac" | wc -l`
 
-    check_block_entry_exists=`cat /etc/dhcp/dhcpd.conf | grep "$mac" | wc -l`
-
-    if [ -z $hostname ]; then
+      if [ -z $hostname ]; then
       host_block="host $ip {
   hardware ethernet $mac;
   fixed-address $ip;
-}
 "
-    else
+      else
       host_block="host $hostname {
   hardware ethernet $mac;
   fixed-address $ip;
   option host-name \"$hostname\";
 "
-    fi
+     fi
 
-    if [[ "$1" == *"-onie"* ]]; then
-      url=`cat $conf_file | grep 'default-url=' | cut -d = -f2`
-      host_block="$host_block  option default-url=\"$url\";"
-    fi
+      if [[ "$params" == *"-onie"* ]]; then
+        url=`cat $conf_file | grep 'default-url=' | cut -d = -f2`
+        host_block="$host_block  option default-url=\"$url\";"
+      fi
   host_block="$host_block
 }"
 
-  if [ $check_block_entry_exists == 0 ]; then
-    sudo sh -c "echo '$host_block' >> /etc/dhcp/dhcpd.conf"
-  fi
-  if [ -z "$tag" ]; then
-    if [ "$tag" == "spine"  ]; then
-      spine+=($ip)
-    else
-      leaf+=($ip)
-    fi
+      if [ $check_block_entry_exists == 0 ]; then
+        sudo sh -c "echo '$host_block' >> /etc/dhcp/dhcpd.conf"
+      fi
 
-  fi
+      if ! [ -z "$tag" ]; then
+        if [ "$tag" == "spine"  ]; then
+          spine+=($ip)
+        else
+          leaf+=($ip)
+        fi
+      fi
+    done
 
-done < $INPUT
-IFS=$OLDIFS
 
     echo "[spine]" > /etc/ansible/hosts
     for spineswitch in "${spine[@]}"
@@ -356,8 +377,11 @@ onie()
   sudo apt-get -y -qq install apache2
   printf "Installed apache2 successfully\n"
 
+  dhcpserver "$params"
+
   if [[ "$params" == *"-online"* ]];then
     mkdir -p /var/www/html/images
+    mkdir -p /etc/pluribuslicense
     username=`cat $conf_file | grep 'username=' | cut -d = -f2`
     password=`cat $conf_file | grep 'password=' | cut -d = -f2`
     version=`cat $conf_file | grep 'onie_image_version=' | cut -d = -f2`
@@ -367,16 +391,22 @@ onie()
 
     csrftoken=`cat $cookie_file_name | grep -Po '(csrftoken\s)\K[^\s]*'`
     order_details_json=`curl -X GET https://cloud-web.pluribusnetworks.com/api/orderDetails -b $cookie_file_name -k`
-    order_detail_id=`echo $order_details_json | grep -oP '"order_detail_id"\s*:\s*\K\d+' | head -1`
-    device_id=`echo $order_details_json | grep -oP '"device_id".*$' | cut -d  } -f1 | cut -d : -f2 | sed -e 's/^"//' -e 's/"$//'`
-    curl -X POST https://cloud-web.pluribusnetworks.com/api/orderActivations -d order_detail_id=$order_detail_id\&device_ids=$device_id\&csrfmiddlewaretoken=$csrftoken -b $cookie_file_name -k
+    #order_detail_id=`echo $order_details_json | grep -oP '"order_detail_id"\s*:\s*\K\d+' | head -1`
+    order_detail_id=15264
+    #device_id=`echo $order_details_json | grep -oP '"device_id".*$' | cut -d  } -f1 | cut -d : -f2 | sed -e 's/^"//' -e 's/"$//'` 
+    for id in "${device_id[@]}"
+    do
+      prinf "\n\n Activating key\n\n"
+      curl -X POST https://cloud-web.pluribusnetworks.com/api/orderActivations -d order_detail_id=$order_detail_id\&device_ids=$id\&csrfmiddlewaretoken=$csrftoken -b $cookie_file_name -k 
+    done
+    curl -X GET https://cloud-web.pluribusnetworks.com/api/offline_bundle/15264 -b /tmp/c.jar -k > /etc/pluribuslicense/onvl-activation-keys
     cd /var/www/html/images
     printf "\n\nDownloading image in /var/www/html/images. Make sure you have provided default-url parameter value as http://ip_of_dhcp_server/images/onie-installer. in conf file\n\n"
     curl -o onie-installer -H 'Accept-Encoding: gzip, deflate, br' -X GET https://cloud-web.pluribusnetworks.com/api/download_image1/onie-installer-$version\?version\=$version -b $cookie_file_name -k
     printf "\n\nDownloaded image in /var/www/html/images.\n\n"
 
   elif [[ "$params" == *"-offline"* ]]; then
-    echo "COnfiguring ONIE: Offline"
+    echo "Configuring ONIE: Offline"
   else
     printf "\nPlease provide parameter -online or -offline. \n"
   fi
@@ -384,7 +414,6 @@ onie()
   ##Reload apache service
   sudo service apache2 reload
 
-  dhcpserver "$params"
 }
 
 ##This is the main function which parses the arguments and depending on that it calls different functions.
