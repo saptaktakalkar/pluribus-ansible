@@ -386,20 +386,36 @@ onie()
     password=`cat $conf_file | grep 'password=' | cut -d = -f2`
     version=`cat $conf_file | grep 'onie_image_version=' | cut -d = -f2`
 
+    printf "\n\nconfiguring JQ json parser\n\n"
+    if ! [ -f ./jq ]; then
+      sudo wget --quiet http://stedolan.github.io/jq/download/linux64/jq
+    fi
+    sudo chmod +x ./jq
+    sudo cp jq /usr/bin
+ 
     cookie_file_name="/tmp/cookie"
-    curl -X POST https://cloud-web.pluribusnetworks.com/api/login -d login_email=$username\&login_password=$password -k -c $cookie_file_name > /dev/null
+    login_json=`curl -X POST https://cloud-web.pluribusnetworks.com/api/login -d login_email=$username\&login_password=$password -k -c $cookie_file_name`
+    login_result=`echo $login_json | jq '.success'`
+
+    if ! [ "$login_result" == true ]; then
+      printf "\n\nLogin failed: cloud-web.pluribusnetworks.com. Please provide correct credentials in conf file\n\n"
+      exit 0
+    fi
 
     csrftoken=`cat $cookie_file_name | grep -Po '(csrftoken\s)\K[^\s]*'`
     order_details_json=`curl -X GET https://cloud-web.pluribusnetworks.com/api/orderDetails -b $cookie_file_name -k`
-    #order_detail_id=`echo $order_details_json | grep -oP '"order_detail_id"\s*:\s*\K\d+' | head -1`
-    order_detail_id=15264
-    #device_id=`echo $order_details_json | grep -oP '"device_id".*$' | cut -d  } -f1 | cut -d : -f2 | sed -e 's/^"//' -e 's/"$//'` 
+    order_detail_id=`echo $order_details_json | jq '.order_details[1].id'`
     for id in "${device_id[@]}"
     do
       prinf "\n\n Activating key\n\n"
-      curl -X POST https://cloud-web.pluribusnetworks.com/api/orderActivations -d order_detail_id=$order_detail_id\&device_ids=$id\&csrfmiddlewaretoken=$csrftoken -b $cookie_file_name -k 
+      activation_json=`curl -X POST https://cloud-web.pluribusnetworks.com/api/orderActivations -d order_detail_id=$order_detail_id\&device_ids=$id\&csrfmiddlewaretoken=$csrftoken -b $cookie_file_name -k`
+      activation_result=`echo $activation_json | jq '.success'`
+      if ! [ "$activation_result" == true ]; then
+        printf "\n\nUnable to activate key for Device: $id\n\n"
+        exit 0
+      fi
     done
-    curl -X GET https://cloud-web.pluribusnetworks.com/api/offline_bundle/15264 -b /tmp/c.jar -k > /etc/pluribuslicense/onvl-activation-keys
+    curl -X GET https://cloud-web.pluribusnetworks.com/api/offline_bundle/15264 -b $cookie_file_name -k > /etc/pluribuslicense/onvl-activation-keys
     cd /var/www/html/images
     printf "\n\nDownloading image in /var/www/html/images. Make sure you have provided default-url parameter value as http://ip_of_dhcp_server/images/onie-installer. in conf file\n\n"
     curl -o onie-installer -H 'Accept-Encoding: gzip, deflate, br' -X GET https://cloud-web.pluribusnetworks.com/api/download_image1/onie-installer-$version\?version\=$version -b $cookie_file_name -k
@@ -507,4 +523,3 @@ onie_image_version=2.5.1-10309 #In case of online version"
 }
 
 main "$@"
-
