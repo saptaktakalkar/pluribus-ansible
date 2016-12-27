@@ -31,17 +31,18 @@ default_csv_file="02:42:b4:c9:6d:1e,10.9.1.1,pikachu,spine
 
 help="
 
-ZTP Bash script provides different functions like installing DHCP, configuring ONIE etc.
+ZTP Bash script provides different functionalities like installing DHCP, configuring ONIE etc.
 You need to provide correct arguments to ztp script which then configure your system accordingly.
 
 Currently ZTP provides two main functions.
-1.DHCP
-2.ONIE
+ 1.DHCP
+ 2.ONIE
 
-        ${RED} ############## DHCP ############ ${NC}
+How To Use: 
 
-Dhcpserver function will install dhcpserver,latest ansible and Pip Modules
-DhcpServer function takes conf and csv files as arugment.
+       ${RED} ############## DHCP ############ ${NC}
+
+DHCP function will install dhcpserver,latest ansible and Pip Modules
 
 ${RED}USAGE: ${NC}
        bash ztp.sh -dhcp [-conf] [-csv] [-reconfigure_dhcp]
@@ -54,11 +55,15 @@ ${RED}EXAMPLE: ${NC}
 ${RED}Options:${NC}
    -h or -help:
        Display brief usage message.
-   -conf:
+   
+   -dhcp: [Required field]
+       This option will install DHCP Server and required Ansible modules.
+
+   -conf: [Required field]
        Reads conf file as input. This file contains network information required by switches.
        e.g netmask, domain-name etc
 
-   -csv: [optional]
+   -csv: [optional field]
        Reads csv file as input. This section contains MAC, IP list, Hostname,TAG field and Inband ip entries which is required to create mac-ip mappings.
        MAC and IP address fields are compulsory. Please provide comma for optional fields if it does not have any value.
        Please check below Csv file example.
@@ -74,7 +79,7 @@ $default_csv_file
 
        ${RED}################ ONIE ###########${NC}
 
-ONIE function configures operating system on provided switch.
+This function configures your host to act as ONIE server. Then your host will serve the requests coming from different switches for ONIE OS image.
  - First It will install apache2
  - It will configure dhcpserver to lease ip address and url for operating system image.
  - In the end it will download image from given url and installs it on provided switch.
@@ -92,12 +97,25 @@ ${RED}Options: ${NC}
 
    -h or -help:
        Display brief usage message.
-   -conf:
+
+   -onie: [Required field]
+       This field configures your system to act as a ONIE Server.
+
+   -conf: [Required field]
        Reads conf file as input. This file is needed by dhcpserver script. This file contains network information required by switches.
        e.g netmask, domain-name etc
 
-   -csv:
+   -csv: [Required field]
        Reads csv file as input. This file is needed by dhcpserver script. This section contains MAC, IP list, Hostname,TAG field and Inband ip entries which is required to create mac-ip mappings.
+
+   -online/-offline: [Required field]
+       This field tells script to configure ONIE either online or offline way.
+       -offline: In offline version, user needs to download onie image manually and keep it in /var/www/html/images directory. 
+                 User needs to download the activation key manually for the switches.
+                 User also needs to provide default-url as a extra parameter in conf file.
+       -online: In online version, script will automatically download image in /var/www/html/images directory and activation key in /etc/pluribuslicense.
+                User needs to pass default-url, username and password of cloud-pluribus account and version of onie image in conf file.
+                User also needs to pass device ids in csv file. 
 
    -reconfigure_dhcp: [optional]
        Script will create new dhcpd.conf file from the contents of provided conf file. Otherwise it will append contents to present file.
@@ -200,6 +218,7 @@ dhcpserver()
 
   if [ ! -e "$conf_file"  ]; then
     echo -e "\nConfiguration file is not present or not in readable format.Try providing full path of file.\n"
+    exit 0
   else
     interface=`cat "$conf_file" | grep 'dhcp_network_interface' | cut -d = -f2`
     subnet_mask=`cat "$conf_file" | grep 'dhcp_subnet-mask' | cut -d = -f2`
@@ -407,15 +426,14 @@ onie()
     order_detail_id=`echo $order_details_json | jq '.order_details[1].id'`
     for id in "${device_id[@]}"
     do
-      prinf "\n\n Activating key\n\n"
+      printf "\n\n Activating key\n\n"
       activation_json=`curl -X POST https://cloud-web.pluribusnetworks.com/api/orderActivations -d order_detail_id=$order_detail_id\&device_ids=$id\&csrfmiddlewaretoken=$csrftoken -b $cookie_file_name -k`
       activation_result=`echo $activation_json | jq '.success'`
       if ! [ "$activation_result" == true ]; then
         printf "\n\nUnable to activate key for Device: $id\n\n"
-        exit 0
       fi
     done
-    curl -X GET https://cloud-web.pluribusnetworks.com/api/offline_bundle/15264 -b $cookie_file_name -k > /etc/pluribuslicense/onvl-activation-keys
+    curl -X GET https://cloud-web.pluribusnetworks.com/api/offline_bundle/$order_detail_id -b $cookie_file_name -k > /etc/pluribuslicense/onvl-activation-keys
     cd /var/www/html/images
     printf "\n\nDownloading image in /var/www/html/images. Make sure you have provided default-url parameter value as http://ip_of_dhcp_server/images/onie-installer. in conf file\n\n"
     curl -o onie-installer -H 'Accept-Encoding: gzip, deflate, br' -X GET https://cloud-web.pluribusnetworks.com/api/download_image1/onie-installer-$version\?version\=$version -b $cookie_file_name -k
@@ -523,3 +541,4 @@ onie_image_version=2.5.1-10309 #In case of online version"
 }
 
 main "$@"
+
