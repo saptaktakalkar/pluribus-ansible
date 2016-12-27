@@ -1,0 +1,20 @@
+---
+
+- name: "Configure L1 switch mode"
+  hosts: spine[1]
+  user: root
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Configure L1 switch mode
+      pn_l1_mode:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_l1_switch: 'auto-spine2'
+        pn_end_switch1: 'auto-leaf3'
+        pn_end_switch2: 'auto-leaf4'
+      register: l1_out
+
+    - debug: var=l1_out
