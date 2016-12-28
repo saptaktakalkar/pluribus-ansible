@@ -29,108 +29,83 @@ default_csv_file="02:42:b4:c9:6d:1e,10.9.1.1,pikachu,spine
 8c:89:a5:f4:23:1f,10.9.1.3,,spine
 8c:89:a5:f3:28:2e,10.9.1.4,gyarados,,"
 
+default_csv_file_onie="02:42:b4:c9:6d:1e,10.9.1.1,pikachu,spine,671232X1646008
+8c:89:a5:f4:28:2f,10.9.1.2,lapras,leaf,671232X1645002
+8c:89:a5:f4:23:1f,10.9.1.3,,spine,671232X1646009
+8c:89:a5:f3:28:2e,10.9.1.4,gyarados,,671232X1646010"
+
 help="
+${RED}NAME${NC}
+     ztp — Script to configure DHCP, ONIE etc
+                  to check availability of provided hosts
 
-ZTP Bash script provides different functionalities like installing DHCP, configuring ONIE etc.
-You need to provide correct arguments to ztp script which then configure your system accordingly.
+${RED}SYNOPSIS${NC}
+     bash ztp.sh [-h/-help] [-dhcp] [-onie] [-conf file.conf] [-csv file.csv] [-reconfigure_dhcp] 
+                 [-skip_ansible] [-online_onie] [-offline_onie] [-online_license] [-offline_license] [-checkallsystemsgo]
 
-Currently ZTP provides two main functions.
- 1.DHCP
- 2.ONIE
+${RED}OPTIONS${NC}
 
-How To Use: 
-
-       ${RED} ############## DHCP ############ ${NC}
-
-DHCP function will install dhcpserver,latest ansible and Pip Modules
-
-${RED}USAGE: ${NC}
-       bash ztp.sh -dhcp [-conf] [-csv] [-reconfigure_dhcp]
-
-${RED}EXAMPLE: ${NC}
-       bash ztp.sh -dhcp -conf file.conf
-       bash ztp.sh -dhcp -conf file.conf -csv file.csv
-       bash ztp.sh -dhcp -conf file.conf -csv file.csv -reconfigure_dhcp
-
-${RED}Options:${NC}
-   -h or -help:
-       Display brief usage message.
+     -h or -help:        Display brief usage message.
    
-   -dhcp: [Required field]
-       This option will install DHCP Server and required Ansible modules.
+     -dhcp:              This field will install dhcpserver and ansible. 
 
-   -conf: [Required field]
-       Reads conf file as input. This file contains network information required by switches.
-       e.g netmask, domain-name etc
+     -onie:              This field configures your system to act as a ONIE Server.
 
-   -csv: [optional field]
-       Reads csv file as input. This section contains MAC, IP list, Hostname,TAG field and Inband ip entries which is required to create mac-ip mappings.
-       MAC and IP address fields are compulsory. Please provide comma for optional fields if it does not have any value.
-       Please check below Csv file example.
+     -conf:              Reads conf file as input. This file contains network information required by switches. e.g netmask, domain-name, dns etc
 
-   -reconfigure_dhcp: [optional]
-       Script will create new dhcpd.conf file from the provided conf file. Otherwise it will append contents to present file.
+     -csv:               Reads csv file as input. This section contains MAC, IP list, Hostname,TAG field and Inband ip entries which is required to create mac-ip mappings.
+                         MAC and IP address fields are compulsory. Please provide comma for optional fields if it does not have any value.
+                         Please check below CSV file example.
+  
+     -reconfigure_dhcp:  Script will create new dhcpd.conf file from the provided conf file. Otherwise it will append contents to present file.
 
-${RED}=> Contents of file.conf:${NC}
+     -skip_ansible:      This field will skip installations of ansible, python and pip modules.
+
+     -online:            This field will download ONIE image and activation keys automatically.
+
+     -offline:           In this field user needs to download ONIE image and activation keys manually.
+
+     -online_onie:       This field will download ONIE image automatically. User just need to provide versio of image in conf file.
+ 
+     -offline_onie:      In this field user needs to download ONIE image manually and keep it in web server directory. i.e /var/www/html/images
+ 
+     -online_license:    This field will download activation keys automatically.
+
+     -offline_license:   In this field user needs to download activation keys manually.
+ 
+     -checkallsystemsgo: This field will check availability of all the hosts mentioned in the CSV file.
+
+${RED}EXAMPLES: ${NC}
+     bash ztp.sh -dhcp -conf file.conf
+     bash ztp.sh -dhcp -conf file.conf -csv file.csv
+     bash ztp.sh -dhcp -conf file.conf -csv file.csv -reconfigure_dhcp
+     bash ztp.sh -dhcp -conf file.conf -csv file.csv -reconfigure_dhcp -skip_ansible
+     bash ztp.sh -onie -conf file.conf -csv file.csv -online -skip_ansible
+     bash ztp.sh -onie -conf file.conf -csv file.csv -offline -skip_ansible
+     bash ztp.sh -onie -conf file.conf -csv file.csv -online -reconfigure_dhcp
+     bash ztp.sh -onie -conf file.conf -csv file.csv -offline -reconfigure-dhcp
+     bash ztp.sh -onie -conf file.conf -csv file.csv -offline_onie online_license
+     bash ztp.sh -onie -conf file.conf -csv file.csv -offline_license online_oniei
+     bash ztp.sh -checkallsystemsgo
+
+${RED}=> For DHCP : Contents of file.conf:${NC}
 $default_conf_file
 
-${RED}=> Contents file.csv:${NC}
+${RED}=> For DHCP : Contents of file.csv:${NC}
 $default_csv_file
 
-       ${RED}################ ONIE ###########${NC}
-
-This function configures your host to act as ONIE server. Then your host will serve the requests coming from different switches for ONIE OS image.
- - First It will install apache2
- - It will configure dhcpserver to lease ip address and url for operating system image.
- - In the end it will download image from given url and installs it on provided switch.
-
-${RED}USAGE: ${NC}
-       bash ztp.sh -onie -conf file.conf -csv file.csv [-online/offline] [-reconfigure_dhcp]
-
-${RED}EXAMPLE: ${NC}
-       bash ztp.sh -onie -conf file.conf -csv file.csv -online
-       bash ztp.sh -onie -conf file.conf -csv file.csv -offline
-       bash ztp.sh -onie -conf file.conf -csv file.csv -online -reconfigure_dhcp
-       bash ztp.sh -onie -conf file.conf -csv file.csv -offline -reconfigure-dhcp
-
-${RED}Options: ${NC}
-
-   -h or -help:
-       Display brief usage message.
-
-   -onie: [Required field]
-       This field configures your system to act as a ONIE Server.
-
-   -conf: [Required field]
-       Reads conf file as input. This file is needed by dhcpserver script. This file contains network information required by switches.
-       e.g netmask, domain-name etc
-
-   -csv: [Required field]
-       Reads csv file as input. This file is needed by dhcpserver script. This section contains MAC, IP list, Hostname,TAG field and Inband ip entries which is required to create mac-ip mappings.
-
-   -online/-offline: [Required field]
-       This field tells script to configure ONIE either online or offline way.
-       -offline: In offline version, user needs to download onie image manually and keep it in /var/www/html/images directory. 
-                 User needs to download the activation key manually for the switches.
-                 User also needs to provide default-url as a extra parameter in conf file.
-       -online: In online version, script will automatically download image in /var/www/html/images directory and activation key in /etc/pluribuslicense.
-                User needs to pass default-url, username and password of cloud-pluribus account and version of onie image in conf file.
-                User also needs to pass device ids in csv file. 
-
-   -reconfigure_dhcp: [optional]
-       Script will create new dhcpd.conf file from the contents of provided conf file. Otherwise it will append contents to present file.
-
-${RED}=> Contents of file.conf:${NC}
+${RED}=> For ONIE : Contents of file.conf ${NC}
 $default_conf_file
 default-url=http://dhcpserverip/images/onie-installer
 username=ansible  #In case of online version
 password=test123  #In case of online version
 onie_image_version=2.5.1-10309 #In case of online version
 
-${RED}=> Contents file.csv:${NC}
-$default_csv_file
+${RED}=> For ONIE: Contents of file.csv:${NC}
+$default_csv_file_onie
 
 "
+
 #Checks operating system type
 if [ -f "/etc/redhat-release" ]; then
 OS="Centos"
@@ -141,11 +116,13 @@ fi
 csv_file=""
 processCsv=0
 device_id=()
+script_dir=`pwd`
 
 ##This function validates ipaddress and mac address from CSV file. 
 validate_csv()
 {
   # CSV File validation
+  cd $script_dir
   params=$@
   processCsv=0
   if [[ "$params" == *"-csv"* ]]; then
@@ -155,19 +132,12 @@ validate_csv()
     echo -e "\nCSV file is not present or not in readable format\n"
       exit 0
     else
-      comma_count=0
-      if  [[ "$params" == *"-dhcp"* ]]; then
-        comma_count=3
-      elif [[ "$params" == *"-onie"* ]] && [[ "$params" == *"-offline"* ]] ; then
-        comma_count=3
-      elif [[ "$params" == *"-onie"* ]] && [[ "$params" == *"-online"* ]]  ; then
-        comma_count=4
-      fi
+      comma_count=2
     
       for line in `cat $csv_file` ;
       do
         commas=`echo $line | awk -F "," '{print NF-1}'`
-        if ! [ "$comma_count" == "$commas" ];then
+        if [ "$commas" -le "$comma_count" ];then
           printf "\n\nPlease provide correct arguments separated by commas. Use ,, inplace of optional value. Check sample csv file from Help\n\n"
           exit 0
         fi
@@ -397,22 +367,26 @@ onie()
   printf "Installed apache2 successfully\n"
 
   dhcpserver "$params"
-
-  if [[ "$params" == *"-online"* ]];then
-    mkdir -p /var/www/html/images
-    mkdir -p /etc/pluribuslicense
-    username=`cat $conf_file | grep 'username=' | cut -d = -f2`
-    password=`cat $conf_file | grep 'password=' | cut -d = -f2`
-    version=`cat $conf_file | grep 'onie_image_version=' | cut -d = -f2`
-
+  cd $script_dir
+  username=""
+  password=""
+  `pwd`
+  cookie_file_name="/tmp/cookie"
+  if [[ "$params" == *"-online"* ]]; then
     printf "\n\nconfiguring JQ json parser\n\n"
     if ! [ -f ./jq ]; then
       sudo wget --quiet http://stedolan.github.io/jq/download/linux64/jq
     fi
+    `pwd`
     sudo chmod +x ./jq
     sudo cp jq /usr/bin
- 
-    cookie_file_name="/tmp/cookie"
+    username=`cat $conf_file | grep 'username=' | cut -d = -f2`
+    password=`cat $conf_file | grep 'password=' | cut -d = -f2`
+  fi
+
+  if [[ "$params" == *"-online" ]];then
+    mkdir -p /var/www/html/images 
+    version=`cat $conf_file | grep 'onie_image_version=' | cut -d = -f2`
     login_json=`curl -X POST https://cloud-web.pluribusnetworks.com/api/login -d login_email=$username\&login_password=$password -k -c $cookie_file_name`
     login_result=`echo $login_json | jq '.success'`
 
@@ -421,7 +395,6 @@ onie()
       exit 0
     fi
 
-    csrftoken=`cat $cookie_file_name | grep -Po '(csrftoken\s)\K[^\s]*'`
     order_details_json=`curl -X GET https://cloud-web.pluribusnetworks.com/api/orderDetails -b $cookie_file_name -k`
     order_detail_id=`echo $order_details_json | jq '.order_details[1].id'`
     for id in "${device_id[@]}"
@@ -439,16 +412,84 @@ onie()
     curl -o onie-installer -H 'Accept-Encoding: gzip, deflate, br' -X GET https://cloud-web.pluribusnetworks.com/api/download_image1/onie-installer-$version\?version\=$version -b $cookie_file_name -k
     printf "\n\nDownloaded image in /var/www/html/images.\n\n"
 
-  elif [[ "$params" == *"-offline"* ]]; then
+  elif [[ "$params" == *"-offline" ]]; then
     echo "Configuring ONIE: Offline"
+
+  elif [[ "$params" == *"-online_onie" ]] && [[ "$params" == *"-offline_license" ]] ; then 
+    mkdir -p /var/www/html/images 
+    version=`cat $conf_file | grep 'onie_image_version=' | cut -d = -f2`
+    login_json=`curl -X POST https://cloud-web.pluribusnetworks.com/api/login -d login_email=$username\&login_password=$password -k -c $cookie_file_name`
+    login_result=`echo $login_json | jq '.success'`
+    if ! [ "$login_result" == true ]; then
+      printf "\n\nLogin failed: cloud-web.pluribusnetworks.com. Please provide correct credentials in conf file\n\n"
+      exit 0
+    fi
+    cd /var/www/html/images
+    printf "\n\nDownloading image in /var/www/html/images. Make sure you have provided default-url parameter value as http://ip_of_dhcp_server/images/onie-installer. in conf file\n\n"
+    curl -o onie-installer -H 'Accept-Encoding: gzip, deflate, br' -X GET https://cloud-web.pluribusnetworks.com/api/download_image1/onie-installer-$version\?version\=$version -b $cookie_file_name -k
+    printf "\n\nDownloaded image in /var/www/html/images.\n\n"
+
+  elif [[ "$params" == *"-offline_onie" ]] && [[ "$params" == *"-online_license" ]]; then
+    login_json=`curl -X POST https://cloud-web.pluribusnetworks.com/api/login -d login_email=$username\&login_password=$password -k -c $cookie_file_name`
+    login_result=`echo $login_json | jq '.success'`
+    if ! [ "$login_result" == true ]; then
+      printf "\n\nLogin failed: cloud-web.pluribusnetworks.com. Please provide correct credentials in conf file\n\n"
+      exit 0
+    fi
+    order_details_json=`curl -X GET https://cloud-web.pluribusnetworks.com/api/orderDetails -b $cookie_file_name -k`
+    order_detail_id=`echo $order_details_json | jq '.order_details[1].id'`
+    for id in "${device_id[@]}"
+    do
+      printf "\n\n Activating key\n\n"
+      activation_json=`curl -X POST https://cloud-web.pluribusnetworks.com/api/orderActivations -d order_detail_id=$order_detail_id\&device_ids=$id\&csrfmiddlewaretoken=$csrftoken -b $cookie_file_name -k`
+      activation_result=`echo $activation_json | jq '.success'`
+      if ! [ "$activation_result" == true ]; then
+        printf "\n\nUnable to activate key for Device: $id\n\n"
+      fi
+    done
+    curl -X GET https://cloud-web.pluribusnetworks.com/api/offline_bundle/$order_detail_id -b $cookie_file_name -k > /etc/pluribuslicense/onvl-activation-keys
   else
-    printf "\nPlease provide parameter -online or -offline. \n"
+    printf "\nPlease provide one of these parameters \n1. -online \n2. -offline \n3. -offline_onie -online_license \n4. -online_onie -offline_license\n"
   fi
 
   ##Reload apache service
   sudo service apache2 reload
 
 }
+
+checkallsystemsgo()
+{
+   params=$@
+   if ! [[ "$params" == *"-csv"* ]]; then
+      printf "\nScript requires .csv file as argument to read host ips. Please provide csv file as an argument : ${RED}bash ${0##*/} -checkallsystemsgo -csv filename.csv${NC}\n\n"
+      exit 0
+   else
+     csv_file=`echo "${params#*-csv[$IFS]}" | awk '{ print $1 }'`
+     if [ ! -e $csv_file  ]; then
+       echo -e "\nCSV file is not present or not in readable format\n"
+       exit 0
+     else
+       if [[ "$params" == *"-csv"* ]]; then
+         validate_csv "$params"
+       fi
+
+       if [ $processCsv == 1 ]; then
+         for line in `cat $csv_file` ;
+         do
+           arr=()
+           IFS=',' read -a arr <<< "$line"
+           count=`ping -c 1 ${arr[1]} | grep '1 received' | wc -l`
+           if [ "$count" == 1 ];then
+             printf "\n\nHost is UP and running with IP: ${arr[1]}\n\n"
+           else
+             printf "\n\nHost is down or IP is not yet assigned: ${arr[1]}\n\n"  
+           fi
+         done 
+       fi
+     fi
+   fi
+}
+
 
 ##This is the main function which parses the arguments and depending on that it calls different functions.
 main()
@@ -465,7 +506,7 @@ main()
     choice="n"
     choice1="n"
     if ! [[ "$params" == *"-conf"* ]]; then
-      printf "\nScript requires .conf file as argument. Please provide configuration file as an argument : ${RED}bash ${0##*/} -conf filename.conf${NC}\n\n"
+      printf "\nScript requires .conf file as argument. Please provide configuration file as an argument : ${RED}bash ${0##*/} -dhcp -conf filename.conf${NC}\n\n"
       printf "Shall I generate sample conf file in /tmp/file.conf. ${RED}(y/n):${NC}"
       read choice
       if [ $choice == "y" ]; then
@@ -481,7 +522,7 @@ main()
   ########ONIE##############
   elif [[ "$params" == *"-onie"* ]]; then
     if ! [[ "$params" == *"-conf"* ]] && ! [[ "$params" == *"-csv"* ]]; then
-      printf "\nScript requires conf and csv file as an argument. These files will be passed as an argument to dhcpserver function. \nExample: ${RED}bash ${0##*/} -conf filename.conf -csv filename.csv ${NC}\n\n"
+      printf "\nScript requires conf and csv file as an argument. These files will be passed as an argument to dhcpserver function. \nExample: ${RED}bash ${0##*/} -onie -conf filename.conf -csv filename.csv ${NC}\n\n"
       printf "Shall I generate sample conf and csv file in /tmp/file.conf and /tmp/file.csv respectively. ${RED}(y/n):${NC}"
       read choice1
       if [ $choice1 == "y" ]; then
@@ -508,8 +549,8 @@ onie_image_version=2.5.1-10309 #In case of online version"
       exit 0
     fi
 
-    if ! [[ "$params" == *"-online"* ]] && ! [[ "$params" == *"-offline"* ]]; then
-      printf "\nPlease provide parameter -online or -offline.\n\n"
+    if ! [[ "$params" == *"-online" ]] && ! [[ "$params" == *"-offline" ]] && ! [[ "$params" == *"-offline_onie -online_license" ]] && ! [[ "$params" == *"-online_onie -offline_license" ]]; then
+      printf "\nPlease provide one of these parameters \n1. -online \n2. -offline \n3. -offline_onie -online_license \n4. -online_onie -offline_license\n"
       exit 0
     fi
 
@@ -531,10 +572,13 @@ onie_image_version=2.5.1-10309 #In case of online version"
     fi
     onie "$params"
     exit 0
+  elif [[ "$params" == *"-checkallsystemsgo"* ]]; then
+    checkallsystemsgo "$params"
   else
-    printf "\nCurrently ZTP Script provides 2 functions. i.e DHCP and ONIE. So please provide any of the following options as parameter\n"
+    printf "\nCurrently ZTP Script provides 3 functions. i.e DHCP, ONIE and check systems availability. So please provide any of the following options as parameter\n"
     printf "\n1. -dhcp"
     printf "\n2. -onie\n"
+    printf "\n3. -checkallsystemsgo"
     printf "\nor run command bash ztp.sh -help\n\n"
   fi
 
