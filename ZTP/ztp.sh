@@ -40,14 +40,14 @@ ${RED}NAME${NC}
                   to check availability of provided hosts
 
 ${RED}SYNOPSIS${NC}
-     bash ztp.sh [-h/-help] [-dhcp] [-onie] [-conf file.conf] [-csv file.csv] [-reconfigure_dhcp]
+     bash ztp.sh [-h/-help] [-dhcp] [-onie] [-conf file.conf] [-csv file.csv] [-reconfigure_dhcp] 
                  [-skip_ansible] [-all_online] [-all_offline]  [-online_onie] [-offline_onie] [-online_license] [-offline_license] [-checkallsystemsgo]
 
 ${RED}OPTIONS${NC}
 
      -h or -help:        Display brief usage message.
-
-     -dhcp:              This field will install dhcpserver and ansible.
+   
+     -dhcp:              This field will install dhcpserver and ansible. 
 
      -onie:              This field configures your system to act as a ONIE Server.
 
@@ -56,7 +56,7 @@ ${RED}OPTIONS${NC}
      -csv:               Reads csv file as input. This section contains MAC, IP list, Hostname,TAG field and Inband ip entries which is required to create mac-ip mappings.
                          MAC and IP address fields are compulsory. Please provide comma for optional fields if it does not have any value.
                          Please check below CSV file example.
-
+  
      -reconfigure_dhcp:  Script will create new dhcpd.conf file from the provided conf file. Otherwise it will append contents to present file.
 
      -skip_ansible:      This field will skip installations of ansible, python and pip modules.
@@ -66,13 +66,13 @@ ${RED}OPTIONS${NC}
      -all_offline:       In this field user needs to download ONIE image and activation keys manually.
 
      -online_onie:       This field will download ONIE image automatically. User just need to provide versio of image in conf file.
-
+ 
      -offline_onie:      In this field user needs to download ONIE image manually and keep it in web server directory. i.e /var/www/html/images
-
+ 
      -online_license:    This field will download activation keys automatically.
 
      -offline_license:   In this field user needs to download activation keys manually.
-
+ 
      -checkallsystemsgo: This field will check availability of all the hosts mentioned in the CSV file.
 
 ${RED}EXAMPLES: ${NC}
@@ -137,6 +137,7 @@ validate_csv()
     else
       comma_count=2
 
+      # Checking no of fields in csv file(basically checks for no of commas(min: 3))
       for line in `cat $csv_file` ;
       do
         commas=`echo $line | awk -F "," '{print NF-1}'`
@@ -145,7 +146,7 @@ validate_csv()
           exit 0
         fi
       done
-
+ 
       #Checking whether user has provided correct mac and ip addresses
       for line in `cat $csv_file` ;
       do
@@ -169,7 +170,7 @@ validate_csv()
 }
 
 ##
-# This function installs Ansible using GIT
+# This function installs Ansible using GIT 
 ##
 install_ansible_using_git()
 {
@@ -187,7 +188,7 @@ install_ansible_using_git()
 
 ##
 # This function configures dhcp server
-# This function will also install ansible and pip modules, if user has not specified -skip_ansible option.
+# This function will also install ansible and pip modules, if user has not specified -skip_ansible option. 
 # If user has provided -reconfigure_dhcp option then function will reconfigure dhcpd.conf file. Otherwise it will just keep appending to new entries in conf file.
 # Arguments: conf file and csv file
 ##
@@ -197,6 +198,7 @@ dhcpserver()
   params=$@
   conf_file=`echo "${params#*-conf[$IFS]}" | awk '{ print $1 }'`
 
+  #Parsing conf file for different network values
   if [ ! -e "$conf_file"  ]; then
     echo -e "\nConfiguration file is not present or not in readable format.Try providing full path of file.\n"
     exit 0
@@ -217,6 +219,7 @@ dhcpserver()
 
   ansible_install_approach=`cat $conf_file | grep 'ansible_install_approach=' | cut -d = -f2`
 
+  #First it checks for OS type and then installs dhcp, ansible, python and pip
   if [ $OS == "Ubuntu" ]; then
       sudo apt-get -qq update -y
       sudo apt-get -qq install isc-dhcp-server -y
@@ -260,8 +263,8 @@ dhcpserver()
           sudo yum -y -q install ansible
           sudo yum -y -q install python
           sudo yum -y -q install python-pip
-        fi
-      else
+        fi 
+      else   
         printf "\n  -Skipping Ansible installations"
       fi
   fi
@@ -275,6 +278,7 @@ dhcpserver()
 
 check_conf_exists=`cat /etc/dhcp/dhcpd.conf | grep '#DHCP SERVER CONF FILE' | wc -l`
 
+  #check if user has provided -reconfigure-dhcp, if yes it will recreate dhcpd.conf file
   if [ $check_conf_exists == 0 ] || [[ "$params" == *"-reconfigure-dhcp"* ]]; then
 sudo sh -c "echo '#DHCP SERVER CONF FILE
 # option definitions common to all supported networks...
@@ -299,6 +303,7 @@ subnet "$subnet" netmask "$subnet_mask" {  #network
 ' > /etc/dhcp/dhcpd.conf"
   fi
 
+  #Following will parse csv file and wil create host blocks in dhcpd.conf file
   if [ $processCsv == 1 ]; then
 
     #Appending dhcpd.conf file with mac-ipaddress entries
@@ -315,7 +320,7 @@ subnet "$subnet" netmask "$subnet_mask" {  #network
       hostname=${arr[2]}
       tag=${arr[3]}
       device_id+=(${arr[4]})
-
+  
       check_block_entry_exists=`cat /etc/dhcp/dhcpd.conf | grep "$mac" | wc -l`
 
       if [ -z $hostname ]; then
@@ -350,7 +355,9 @@ subnet "$subnet" netmask "$subnet_mask" {  #network
         fi
       fi
     done
-
+    
+    #if user has not provided -skip_ansible flag, then only following code will get executed.
+    #this code creates host file for ansbile from csv file
     if ! [[ "$params" == *"-skip_ansible"* ]]; then
       echo "[spine]" > /etc/ansible/hosts
       for spineswitch in "${spine[@]}"
@@ -374,8 +381,8 @@ subnet "$subnet" netmask "$subnet_mask" {  #network
 }
 
 ##
-# This function configures your server to act as a ONIE
-# This function will install apache2 and JQ parser
+# This function configures your server to act as a ONIE 
+# This function will install apache2 and JQ parser 
 # It will configure ONIE OS and License either automatically or manually as per user input flags.
 # Arguments: conf file and csv file
 ##
@@ -401,6 +408,8 @@ onie()
   password=""
   comma_count=4
   cookie_file_name="/tmp/cookie"
+
+  #If command line arguments contains online word , it will configure jq json parser
   if [[ "$params" == *"online"* ]]; then
     printf "\n  -configuring JQ json parser"
     if ! [ -f ./jq ]; then
@@ -412,8 +421,9 @@ onie()
     password=`cat $conf_file | grep 'password=' | cut -d = -f2`
   fi
 
+  #If user wants to configure both onie and license online
   if [[ "$params" == *"-all_online"* ]];then
-    mkdir -p /var/www/html/images
+    mkdir -p /var/www/html/images 
     version=`cat $conf_file | grep 'onie_image_version=' | cut -d = -f2`
     login_json=`curl -s -X POST https://cloud-web.pluribusnetworks.com/api/login -d login_email=$username\&login_password=$password -k -c $cookie_file_name`
     login_result=`echo $login_json | jq '.success'`
@@ -432,9 +442,10 @@ onie()
         break
       fi
     done
-
+    
     order_details_json=`curl -s -X GET https://cloud-web.pluribusnetworks.com/api/orderDetails -b $cookie_file_name -k`
     order_detail_id=`echo $order_details_json | jq '.order_details[0].id'`
+    #check if device_ids are provided or not in csv file. if not script can get it from switches(else part).
     if [ "$no_device_id" == 0 ]; then
 
       for id in "${device_id[@]}"
@@ -450,17 +461,17 @@ onie()
       curl -s -X GET https://cloud-web.pluribusnetworks.com/api/offline_bundle/$order_detail_id -b $cookie_file_name -k > /etc/pluribuslicense/onvl-activation-keys
     else
       printf "\n  -Device ids are not provided for all switches in CSV file. I can get device ids from the switches.\n   But make sure nvOS is running and DHCP IP is assigned to all switches mentioned in the CSV file.\n   ${RED}Shall I login to switches and get device id Enter (y/n)?:${NC}"
-      read device_choice
-      all_device_id=()
+      read device_choice 
+      all_device_id=() 
       if [ $device_choice == "y" ]; then
         for ((j=1; j<=${#ip_arr[@]}; j++)); do
           for ((i=1; i<=3; i++)); do
             ID=`ssh -o StrictHostKeyChecking=no root@${ip_arr[j-1]} 'onie-syseeprom' | grep 'Serial Number' | awk '{ print $5 }'`
             if ! [ -z $ID ]; then
-              all_device_id+=($ID)
+              all_device_id+=($ID)           
               break
-            fi
-          done
+            fi   
+          done 
         done
 
         for id in "${all_device_id[@]}"
@@ -476,8 +487,8 @@ onie()
         curl -s -X GET https://cloud-web.pluribusnetworks.com/api/offline_bundle/$order_detail_id -b $cookie_file_name -k > /etc/pluribuslicense/onvl-activation-keys
 
       else
-        printf "\n  -Continuing installations without activating keys.\n   If you want to just activate keys after this installations. Execute: ${RED}bash ztp.sh -conf file.conf -csv file.csv -offline_onie -online_license${NC}\n   But make sure before running this command, provide device_ids in csv file."
-
+        printf "\n  -Continuing installations without activating keys.\n   If you want to just activate keys after this installations. Execute: ${RED}bash ztp.sh -conf file.conf -csv file.csv -offline_onie -online_license${NC}\n   But make sure before running this command, provide device_ids in csv file." 
+ 
       fi
     fi
 
@@ -487,11 +498,13 @@ onie()
     curl -o onie-installer -H 'Accept-Encoding: gzip, deflate, br' -X GET https://cloud-web.pluribusnetworks.com/api/download_image1/onie-installer-$version\?version\=$version -b $cookie_file_name -k
     printf "\n  -Downloaded image in /var/www/html/images."
 
+  #If user wants to configure both onie and license offline
   elif [[ "$params" == *"-all_offline"* ]]; then
     printf "\n  -Configuring ONIE: Offline\n"
 
-  elif [[ "$params" == *"-online_onie"* ]] && [[ "$params" == *"-offline_license"* ]] ; then
-    mkdir -p /var/www/html/images
+  #If user wants to configure onie online and license offline
+  elif [[ "$params" == *"-online_onie"* ]] && [[ "$params" == *"-offline_license"* ]] ; then 
+    mkdir -p /var/www/html/images 
     version=`cat $conf_file | grep 'onie_image_version=' | cut -d = -f2`
     login_json=`curl -s -X POST https://cloud-web.pluribusnetworks.com/api/login -d login_email=$username\&login_password=$password -k -c $cookie_file_name`
     login_result=`echo $login_json | jq '.success'`
@@ -504,6 +517,7 @@ onie()
     curl -o onie-installer -H 'Accept-Encoding: gzip, deflate, br' -X GET https://cloud-web.pluribusnetworks.com/api/download_image1/onie-installer-$version\?version\=$version -b $cookie_file_name -k
     printf "\n  -Downloaded image in /var/www/html/images.\n"
 
+  #If user wants to configure onie offline and license online
   elif [[ "$params" == *"-offline_onie"* ]] && [[ "$params" == *"-online_license"* ]]; then
     login_json=`curl -s -X POST https://cloud-web.pluribusnetworks.com/api/login -d login_email=$username\&login_password=$password -k -c $cookie_file_name`
     login_result=`echo $login_json | jq '.success'`
@@ -579,9 +593,9 @@ onie()
   sudo service apache2 reload
 
 }
-
+ 
 ##
-# This function checks availability of hosts provided in csv file.
+# This function checks availability of hosts provided in csv file. 
 # Arguments: csv file
 ##
 checkallsystemsgo()
@@ -609,9 +623,9 @@ checkallsystemsgo()
            if [ "$count" == 1 ];then
              printf "\n\nHost is UP and running with IP: ${arr[1]}\n\n"
            else
-             printf "\n\nHost is down or IP is not yet assigned: ${arr[1]}\n\n"
+             printf "\n\nHost is down or IP is not yet assigned: ${arr[1]}\n\n"  
            fi
-         done
+         done 
        fi
      fi
    fi
