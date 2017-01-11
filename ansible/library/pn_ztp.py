@@ -104,6 +104,7 @@ EXAMPLES = """
     pn_clipassword: "{{ PASSWORD }}"
     pn_fabric_name: ztp-fabric
     pn_run_l2_l3: False
+
 - name: Zero Touch Provisioning - Layer2/Layer3 setup
   pn_ztp:
     pn_cliusername: "{{ USERNAME }}"
@@ -190,6 +191,18 @@ def auto_accept_eula(module):
     return run_cli(module, cli)
 
 
+def modify_stp_local(module, modify_flag):
+    """
+    This method is to enable/disable STP (Spanning Tree Protocol) of a switch.
+    :param module: The Ansible module to fetch input parameters.
+    :param modify_flag: Enable/disable flag to set.
+    :return: The output of run_cli() method.
+    """
+    cli = pn_cli(module)
+    cli += ' stp-modify ' + modify_flag
+    return run_cli(module, cli)
+
+
 def modify_stp(module, modify_flag):
     """
     This method is to enable/disable STP (Spanning Tree Protocol) of a switch.
@@ -239,23 +252,24 @@ def enable_ports(module):
     out_40g = run_cli(module, cli)
     out_remove10g = []
 
-    if out_40g:
+    if len(out_40g) > 0 and out_40g != 'Success':
         out_40g = out_40g.split()
         out_40g = list(set(out_40g))
-
-        for port_number in out_40g:
-            out_remove10g.append(str(int(port_number) + int(1)))
-            out_remove10g.append(str(int(port_number) + int(2)))
-            out_remove10g.append(str(int(port_number) + int(3)))
+        if len(out_40g) > 0:
+            for port_number in out_40g:
+                out_remove10g.append(str(int(port_number) + int(1)))
+                out_remove10g.append(str(int(port_number) + int(2)))
+                out_remove10g.append(str(int(port_number) + int(3)))
 
     if out:
         out = out.split()
         out = set(out) - set(out_remove10g)
         out = list(out)
-        ports = ','.join(out)
-        cli = pn_cli(module)
-        cli += ' port-config-modify port %s enable ' % ports
-        return run_cli(module, cli)
+        if out:
+            ports = ','.join(out)
+            cli = pn_cli(module)
+            cli += ' port-config-modify port %s enable ' % ports
+            return run_cli(module, cli)
     else:
         return out
 
@@ -473,7 +487,7 @@ def disable_trunk(module, switch):
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
 
-    cli += ' switch %s sys-flow-setting-modify no-auto-trunk ' % switch
+    cli += ' switch %s system-settings-modify no-auto-trunk ' % switch
     return run_cli(module, cli)
 
 
@@ -837,7 +851,7 @@ def create_leaf_cluster_vlag(module, non_cluster_leaf, spine_list):
                         spine2 = str(spine_list[1])
                         name1 = create_trunk_vlag(module, spine1, list1)
                         name2 = create_trunk_vlag(module, spine2, list1)
-                        name = spine1[5:] + spine2 + '-to' + node1 + node2
+                        name = spine1[5:] + spine2 + '-to-' + node1 + node2
                         output += create_vlag(module, spine1, name, spine2,
                                               name1, name2)
                         output += ' '
@@ -886,13 +900,116 @@ def configure_auto_vlag(module):
     leaf_list = module.params['pn_leaf_list']
     spine1 = spine_list[0]
     spine2 = spine_list[1]
-    create_cluster(module, spine1, 'spine-cluster', spine1, spine2)
+    output += create_cluster(module, spine1, 'spine-cluster', spine1, spine2)
     non_cluster_leaf = leaf_no_cluster(module, leaf_list)
     output += create_leaf_cluster_vlag(module, non_cluster_leaf, spine_list)
     output = ' '
     non_cluster_leaf = leaf_no_cluster(module, leaf_list)
     output += create_nonclusterleaf_vlag(module, non_cluster_leaf, spine_list)
     output += ' '
+    return output
+
+
+def toggle_40g(module):
+    """
+    This method is to modify 40g ports
+    :param module: The Ansible module to fetch input parameters.
+    :return: The output messages for assignment.
+    """
+    output = ''
+    cli = pn_cli(module)
+    if 'switch' in cli:
+        cli = cli.rpartition('switch')[0]
+
+    clicopy = cli
+    cli += ' fabric-node-show format name no-show-headers '
+    switch_names = run_cli(module, cli).split()
+
+    for switch in switch_names:
+        cli = clicopy
+        cli += ' switch %s lldp-show ' % switch
+        cli += ' format local-port no-show-headers '
+        local_ports = run_cli(module, cli).split()
+
+        cli = clicopy
+        cli += ' switch %s port-config-show speed 40g ' % switch
+        cli += ' format local-port no-show-headers '
+        ports_40g = run_cli(module, cli).split()
+
+        ports_to_modify = list(set(ports_40g) - set(local_ports))
+
+        for port in ports_to_modify:
+            end_port = int(port) + 4
+            range_port = port + '-' + str(end_port)
+
+            cli = clicopy
+            cli += ' switch %s port-config-modify port %s speed disable ' % (
+                switch, range_port)
+            output += run_cli(module, cli)
+
+            cli = clicopy
+            cli += ' switch %s port-config-modify port %s speed 10g ' % (
+                switch, range_port)
+            output += run_cli(module, cli)
+
+            cli = clicopy
+            cli += ' switch %s port-config-modify port %s enable ' % (
+                switch, range_port)
+            output += run_cli(module, cli)
+
+    return output
+
+
+def toggle_40g_local(module):
+    """
+    This method is to toggle 40g ports locally.
+    :param module: The Ansible module to fetch input parameters.
+    :return: The output messages for assignment.
+    """
+    output = ''
+    cli = pn_cli(module)
+    if 'switch' in cli:
+        cli = cli.rpartition('switch')[0]
+
+    clicopy = cli
+    cli += ' switch-local lldp-show format local-port no-show-headers '
+    local_ports = run_cli(module, cli).split()
+
+    cli = clicopy
+    cli += ' switch-local port-config-show speed 40g '
+    cli += ' format port no-show-headers '
+    ports_40g = run_cli(module, cli)
+    if len(ports_40g) > 0 and ports_40g != 'Success':
+        ports_40g = ports_40g.split()
+        ports_to_modify = list(set(ports_40g) - set(local_ports))
+
+        for port in ports_to_modify:
+            end_port = int(port) + 4
+            range_port = port + '-' + str(end_port)
+
+            cli = clicopy
+            cli += ' switch-local port-config-modify port %s ' % range_port
+            cli += ' speed disable '
+            output += 'port range_port ' + range_port + ' disabled'
+            output += '\n'
+            output += run_cli(module, cli)
+
+            cli = clicopy
+            cli += ' switch-local port-config-modify port %s ' % range_port
+            cli += ' speed 10g '
+            output += 'port range_port ' + range_port + ' 10g converted'
+            output += '\n'
+
+            output += run_cli(module, cli)
+
+            cli = clicopy
+            cli += ' switch-local port-config-modify port %s ' % range_port
+            cli += ' enable '
+            output += 'port range_port ' + range_port + '  enabled'
+            output += '\n'
+
+            output += run_cli(module, cli)
+
     return output
 
 
@@ -977,6 +1094,7 @@ def main():
                                   default='auto-spine1'),
             pn_vlan_range=dict(required=False, type='str', default='101-200'),
             pn_vrrp_no_interface=dict(required=False, type='str', default='4'),
+            pn_toggle_40g=dict(required=False, type='bool', default=True),
         )
     )
 
@@ -987,6 +1105,7 @@ def main():
     control_network = module.params['pn_fabric_control_network']
     update_fabric_to_inband = module.params['pn_update_fabric_to_inband']
     inband_address = module.params['pn_inband_ip']
+    toggle_40g_flag = module.params['pn_toggle_40g']
     message = ' '
 
     if not run_l2_l3:
@@ -996,10 +1115,13 @@ def main():
         message += ' '
         message += configure_control_network(module, control_network)
         message += ' control network to management '
-        message += modify_stp(module, 'disable')
+        message += modify_stp_local(module, 'disable')
         message += ' stp disable '
         message += enable_ports(module)
         message += ' ports enable '
+        if toggle_40g_flag:
+            message += toggle_40g_local(module)
+
     else:
         message += assign_inband_ip(module, inband_address)
         if fabric_type == 'layer2':
@@ -1022,6 +1144,7 @@ def main():
         msg="Operation Completed",
         changed=True
     )
+
 
 # AnsibleModule boilerplate
 from ansible.module_utils.basic import AnsibleModule
