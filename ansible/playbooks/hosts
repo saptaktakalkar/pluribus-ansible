@@ -1,0 +1,18 @@
+#  This is the Ansible inventory file
+#
+#   - Comments begin with the '#' character
+#   - Blank lines are ignored
+#   - Groups of hosts are delimited by [header] elements
+#   - You can enter hostnames or ip addresses
+#   - A hostname/ip can be a member of multiple groups
+#
+
+[spine]
+auto-spine1  ansible_connection=ssh  ansible_user=root ansible_ssh_pass=test123
+auto-spine2  ansible_connection=ssh  ansible_user=root ansible_ssh_pass=test123
+
+[leaf]
+auto-leaf1  ansible_connection=ssh  ansible_user=root ansible_ssh_pass=test123
+auto-leaf2  ansible_connection=ssh  ansible_user=root ansible_ssh_pass=test123
+auto-leaf3  ansible_connection=ssh  ansible_user=root ansible_ssh_pass=test123
+auto-leaf4  ansible_connection=ssh  ansible_user=root ansible_ssh_pass=test123

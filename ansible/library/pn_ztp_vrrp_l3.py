@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI Zero Touch Provisioning (ZTP) with VRRP """
+""" PN CLI VRRP L3 """
 
 #
 # This file is part of Ansible
@@ -19,21 +19,72 @@
 #
 
 import shlex
-import time
 
 DOCUMENTATION = """
 ---
 module: pn_ztp
 author: "Pluribus Networks (@gauravbajaj)"
 version: 1
-short_description: CLI command to do zero touch provisioning with vrrp.
-description:
-    Zero Touch Provisioning (ZTP) allows you to provision new switches in your
-    network automatically, without manual intervention.
-    It performs following steps:
-        - Configure VRRP for the gateway(extension of l3
-          in the ZTP module)
-options: TO DO
+short_description: CLI command to configure VRRP - Layer 3 Setup
+description: Virtual Router Redundancy Protocol (VRRP) - Layer 3 Setup
+options:
+    pn_cliusername:
+        description:
+          - Provide login username if user is not root.
+        required: False
+        type: str
+    pn_clipassword:
+      description:
+        - Provide login password if user is not root.
+      required: False
+      type: str
+    pn_cliswitch:
+      description:
+        - Target switch(es) to run the CLI on.
+      required: False
+      type: str
+    pn_fabric_name:
+      description:
+        - Specify name of the fabric.
+      required: False
+      type: str
+    pn_spine_list:
+      description:
+        - Specify list of Spine hosts
+      required: False
+      type: list
+    pn_leaf_list:
+      description:
+        - Specify list of leaf hosts
+      required: False
+      type: list
+    pn_csv_data:
+      description:
+        - String containing vrrp data parsed from csv file.
+      required: False
+      type: str
+"""
+
+EXAMPLES = """
+    - name: VRRP L3 setup
+      pn_ztp_vrrp_l3:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_fabric_name: 'ztp-fabric'
+        pn_spine_list: "{{ groups['spine'] }}"
+        pn_leaf_list: "{{ groups['leaf'] }}"
+        pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"
+"""
+
+RETURN = """
+msg:
+  description: The set of responses for each command.
+  returned: always
+  type: str
+changed:
+  description: Indicates whether the CLI caused changes on the target.
+  returned: always
+  type: bool
 """
 
 
@@ -85,37 +136,35 @@ def run_cli(module, cli):
         return 'Success'
 
 
-def create_vlan(module, start, end):
+def create_vlan_l3(module, vlan_id):
     """
     This method is to create vlans.
     :param module: The Ansible module to fetch input parameters.
-    :param start: Start of the vlan range for vlans to be created.
-    :param end: End of the vlan range for vlans to be created.
-    :return: Success or failure message for the vlans.
+    :param vlan_id: vlan number to be created.
+    :return: Success or failure message for the vlan.
     """
-    vlan = []
     output = ' '
     cli = pn_cli(module)
+    
     clicopy = cli
     clicopy += ' vlan-show format id no-show-headers '
     already_vlan_id = run_cli(module, clicopy).split()
     already_vlan_id = list(set(already_vlan_id))
 
-    vlan_id = int(start)
-    while vlan_id < int(end):
-        id_str = str(vlan_id)
-        vlan.append(id_str)
-        if id_str not in already_vlan_id:
-            clicopy = cli
-            clicopy += ' vlan-create id '
-            clicopy += id_str
-            clicopy += ' scope fabric '
-            output += run_cli(module, clicopy)
-            output += ' '
-
-        vlan_id += 1
-
-    return vlan
+    id_str = str(vlan_id)
+    if id_str not in already_vlan_id:
+        clicopy = cli
+        clicopy += ' vlan-create id '
+        clicopy += id_str
+        clicopy += ' scope fabric '
+        output += run_cli(module, clicopy)
+        output += 'vlan ' + vlan_id + ' created'
+        output += '\n'
+    else:
+        output += 'vlan ' + vlan_id + ' already present'
+        output += '\n'
+    
+    return output
 
 
 def create_l3_vrouter(module, switch, vrrp_id):
@@ -401,7 +450,7 @@ def vrrp_noncluster_switch(module, ip, noncluster_leaf, vlan_id):
     :param module: The Ansible module to fetch input parameters.
     :param ip: ip address for the default gateway
     :param noncluster_leaf: name of all the non-cluster leaf
-    :param vlan_id: vlan_id to be assigned.
+    :param vlan_id: The vlan id to be assigned. 
     :return: It returns the output in the success or failure
     """
     output = ' '
@@ -442,92 +491,103 @@ def vrrp_noncluster_switch(module, ip, noncluster_leaf, vlan_id):
     return output
 
 
-def configure_vrrp(module, vrrp_id, no_interface, vrrp_ip,
-                   active_switch, vlan_range):
+def configure_vrrp_l3_with_cluster(module, vrrp_id, vrrp_ip,
+                                   active_switch, vlan_id, switch_list):
     """
     This method is to configure vrrp.
     :param module: The Ansible module to fetch input parameters.
     :param vrrp_id: The vrrp_id need to be assigned.
-    :param no_interface: The number of interfaces to be added.
     :param vrrp_ip: The vrrp_ip needed to be assigned.
     :param active_switch: The name of the active switch.
-    :param vlan_range: The vlan_range for creating the vlans.
+    :param vlan_id: vlan id to be assigned.
+    :param switch_list: List of switches.
     :return: It returns the output of the configuration
     """
-    leaf_list = module.params['pn_leaf_list']
     output = ' '
-    cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
+    node1 = switch_list[0]
+    node2 = switch_list[1]
+    name = node1 + '-to-' + node2 + '-cluster'
+    output += create_cluster(module, node2, name, node1,
+                             node2)
 
-    clicopy = cli
-    output += create_leaf_cluster(module)
-    vlan_range_split = vlan_range.split('-')
-    start = vlan_range_split[0]
-    end_no_interface = int(start) + int(no_interface)
-    vlan = create_vlan(module, start, end_no_interface)
-
-    output += ' vlans created '
-    vrrp_ip_segment = vrrp_ip.split('.')
+    output += create_vlan_l3(module, vlan_id)
     host_count = 1
 
-    cli = clicopy
-    cli += ' cluster-show format name no-show-headers '
-    cluster_name = run_cli(module, cli).split()
-    for cluster in cluster_name:
-        switch_list = []
-        cli = clicopy
-        cli += ' cluster-show name %s format cluster-node-1 ' % cluster
-        cli += ' no-show-headers '
-        switch1 = run_cli(module, cli).split()
-        cli = clicopy
-        cli += ' cluster-show name %s format cluster-node-2 ' % cluster
-        cli += ' no-show-headers '
-        switch2 = run_cli(module, cli).split()
-        switch_list.append(switch1[0])
-        switch_list.append(switch2[0])
+    for switch in switch_list:
+        output += create_l3_vrouter(module, switch, vrrp_id)
+        output += ' '
 
-        for switch in switch_list:
-            output += create_l3_vrouter(module, switch, vrrp_id)
-            output += ' '
+    for switch in switch_list:
+        host_count += 1
+        if switch == active_switch:
+            vrrp_priority = '110'
+        else:
+            vrrp_priority = '100'
 
-        for switch in switch_list:
-            host_count += 1
-            if switch == active_switch:
-                vrrp_priority = '110'
-            else:
-                vrrp_priority = '100'
+        output += create_l3_interface(module, switch, vrrp_ip, vlan_id,
+                                      vrrp_id, str(host_count),
+                                      vrrp_priority)
 
-            for vlan_id in vlan:
-                ip = vrrp_ip_segment[0] + '.' + vrrp_ip_segment[1] + '.'
-                ip += vlan_id + '.' + vrrp_ip_segment[3]
-                output += create_l3_interface(module, switch, ip, vlan_id,
-                                              vrrp_id, str(host_count),
-                                              vrrp_priority)
-                if int(vlan_id) % 15 == 0:
-                    output += ' waiting for 2 sec '
-                    time.sleep(2)
+    return output
 
-    noncluster_leaf = leaf_no_cluster(module, leaf_list)
+
+def configure_vrrp_l3_without_cluster(module, vlan_id, ip, noncluster_leaf):
+    """
+    Method to configure VRRP for non clustered leafs.
+    :param module: The Ansible module to fetch input parameters.
+    :param vlan_id: vlan id to be assigned.
+    :param ip: Ip address to be assigned.
+    :param noncluster_leaf: Non clustered leaf switch.
+    :return: Output string of configuration.
+    """
+    output = ' '
     for switch in noncluster_leaf:
         output += create_l3_vrouter_novrrp(module, switch)
         output += ' '
 
-    # create vlan 61 and 62.
-    # TODO: Get this from the csv file.
-    create_vlan(module, str(61), str(63))
-    ip = vrrp_ip_segment[0] + '.' + vrrp_ip_segment[1] + '.'
-    ip += str(61) + '.' + vrrp_ip_segment[3]
+    output += create_vlan_l3(module, vlan_id)
+    output += vrrp_noncluster_switch(module, ip, noncluster_leaf, vlan_id)
 
-    # To be parsed from csv file
-    noncluster_leaf = ['auto-leaf3']
-    output += vrrp_noncluster_switch(module, ip, noncluster_leaf, str(61))
-    ip = vrrp_ip_segment[0] + '.' + vrrp_ip_segment[1] + '.'
-    ip += str(62) + '.' + vrrp_ip_segment[3]
+    return output
 
-    # To be parsed from csv file
-    noncluster_leaf = ['auto-leaf4']
-    output += vrrp_noncluster_switch(module, ip, noncluster_leaf, str(62))
+
+def configure_vrrp_l3(module, csv_data):
+    """
+    Method to configure VRRP L3.
+    :param module: The Ansible module to fetch input parameters.
+    :param csv_data: String containing vrrp data parsed from csv file.
+    :return: Output string of configuration.
+    """
+    output = ' '
+    spine_list = module.params['pn_spine_list']
+
+    for switch in spine_list:
+        output += create_l3_vrouter_novrrp(module, switch)
+        output += ' '
+
+    csv_data = csv_data.replace(" ", "")
+    csv_data_list = csv_data.split('\n')
+    for row in csv_data_list:
+        elements = row.split(',')
+        if len(elements) > 3:
+            switch_list = []
+
+            vlan_id = elements[0]
+            vrrp_ip = elements[1]
+            switch_list.append(str(elements[2]))
+            switch_list.append(str(elements[3]))
+            vrrp_id = elements[4]
+            active_switch = str(elements[5])
+            output += configure_vrrp_l3_with_cluster(module, vrrp_id, vrrp_ip,
+                                                     active_switch, vlan_id,
+                                                     switch_list)
+        else:
+            noncluster_leaf = []
+            vlan_id = elements[0]
+            ip = elements[1]
+            noncluster_leaf.append(str(elements[2]))
+            output += configure_vrrp_l3_without_cluster(module, vlan_id, ip,
+                                                        noncluster_leaf)
 
     return output
 
@@ -540,49 +600,16 @@ def main():
             pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_cliswitch=dict(required=False, type='str'),
             pn_fabric_name=dict(required=False, type='str'),
-            pn_fabric_network=dict(required=False, type='str',
-                                   choices=['mgmt', 'in-band'],
-                                   default='mgmt'),
-            pn_fabric_type=dict(required=False, type='str',
-                                choices=['layer2', 'layer3'],
-                                default='layer2'),
             pn_fabric_retry=dict(required=False, type='int', default=1),
-            pn_run_l2_l3=dict(required=False, type='bool', default=False),
-            pn_net_address=dict(required=False, type='str'),
-            pn_cidr=dict(required=False, type='str'),
-            pn_supernet=dict(required=False, type='str'),
             pn_spine_list=dict(required=False, type='list'),
             pn_leaf_list=dict(required=False, type='list'),
-            pn_update_fabricto_inband=dict(required=False, type='bool',
-                                           default=False),
-            pn_assign_loopback=dict(required=False, type='bool', default=False),
-            pn_loopback_ip=dict(required=False, type='str',
-                                default='101.101.101.0/32'),
-            pn_inband_ip=dict(required=False, type='str',
-                              default='172.16.0.0/24'),
-            pn_fabric_control_network=dict(required=False, type='str',
-                                           choices=['mgmt', 'in-band'],
-                                           default='mgmt'),
-            pn_protocol=dict(required=False, type='str'),
-            pn_vrrp_id=dict(required=False, type='str', default='18'),
-            pn_vrrp_ip=dict(required=False, type='str',
-                            dafault='101.101.$.0/24'),
-            pn_active_switch=dict(required=False, type='str',
-                                  default='auto-spine1'),
-            pn_vlan_range=dict(required=False, type='str', default='101-200'),
-            pn_vrrp_no_interface=dict(required=False, type='str', default='4'),
+            pn_csv_data=dict(required=True, type='str'),
         )
     )
 
     message = ' '
-    vrrp_id = module.params['pn_vrrp_id']
-    no_interface = module.params['pn_vrrp_no_interface']
-    vrrp_ip = module.params['pn_vrrp_ip']
-    active_switch = module.params['pn_active_switch']
-    vlan_range = module.params['pn_vlan_range']
-    message += ' '
-    message += configure_vrrp(module, vrrp_id, no_interface, vrrp_ip,
-                              active_switch, vlan_range)
+    csv_data = module.params['pn_csv_data']
+    message += configure_vrrp_l3(module, csv_data)
     message += ' '
 
     module.exit_json(

@@ -1,0 +1,124 @@
+---
+
+
+- name: Zero Touch Provisioning - Initial setup
+  hosts: all
+  serial: 1
+  become: true
+  user: root
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Auto accept EULA, Disable STP, enable ports and create/join fabric
+      pn_ztp:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        # pn_fabric_retry: 1
+        pn_fabric_name: 'ztp-fabric'
+        pn_run_l2_l3: False
+      register: ztp_out
+      until: ztp_out.failed != true  # if the above code fails it will retry the code
+      retries: 3                     # ztp_out.retry can be used in place of 3 if the value is given as pn_fabric_retry
+      delay: 1
+      ignore_errors: yes
+
+    - debug: var=ztp_out
+    - pause: seconds=2
+
+
+- name: Virtual Router Redundancy Protocol (VRRP) - Layer 3 Setup
+  hosts: spine[0]
+  serial: 1
+  become: true
+  become_user: root
+
+  vars_files:
+  - cli_vault.yml
+
+  vars:
+  - csv_file: /etc/ansible/pluribus-ansible/ansible/pn_vrrp_l3.csv
+
+  tasks:
+    - name: VRRP L3 setup
+      pn_ztp_vrrp_l3:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_fabric_name: 'ztp-fabric'
+        # pn_fabric_retry: 1
+        pn_spine_list: "{{ groups['spine'] }}"
+        pn_leaf_list: "{{ groups['leaf'] }}"
+        pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"
+      register: vrrp_out
+      until:  vrrp_out.failed != true  # if error pops up it will retry the code
+      retries: 3                       # vrrp_out.retry can be used in place of 3 if the value is given as pn_fabric_retry
+      delay: 1
+      ignore_errors: yes
+
+    - debug: var=vrrp_out
+    - pause: seconds=2
+
+
+- name: Zero Touch Provisioning - Layer3 setup
+  hosts: spine[0]
+  serial: 1
+  user: root
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Auto configure link IPs
+      pn_ztp:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_fabric_name: 'ztp-fabric'
+        # pn_fabric_retry: 1
+        pn_spine_list: "{{ groups['spine'] }}"
+        pn_leaf_list: "{{ groups['leaf'] }}"
+        pn_fabric_type: 'layer3'
+        pn_run_l2_l3: True
+        pn_net_address: '172.168.0.0'
+        pn_cidr: '24'
+        pn_supernet: '30'
+        pn_assign_loopback: True
+      register: ztp_l3_out
+      until:  ztp_l3_out.failed != true  # if error pops up it will retry the code
+      retries: 3                         # ztp_l3_out.retry can be used in place of 3 if the value is given as pn_fabric_retry
+      delay: 1
+      ignore_errors: yes
+
+    - debug: var=ztp_l3_out
+    - pause: seconds=2
+
+
+- name: Zero Touch Provisioning - BGP setup
+  hosts: spine[0]
+  serial: 1
+  user: root
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Configure eBGP
+      pn_ebgp:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        # pn_fabric_retry: 1
+        pn_fabric_name: 'ztp-fabric'
+        pn_run_l2_l3: False
+        pn_spine_list: "{{ groups['spine'] }}"
+        pn_leaf_list: "{{ groups['leaf'] }}"
+        # pn_bgp_maxpath:                       # default 16
+        # pn_bgp_redistribute:                  # default connected
+        # pn_bgp_as_range:                      # default 65000
+      register: bgp_out
+      until: bgp_out.failed != true             # if the above code fails it will retry the code
+      retries: 3                                # bgp_out.retry can be used in place of 3 if the value is given as pn_fabric_retry
+      delay: 1
+      ignore_errors: yes
+
+    - debug: var=bgp_out
+    - pause: seconds=2

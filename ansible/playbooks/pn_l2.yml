@@ -1,0 +1,30 @@
+---
+
+
+- name: Zero Touch Provisioning - Layer2 setup
+  hosts: spine[0]
+  serial: 1
+  user: root
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Configure auto vlag 
+      pn_ztp:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_fabric_name: 'ztp-fabric'
+        # pn_fabric_retry: 1
+        pn_spine_list: "{{ groups['spine'] }}"
+        pn_leaf_list: "{{ groups['leaf'] }}"
+        pn_fabric_type: 'layer2'
+        pn_run_l2_l3: True
+      register: ztp_out
+      until:  ztp_out.failed != true      # if error pops up it will retry the code
+      retries: 3                          # ztp_out.retry can be used in place of 3 if the value is given as pn_fabric_retry
+      delay: 1
+      ignore_errors: yes
+
+    - debug: var=ztp_out
+    - pause: seconds=2
