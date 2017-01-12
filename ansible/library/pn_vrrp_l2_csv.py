@@ -358,17 +358,16 @@ def main():
         )
     )
 
-    message = ' '
     vrrp_id = module.params['pn_vrrp_id']
     csv_data = module.params['pn_csv_data']
-    message += configure_vrrp_l2(module, csv_data, vrrp_id)
-    message += ' '
+    configure_vrrp_l2(module, csv_data, vrrp_id)
+    message = ' Configured VRRP Layer2 '
 
     module.exit_json(
         stdout=message,
         error="0",
         failed=False,
-        msg="Operation Completed",
+        msg="VRRP Layer 2 Setup completed successfully",
         changed=True
     )
 

@@ -145,7 +145,7 @@ def create_vlan_l3(module, vlan_id):
     """
     output = ' '
     cli = pn_cli(module)
-    
+
     clicopy = cli
     clicopy += ' vlan-show format id no-show-headers '
     already_vlan_id = run_cli(module, clicopy).split()
@@ -163,7 +163,7 @@ def create_vlan_l3(module, vlan_id):
     else:
         output += 'vlan ' + vlan_id + ' already present'
         output += '\n'
-    
+
     return output
 
 
@@ -450,7 +450,7 @@ def vrrp_noncluster_switch(module, ip, noncluster_leaf, vlan_id):
     :param module: The Ansible module to fetch input parameters.
     :param ip: ip address for the default gateway
     :param noncluster_leaf: name of all the non-cluster leaf
-    :param vlan_id: The vlan id to be assigned. 
+    :param vlan_id: The vlan id to be assigned.
     :return: It returns the output in the success or failure
     """
     output = ' '
@@ -607,16 +607,15 @@ def main():
         )
     )
 
-    message = ' '
     csv_data = module.params['pn_csv_data']
-    message += configure_vrrp_l3(module, csv_data)
-    message += ' '
+    configure_vrrp_l3(module, csv_data)
+    message = ' Configured VRRP Layer3 '
 
     module.exit_json(
         stdout=message,
         error="0",
         failed=False,
-        msg="Operation Completed",
+        msg="VRRP Layer 3 Setup completed successfully.",
         changed=True
     )
 
