@@ -52,11 +52,6 @@ options:
         - Target switch(es) to run the CLI on.
       required: False
       type: str
-    pn_fabric_name:
-      description:
-        - Specify name of the fabric.
-      required: False
-      type: str
     pn_spine_list:
       description:
         - Specify list of Spine hosts
@@ -74,8 +69,6 @@ EXAMPLES = """
       pn_ebgp:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_fabric_name: 'ztp-fabric'
-        pn_run_l2_l3: False
         pn_spine_list: "{{ groups['spine'] }}"
         pn_leaf_list: "{{ groups['leaf'] }}"
 """
@@ -179,7 +172,7 @@ def assigning_bgp_as(module, bgp_as):
                 output += ' '
                 bgp_leaf += 1
     else:
-        output += "no vrouters present"
+        output += 'No vrouters present/created in this switch'
 
     return output
 
@@ -295,7 +288,7 @@ def assign_router_id(module):
             output += run_cli(module, cli)
             output += ' '
     else:
-        print "No vrouters"
+        print 'No vrouters present/created in this switch.'
 
     return output
 
@@ -478,7 +471,6 @@ def main():
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_cliswitch=dict(required=False, type='str'),
-            pn_fabric_name=dict(required=False, type='str'),
             pn_fabric_retry=dict(required=False, type='int', default=1),
             pn_spine_list=dict(required=False, type='list'),
             pn_leaf_list=dict(required=False, type='list'),
@@ -496,27 +488,26 @@ def main():
     bgp_maxpath_val = module.params['pn_bgp_maxpath']
 
     message = ' '
-    message += assigning_bgp_as(module, bgp_as_range)
-    message += ' bgp_as assigned '
-    message += bgp_redistribute(module, bgp_redistribute_val)
-    message += ' '
-    message += bgp_maxpath(module, bgp_maxpath_val)
-    message += ' '
-    message += bgp_neighbor(module)
-    message += ' '
-    message += assign_router_id(module)
-    message += ' '
-    message += create_leaf_cluster(module)
-    message += ' '
+    assigning_bgp_as(module, bgp_as_range)
+    message += ' Assigned BGP_AS to vrouters '
+    bgp_redistribute(module, bgp_redistribute_val)
+    message += ' Assigned BGP_REDISTRIBUTE to vrouters '
+    bgp_maxpath(module, bgp_maxpath_val)
+    message += ' Assigned BGP_MAXPATH to vrouters '
+    bgp_neighbor(module)
+    message += ' Added BGP neighbors for vrouters '
+    assign_router_id(module)
+    message += ' Assigned ID to vrouters '
+    create_leaf_cluster(module)
+    message += ' Created leaf cluster with physical links '
 
     module.exit_json(
         stdout=message,
         error="0",
         failed=False,
-        msg="Operation Completed",
+        msg="eBGP setup completed successfully.",
         changed=True
     )
-
 
 # AnsibleModule boilerplate
 from ansible.module_utils.basic import AnsibleModule

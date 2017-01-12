@@ -18,14 +18,21 @@
         # pn_fabric_retry: 1
         pn_fabric_name: 'ztp-fabric'
         pn_run_l2_l3: False
+        pn_current_switch: "{{ inventory_hostname }}"
       register: ztp_out
       until: ztp_out.failed != true  # if the above code fails it will retry the code
       retries: 3                     # ztp_out.retry can be used in place of 3 if the value is given as pn_fabric_retry
       delay: 3
       ignore_errors: yes
 
-    - debug: var=ztp_out
-    - pause: seconds=2
+    - debug:
+        msg: "ZTP initial setup completed on {{ inventory_hostname }}"
+
+    - debug:
+        var: ztp_out.stdout_lines
+
+    - pause:
+        seconds: 2
 
 
 - name: Zero Touch Provisioning - Layer2 setup
@@ -55,8 +62,14 @@
       delay: 3
       ignore_errors: yes
 
-    - debug: var=ztp_l2_out
-    - pause: seconds=2
+    - debug:
+        msg: "ZTP Layer 2 setup completed"
+
+    - debug:
+        var: ztp_l2_out.stdout_lines
+
+    - pause:
+        seconds: 2
 
 
 - name: Virtual Router Redundancy Protocol (VRRP) - Layer 2 Setup
@@ -88,5 +101,11 @@
       delay: 3
       ignore_errors: yes
 
-    - debug: var=vrrp_out
-    - pause: seconds=2
+    - debug:
+        msg: "VRRP Layer 2 setup completed"
+
+    - debug:
+        var: vrrp_out.stdout_lines
+
+    - pause:
+        seconds: 2

@@ -308,7 +308,7 @@ def create_fabric(module, fabric_name, fabric_network):
                 cli = clicopy
                 cli += ' fabric-join name ' + fabric_name
             else:
-                return "Already in the fabric"
+                return "Switch already in the fabric."
 
     return run_cli(module, cli)
 
@@ -1056,7 +1056,6 @@ def assign_inband_ip(module, inband_address):
 
 def main():
     """ This section is for arguments parsing """
-
     module = AnsibleModule(
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str'),
@@ -1095,6 +1094,7 @@ def main():
             pn_vlan_range=dict(required=False, type='str', default='101-200'),
             pn_vrrp_no_interface=dict(required=False, type='str', default='4'),
             pn_toggle_40g=dict(required=False, type='bool', default=True),
+            pn_current_switch=dict(required=False, type='str'),
         )
     )
 
@@ -1106,42 +1106,45 @@ def main():
     update_fabric_to_inband = module.params['pn_update_fabric_to_inband']
     inband_address = module.params['pn_inband_ip']
     toggle_40g_flag = module.params['pn_toggle_40g']
+    current_switch = module.params['pn_current_switch']
     message = ' '
 
     if not run_l2_l3:
-        message += auto_accept_eula(module)
-        message += ' eula accepted '
-        message += create_fabric(module, fabric_name, fabric_network)
-        message += ' '
-        message += configure_control_network(module, control_network)
-        message += ' control network to management '
-        message += modify_stp_local(module, 'disable')
-        message += ' stp disable '
-        message += enable_ports(module)
-        message += ' ports enable '
+        auto_accept_eula(module)
+        message += ' EULA accepted on ' + current_switch
+        create_fabric(module, fabric_name, fabric_network)
+        message += ' Fabric join completed on ' + current_switch
+        configure_control_network(module, control_network)
+        message += ' Configured control network to mgmt on ' + current_switch
+        modify_stp_local(module, 'disable')
+        message += ' STP disabled on ' + current_switch
+        enable_ports(module)
+        message += ' Ports enabled on ' + current_switch
         if toggle_40g_flag:
-            message += toggle_40g_local(module)
+            toggle_40g_local(module)
+            message += ' Toggled 40G ports to 10G '
 
     else:
-        message += assign_inband_ip(module, inband_address)
+        # message += assign_inband_ip(module, inband_address)
         if fabric_type == 'layer2':
-            message += configure_auto_vlag(module)
+            configure_auto_vlag(module)
+            message += ' Configured auto vlags for layer 2 '
         elif fabric_type == 'layer3':
-            message += auto_configure_link_ips(module)
+            auto_configure_link_ips(module)
+            message += ' Configured  link ips for layer 3 '
 
         if update_fabric_to_inband:
-            message += ' '
-            message += update_fabric_network_to_inband(module)
+            update_fabric_network_to_inband(module)
+            message += ' Updated fabric network to in-band '
 
-        message += ' '
-        message += modify_stp(module, 'enable')
-        message += ' '
+        modify_stp(module, 'enable')
+        message += ' STP enabled '
 
     module.exit_json(
         stdout=message,
         error="0",
         failed=False,
-        msg="Operation Completed",
+        msg="ZTP Configured Successfully.",
         changed=True
     )
 
