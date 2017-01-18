@@ -23,8 +23,8 @@ import shlex
 DOCUMENTATION = """
 ---
 module: pn_ztp
-author: "Pluribus Networks (@saptaktakalkar)"
-modified by: "Pluribus Networks (@gauravbajaj)"
+author: 'Pluribus Networks (@saptaktakalkar)'
+modified by: 'Pluribus Networks (@gauravbajaj)'
 version: 1
 short_description: CLI command to do zero touch provisioning.
 description:
@@ -48,11 +48,6 @@ options:
     pn_clipassword:
       description:
         - Provide login password if user is not root.
-      required: False
-      type: str
-    pn_cliswitch:
-      description:
-        - Target switch(es) to run the CLI on.
       required: False
       type: str
     pn_fabric_name:
@@ -109,7 +104,7 @@ EXAMPLES = """
   pn_ztp:
     pn_cliusername: "{{ USERNAME }}"
     pn_clipassword: "{{ PASSWORD }}"
-    pn_cliswitch: squirtle
+    pn_fabric_name: ztp-fabric
     pn_fabric_type: layer3
     pn_run_l2_l3: True
     pn_net_address: '192.168.0.1'
@@ -129,6 +124,9 @@ changed:
 """
 
 
+CHANGED_FLAG = []
+
+
 def pn_cli(module):
     """
     This method is to generate the cli portion to launch the Netvisor cli.
@@ -138,15 +136,11 @@ def pn_cli(module):
     """
     username = module.params['pn_cliusername']
     password = module.params['pn_clipassword']
-    cliswitch = module.params['pn_cliswitch']
 
     if username and password:
-        cli = '/usr/bin/cli --quiet --user %s:%s' % (username, password)
+        cli = '/usr/bin/cli --quiet --user %s:%s ' % (username, password)
     else:
         cli = '/usr/bin/cli --quiet '
-
-    if cliswitch:
-        cli += ' switch ' + cliswitch
 
     return cli
 
@@ -168,10 +162,10 @@ def run_cli(module, cli):
 
     if err:
         module.exit_json(
-            error="1",
+            error='1',
             failed=True,
             stderr=err.strip(),
-            msg="Operation Failed: " + str(cli),
+            msg='Operation Failed: ' + str(cli),
             changed=False
         )
     else:
@@ -180,162 +174,205 @@ def run_cli(module, cli):
 
 def auto_accept_eula(module):
     """
-    This method is to accept the EULA when we first login to new switch.
+    Method to accept the EULA when we first login to a new switch.
     :param module: The Ansible module to fetch input parameters.
     :return: The output of run_cli() method.
     """
     password = module.params['pn_clipassword']
-    cli = '/usr/bin/cli --quiet '
-    cli += ' --skip-setup --script-password switch-setup-modify '
-    cli += ' eula-accepted true password ' + password
-    return run_cli(module, cli)
+    cli = ' /usr/bin/cli --quiet --skip-setup eula-show '
+    cli = shlex.split(cli)
+    rc, out, err = module.run_command(cli)
+
+    if err:
+        if 'Setup required' in err:
+            cli = '/usr/bin/cli --quiet'
+            cli += ' --skip-setup --script-password '
+            cli += ' switch-setup-modify password ' + password
+            cli += ' eula-accepted true '
+            return run_cli(module, cli)
+    elif out:
+        return ' EULA has been accepted already! '
 
 
 def modify_stp_local(module, modify_flag):
     """
-    This method is to enable/disable STP (Spanning Tree Protocol) of a switch.
+    Method to enable/disable STP (Spanning Tree Protocol) on a switch.
     :param module: The Ansible module to fetch input parameters.
     :param modify_flag: Enable/disable flag to set.
     :return: The output of run_cli() method.
     """
     cli = pn_cli(module)
-    cli += ' stp-modify ' + modify_flag
-    return run_cli(module, cli)
+    cli += ' switch-local stp-show format enable '
+    current_state = run_cli(module, cli).split()[1]
+
+    if current_state == 'yes':
+        cli = pn_cli(module)
+        cli += ' stp-modify ' + modify_flag
+        return run_cli(module, cli)
+    else:
+        return ' STP is already disabled! '
 
 
 def modify_stp(module, modify_flag):
     """
-    This method is to enable/disable STP (Spanning Tree Protocol) of a switch.
+    Method to enable/disable STP (Spanning Tree Protocol) on all switches.
     :param module: The Ansible module to fetch input parameters.
     :param modify_flag: Enable/disable flag to set.
     :return: The output of run_cli() method.
     """
-    output = ' '
+    output = ''
     cli = pn_cli(module)
     clicopy = cli
     cli += ' fabric-node-show format name no-show-headers '
     switch_names = run_cli(module, cli).split()
     for switch in switch_names:
         cli = clicopy
-        cli += ' switch ' + switch
-        cli += ' stp-modify ' + modify_flag
-        output += run_cli(module, cli)
-        output += ' '
+        cli += ' switch-local stp-show format enable '
+        current_state = run_cli(module, cli).split()[1]
+        if current_state != 'yes':
+            cli = clicopy
+            cli += ' switch ' + switch
+            cli += ' stp-modify ' + modify_flag
+            output += run_cli(module, cli)
+            output += ' '
+        else:
+            output += ' STP is already enabled! '
 
     return output
 
 
 def configure_control_network(module, network):
     """
-    This method is to convert the fabric control network into management.
+    Method to configure the fabric control network.
     :param module: The Ansible module to fetch input parameters.
     :param network: It can be in-band or management.
     :return: The output of run_cli() method.
     """
     cli = pn_cli(module)
-    cli += ' fabric-local-modify control-network ' + network
-    return run_cli(module, cli)
+    cli += ' fabric-info format control-network '
+    current_control_network = run_cli(module, cli).split()[1]
+
+    if current_control_network == network:
+        return ' Fabric is already in %s control network ' % network
+    else:
+        cli = pn_cli(module)
+        cli += ' fabric-local-modify control-network ' + network
+        return run_cli(module, cli)
 
 
 def enable_ports(module):
     """
-    This method is to enable all ports of a switch.
+    Method to enable all ports of a switch.
     :param module: The Ansible module to fetch input parameters.
     :return: The output of run_cli() method.
     """
     cli = pn_cli(module)
-    cli += ' port-config-show format port no-show-headers '
-    out = run_cli(module, cli)
+    cli += ' switch-local port-config-show format enable '
+    port_list = run_cli(module, cli).split()
+    port_list = list(set(port_list))
 
-    cli = pn_cli(module)
-    cli += ' port-config-show format port speed 40g no-show-headers'
-    out_40g = run_cli(module, cli)
-    out_remove10g = []
+    if 'off' in port_list:
+        cli = pn_cli(module)
+        cli += ' port-config-show format port no-show-headers '
+        out = run_cli(module, cli)
 
-    if len(out_40g) > 0 and out_40g != 'Success':
-        out_40g = out_40g.split()
-        out_40g = list(set(out_40g))
-        if len(out_40g) > 0:
-            for port_number in out_40g:
-                out_remove10g.append(str(int(port_number) + int(1)))
-                out_remove10g.append(str(int(port_number) + int(2)))
-                out_remove10g.append(str(int(port_number) + int(3)))
+        cli = pn_cli(module)
+        cli += ' port-config-show format port speed 40g no-show-headers '
+        out_40g = run_cli(module, cli)
+        out_remove10g = []
 
-    if out:
-        out = out.split()
-        out = set(out) - set(out_remove10g)
-        out = list(out)
+        if len(out_40g) > 0 and out_40g != 'Success':
+            out_40g = out_40g.split()
+            out_40g = list(set(out_40g))
+            if len(out_40g) > 0:
+                for port_number in out_40g:
+                    out_remove10g.append(str(int(port_number) + int(1)))
+                    out_remove10g.append(str(int(port_number) + int(2)))
+                    out_remove10g.append(str(int(port_number) + int(3)))
+
         if out:
-            ports = ','.join(out)
-            cli = pn_cli(module)
-            cli += ' port-config-modify port %s enable ' % ports
-            return run_cli(module, cli)
+            out = out.split()
+            out = set(out) - set(out_remove10g)
+            out = list(out)
+            if out:
+                ports = ','.join(out)
+                cli = pn_cli(module)
+                cli += ' port-config-modify port %s enable ' % ports
+                return run_cli(module, cli)
+        else:
+            return out
     else:
-        return out
+        return ' All ports are enabled already! '
 
 
 def create_fabric(module, fabric_name, fabric_network):
     """
-    This method is to create a fabric with default fabric type as mgmt.
-    If not joined, join to the fabric.
+    Method to create/join a fabric with default fabric type as mgmt.
     :param module: The Ansible module to fetch input parameters.
-    :param fabric_name: Name of the fabric to create.
-    :param fabric_network: Type of the fabric to create (mgmt/inband).
+    :param fabric_name: Name of the fabric to create/join.
+    :param fabric_network: Type of the fabric to create (mgmt/in-band).
     Default value: mgmt
     :return: The output of run_cli() method.
     """
     cli = pn_cli(module)
-    cliinfo = cli
     clicopy = cli
 
-    cli = clicopy
     cli += ' fabric-show format name no-show-headers '
     fabrics_names = run_cli(module, cli).split()
+
     if fabric_name not in fabrics_names:
         cli = clicopy
         cli += ' fabric-create name ' + fabric_name
         cli += ' fabric-network ' + fabric_network
     else:
-        cliinfo += ' fabric-info format name no-show-headers'
-        cliinfo = shlex.split(cliinfo)
-        rc, out, err = module.run_command(cliinfo)
+        cli = clicopy
+        cli += ' fabric-info format name no-show-headers'
+        cli = shlex.split(cli)
+        rc, out, err = module.run_command(cli)
+
         if err:
             cli = clicopy
             cli += ' fabric-join name ' + fabric_name
         elif out:
-            myfabricname = out.split()
-            if myfabricname[1] not in fabrics_names:
+            present_fabric_name = out.split()
+            if present_fabric_name[1] not in fabrics_names:
                 cli = clicopy
                 cli += ' fabric-join name ' + fabric_name
             else:
-                return "Switch already in the fabric."
+                return 'Switch already in the fabric'
 
     return run_cli(module, cli)
 
 
 def update_fabric_network_to_inband(module):
     """
-    This method is to update fabric network type to in-band
+    Method to update fabric network type to in-band
     :param module: The Ansible module to fetch input parameters.
     :return: The output of run_cli() method.
     """
-    output = ' '
+    output = ''
     cli = pn_cli(module)
     clicopy = cli
     cli += ' fabric-node-show format name no-show-headers '
     switch_names = run_cli(module, cli).split()
     for switch in switch_names:
         cli = clicopy
-        cli += ' switch ' + switch
-        cli += ' fabric-local-modify fabric-network in-band '
-        output += run_cli(module, cli)
+        cli += ' fabric-info format fabric-network '
+        fabric_network = run_cli(module, cli).split()[1]
+        if fabric_network != 'in-band':
+            cli = clicopy
+            cli += ' switch ' + switch
+            cli += ' fabric-local-modify fabric-network in-band '
+            output += run_cli(module, cli)
+        else:
+            output += ' Fabric network is already in-band! '
 
     return output
 
 
 def calculate_link_ip_addresses(address_str, cidr_str, supernet_str):
     """
-    This method is to calculate link IPs for layer 3 fabric
+    Method to calculate link IPs for layer 3 fabric
     :param address_str: Host/network address.
     :param cidr_str: Subnet mask.
     :param supernet_str: Supernet mask
@@ -372,20 +409,20 @@ def calculate_link_ip_addresses(address_str, cidr_str, supernet_str):
 
     last_ip = list(broadcast)
     diff = base_addr % (supernet_range + 2)
-    i = base_addr - diff
+    host = base_addr - diff
     count, hostmin, hostmax = 0, 0, 0
     third_octet = network[2]
     available_ips = []
     while third_octet <= last_ip[2]:
         ips_list = []
         while count < last_ip[3]:
-            hostmin = i + 1
+            hostmin = host + 1
             hostmax = hostmin + supernet_range - 1
             while hostmin <= hostmax:
                 ips_list.append(hostmin)
                 hostmin += 1
-            i = hostmax + 2
-            count = i
+            host = hostmax + 2
+            count = host
 
         list_index = 0
         ip_address = str(last_ip[0]) + '.' + str(last_ip[1]) + '.'
@@ -396,7 +433,7 @@ def calculate_link_ip_addresses(address_str, cidr_str, supernet_str):
             available_ips.append(ip)
             list_index += 1
 
-        i, count, hostmax, hostmin = 0, 0, 0, 0
+        host, count, hostmax, hostmin = 0, 0, 0, 0
         third_octet += 1
 
     return available_ips
@@ -404,15 +441,16 @@ def calculate_link_ip_addresses(address_str, cidr_str, supernet_str):
 
 def create_vrouter(module, switch):
     """
-    This method is to create vrouter.
+    Method to create vrouter.
     :param module: The Ansible module to fetch input parameters.
     :param switch: The switch name on which vrouter will be created.
-    :return: The output string informing details of vrouter created
-    if vrouter already exists.
+    :return: The output string informing details of vrouter created.
     """
     switch_temp = switch[3:]
     vrouter_name = switch_temp + '-vrouter'
     vnet_name = module.params['pn_fabric_name'] + '-global'
+    global CHANGED_FLAG
+
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
@@ -430,16 +468,18 @@ def create_vrouter(module, switch):
         cli += ' vrouter-create name %s vnet %s ' % (vrouter_name, vnet_name)
         run_cli(module, cli)
         output = ' Created vrouter %s on switch %s ' % (vrouter_name, switch)
+        CHANGED_FLAG.append(True)
     else:
-        output = ' Vrouter name %s on switch %s already exists. ' % (
+        output = ' Vrouter name %s on switch %s already exists! ' % (
             vrouter_name, switch)
+        CHANGED_FLAG.append(False)
 
-    return output
+    return output + ' '
 
 
 def create_interface(module, switch, ip, port):
     """
-    This method is to create vrouter interface and assign IP to it.
+    Method to create vrouter interface and assign IP to it.
     :param module: The Ansible module to fetch input parameters.
     :param switch: The switch name on which vrouter will be created.
     :param ip: IP address to be assigned to vrouter interfaces.
@@ -448,6 +488,7 @@ def create_interface(module, switch, ip, port):
     interface added or if vrouter already exists.
     """
     output = ' '
+    global CHANGED_FLAG
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
@@ -469,16 +510,18 @@ def create_interface(module, switch, ip, port):
         cli += ' l3-port ' + port
 
         run_cli(module, cli)
-        output += ' and added vrouter interface with ip: ' + ip
+        output += ' Added vrouter interface with ip %s on %s! ' % (ip, switch)
+        CHANGED_FLAG.append(True)
     else:
-        output += ' already created interface on vrouter ' + vrouter_name[0]
+        output += ' Interface already exists on %s! ' % vrouter_name[0]
+        CHANGED_FLAG.append(False)
 
-    return output
+    return output + ' '
 
 
 def disable_trunk(module, switch):
     """
-    This method is to disable trunk setting on a switch.
+    Method to disable trunk setting on a switch.
     :param module: The Ansible module to fetch input parameters.
     :param switch: Name of the local switch.
     :return: The output of run_cli() method.
@@ -493,15 +536,14 @@ def disable_trunk(module, switch):
 
 def delete_trunk(module, switch, switch_port, peer_switch):
     """
-    This method is to delete a conflicting trunk on a switch.
+    Method to delete a conflicting trunk on a switch.
     :param module: The Ansible module to fetch input parameters.
     :param switch: Name of the local switch.
     :param switch_port: The l3-port which is part of conflicting trunk for l3.
     :param peer_switch: The port connecting the switch to another switch. This
-     switch is peer_switch
+    switch is peer_switch
     :return: The output of run_cli() method.
     """
-    output = ''
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
@@ -515,19 +557,22 @@ def delete_trunk(module, switch, switch_port, peer_switch):
     if len(trunk) > 0:
         cli = clicopy
         cli += ' switch %s trunk-delete name %s ' % (switch, trunk[0])
-        output += run_cli(module, cli)
-        output += ' '
-
-    return output
+        if 'Success' in run_cli(module, cli):
+            CHANGED_FLAG.append(True)
+            return ' Deleted %s trunk successfully! ' % trunk[0]
+    else:
+        CHANGED_FLAG.append(False)
+        return ''
 
 
 def assign_loopback_ip(module, loopback_address):
     """
-    This method is to add loopback interface to vrouter.
+    Method to add loopback interface to vrouter.
     :param module: The Ansible module to fetch input parameters.
     :param loopback_address: The network ip of the ips to be assigned
     :return: The success or the error message.
     """
+    global CHANGED_FLAG
     output = ' '
     address = loopback_address.split('.')
     static_part = str(address[0]) + '.' + str(address[1]) + '.'
@@ -556,49 +601,51 @@ def assign_loopback_ip(module, loopback_address):
                     cli += ' vrouter-loopback-interface-add vrouter-name '
                     cli += vrouter
                     cli += ' ip ' + ip
-                    output += run_cli(module, cli)
-                    output += ' '
+                    run_cli(module, cli)
+                    output += ' Added loopback ip for vrouter %s! ' % vrouter
+                    CHANGED_FLAG.append(True)
+                else:
+                    CHANGED_FLAG.append(False)
 
                 vrouter_count += 1
         else:
-            output += "Not enough ips for all the vrouters"
+            output += ' Not enough loopback ips available for all vrouters! '
+            CHANGED_FLAG.append(False)
     else:
-        output += "no vrouters present"
+        output += ' No vrouters exists! '
+        CHANGED_FLAG.append(False)
 
     return output
 
 
 def auto_configure_link_ips(module):
     """
-    This method is to auto configure link IPs for layer3 fabric.
+    Method to auto configure link IPs for layer3 fabric.
     :param module: The Ansible module to fetch input parameters.
     :return: The output of create_vrouter_and_interface() method.
     """
     spine_list = module.params['pn_spine_list']
     leaf_list = module.params['pn_leaf_list']
     fabric_loopback = module.params['pn_assign_loopback']
+    address = module.params['pn_net_address']
+    cidr = module.params['pn_cidr']
+    supernet = module.params['pn_supernet']
 
     output = ' '
     cli = pn_cli(module)
     clicopy = cli
 
-    cli = clicopy
     cli += ' fabric-node-show format name no-show-headers '
     switch_names = run_cli(module, cli).split()
     switch_names = list(set(switch_names))
 
     for switch in switch_names:
-        output += disable_trunk(module, switch)
-        output += ' '
+        disable_trunk(module, switch)
 
-    address = module.params['pn_net_address']
-    cidr = module.params['pn_cidr']
-    supernet = module.params['pn_supernet']
     available_ips = calculate_link_ip_addresses(address, cidr, supernet)
 
     for switch in switch_names:
         output += create_vrouter(module, switch)
-        output += ' '
 
     for spine in spine_list:
         for leaf in leaf_list:
@@ -610,37 +657,39 @@ def auto_configure_link_ips(module):
             while len(leaf_port) > 0:
                 lport = leaf_port[0]
                 ip = available_ips[0]
-                output += delete_trunk(module, leaf, lport, spine)
+                delete_trunk(module, leaf, lport, spine)
                 output += create_interface(module, leaf, ip, lport)
-                output += ' '
+
                 leaf_port.remove(lport)
                 available_ips.remove(ip)
                 ip = available_ips[0]
+
                 cli = clicopy
                 cli += ' switch %s port-show port %s ' % (leaf, lport)
                 cli += ' format rport no-show-headers '
                 sport = run_cli(module, cli)
-                output += delete_trunk(module, spine, sport, leaf)
+
+                delete_trunk(module, spine, sport, leaf)
                 output += create_interface(module, spine, ip, sport)
                 available_ips.remove(ip)
-                i = 0
+
+                ip_count = 0
                 diff = 32 - int(supernet)
                 count = (1 << diff) - 4
-                while i < count:
+                while ip_count < count:
                     available_ips.pop(0)
-                    i += 1
+                    ip_count += 1
 
     if fabric_loopback:
         loopback_address = module.params['pn_loopback_ip']
         output += assign_loopback_ip(module, loopback_address)
-        output += ' '
 
     return output
 
 
 def create_cluster(module, switch, name, node1, node2):
     """
-    This method is to create a cluster between two switches.
+    Method to create a cluster between two switches.
     :param module: The Ansible module to fetch input parameters.
     :param switch: Name of the local switch.
     :param name: The name of the cluster to create.
@@ -648,6 +697,7 @@ def create_cluster(module, switch, name, node1, node2):
     :param node2: Second node of the cluster.
     :return: The output of run_cli() method.
     """
+    global CHANGED_FLAG
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
@@ -659,14 +709,17 @@ def create_cluster(module, switch, name, node1, node2):
         cli = clicopy
         cli += ' switch %s cluster-create name %s ' % (switch, name)
         cli += ' cluster-node-1 %s cluster-node-2 %s ' % (node1, node2)
-        return run_cli(module, cli)
+        if 'Success' in run_cli(module, cli):
+            CHANGED_FLAG.append(True)
+            return ' %s created successfully! ' % name
     else:
-        return "Already part of a cluster"
+        CHANGED_FLAG.append(False)
+        return ' %s already exists! ' % name
 
 
 def get_ports(module, switch, peer_switch):
     """
-    This method is to figure out connected ports between two switches.
+    Method to figure out connected ports between two switches.
     :param module: The Ansible module to fetch input parameters.
     :param switch: Name of the local switch.
     :param peer_switch: Name of the connected peer switch.
@@ -683,13 +736,14 @@ def get_ports(module, switch, peer_switch):
 
 def create_trunk(module, switch, name, ports):
     """
-    This method is to create a trunk on a switch.
+    Method to create a trunk on a switch.
     :param module: The Ansible module to fetch input parameters.
     :param switch: Name of the local switch.
     :param name: The name of the trunk to create.
     :param ports: List of connected ports.
     :return: The output of run_cli() method.
     """
+    global CHANGED_FLAG
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
@@ -702,21 +756,23 @@ def create_trunk(module, switch, name, ports):
         ports_string = ','.join(ports)
         cli += ' switch %s trunk-create name %s ' % (switch, name)
         cli += ' ports %s ' % ports_string
-        return run_cli(module, cli)
+        if 'Success' in run_cli(module, cli):
+            CHANGED_FLAG.append(True)
+            return ' %s trunk created successfully! ' % name
     else:
-        return "Already part of a trunk"
+        CHANGED_FLAG.append(False)
+        return ' %s trunk already exists! ' % name
 
 
-def leaf_no_cluster(module, leaf_list):
+def find_non_cluster_leafs(module, leaf_list):
     """
-    This method is to find leafs which are not
-    part of any cluster
+    Method to find leafs which are not part of any cluster.
     :param module: The Ansible module to fetch input parameters.
-    :param leaf_list: The list of leafs.
-    :return: The leafs which are not part of any cluster.
+    :param leaf_list: The list of leaf switches.
+    :return: List of non clustered leaf switches.
     """
     cli = pn_cli(module)
-    non_cluster_leaf = []
+    non_cluster_leafs = []
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
 
@@ -730,14 +786,14 @@ def leaf_no_cluster(module, leaf_list):
 
     for leaf in leaf_list:
         if (leaf not in cluster1) and (leaf not in cluster2):
-            non_cluster_leaf.append(leaf)
+            non_cluster_leafs.append(leaf)
 
-    return non_cluster_leaf
+    return non_cluster_leafs
 
 
 def create_vlag(module, switch, name, peer_switch, port, peer_port):
     """
-    This method is to create virtual link aggregation groups.
+    Method to create virtual link aggregation groups.
     :param module: The Ansible module to fetch input parameters.
     :param switch: Name of the local switch.
     :param name: The name of the vlag to create.
@@ -746,6 +802,7 @@ def create_vlag(module, switch, name, peer_switch, port, peer_port):
     :param peer_port: List of peer switch ports.
     :return: The output of run_cli() method.
     """
+    global CHANGED_FLAG
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
@@ -758,9 +815,12 @@ def create_vlag(module, switch, name, peer_switch, port, peer_port):
         cli += ' switch %s vlag-create name %s port %s ' % (switch, name, port)
         cli += ' peer-switch %s peer-port %s mode active-active' % (peer_switch,
                                                                     peer_port)
-        return run_cli(module, cli)
+        if 'Success' in run_cli(module, cli):
+            CHANGED_FLAG.append(True)
+            return ' %s vlag configured successfully! ' % name
     else:
-        return "Already part of a vlag"
+        CHANGED_FLAG.append(False)
+        return ' %s vlag is already configured! ' % name
 
 
 def create_trunk_vlag(module, node1, dest_list):
@@ -772,7 +832,6 @@ def create_trunk_vlag(module, node1, dest_list):
     :param dest_list: The list of destination to know the physical links port.
     :return: It returns the name of the trunk created.
     """
-    output = ' '
     string2 = ''
     src_ports = []
     for node in dest_list:
@@ -781,18 +840,17 @@ def create_trunk_vlag(module, node1, dest_list):
 
     src_ports = list(set(src_ports))
     name = node1[5:] + '-to-' + string2
-    output += create_trunk(module, node1, name, src_ports)
-    output += ' '
+    create_trunk(module, node1, name, src_ports)
     return name
 
 
-def create_leaf_cluster_vlag(module, non_cluster_leaf, spine_list):
+def create_cluster_trunk_vlag(module, non_cluster_leaf, spine_list):
     """
-    This method is to create clusters, lag and vlag for the switches having
+    Method to create clusters, trunks and vlag for the switches having
     physical links.
     :param module: The Ansible module to fetch input parameters.
-    :param non_cluster_leaf: The list of leaf which are not part of any cluster.
-    :param spine_list: The list of spines.
+    :param non_cluster_leaf: The list of non clustered leaf switches.
+    :param spine_list: The list of spine switches.
     :return: The output message related to vlag, lag and cluster creation.
     """
     cli = pn_cli(module)
@@ -804,8 +862,6 @@ def create_leaf_cluster_vlag(module, non_cluster_leaf, spine_list):
     flag = 0
     while flag == 0:
         if len(non_cluster_leaf) == 0:
-            output += "no more leaf to create cluster"
-            output += ' '
             flag += 1
         else:
             node1 = non_cluster_leaf[0]
@@ -836,7 +892,7 @@ def create_leaf_cluster_vlag(module, non_cluster_leaf, spine_list):
                         name = node1 + '-to-' + node2 + '-cluster'
                         output += create_cluster(module, node2, name,
                                                  node1, node2)
-                        output += ' '
+
                         non_cluster_leaf.remove(node2)
                         name1 = create_trunk_vlag(module, node1, spine_list)
                         name2 = create_trunk_vlag(module, node2, spine_list)
@@ -844,7 +900,6 @@ def create_leaf_cluster_vlag(module, non_cluster_leaf, spine_list):
                         name = node1[5:] + node2 + '-to-' + 'spine'
                         output += create_vlag(module, node1, name, node2,
                                               name1, name2)
-                        output += ' '
 
                         list1 = [node1, node2]
                         spine1 = str(spine_list[0])
@@ -854,23 +909,22 @@ def create_leaf_cluster_vlag(module, non_cluster_leaf, spine_list):
                         name = spine1[5:] + spine2 + '-to-' + node1 + node2
                         output += create_vlag(module, spine1, name, spine2,
                                               name1, name2)
-                        output += ' '
                         flag1 += 1
                     else:
-                        print "switch already has a cluster"
+                        print ' Switch is already part of a cluster '
                 else:
-                    print "switch is a spine"
+                    print ' Switch is spine '
 
                 node_count += 1
     return output
 
 
-def create_nonclusterleaf_vlag(module, non_cluster_leaf, spine_list):
+def create_non_cluster_leaf_vlag(module, non_cluster_leaf, spine_list):
     """
-    This method is to create lag and vlag for noncluster leafs.
+    Method to create lag and vlag for non clustered leafs.
     :param module: The Ansible module to fetch input parameters.
-    :param non_cluster_leaf: The list of all noncluster leaf.
-    :param spine_list: The list of all spine_list.
+    :param non_cluster_leaf: The list of all non cluster leaf swicthes.
+    :param spine_list: The list of all spine switches.
     :return: The output messages related to vlag creation.
     """
     output = ' '
@@ -884,14 +938,13 @@ def create_nonclusterleaf_vlag(module, non_cluster_leaf, spine_list):
 
         name = spine1[5:] + spine2 + '-to-' + leaf
         output += create_vlag(module, spine1, name, spine2, name1, name2)
-        output += ' '
 
     return output
 
 
 def configure_auto_vlag(module):
     """
-    This method is to create and configure vlag.
+    Method to create and configure vlag.
     :param module: The Ansible module to fetch input parameters.
     :return: The output of run_cli() method.
     """
@@ -901,68 +954,18 @@ def configure_auto_vlag(module):
     spine1 = spine_list[0]
     spine2 = spine_list[1]
     output += create_cluster(module, spine1, 'spine-cluster', spine1, spine2)
-    non_cluster_leaf = leaf_no_cluster(module, leaf_list)
-    output += create_leaf_cluster_vlag(module, non_cluster_leaf, spine_list)
-    output = ' '
-    non_cluster_leaf = leaf_no_cluster(module, leaf_list)
-    output += create_nonclusterleaf_vlag(module, non_cluster_leaf, spine_list)
+    non_cluster_leaf = find_non_cluster_leafs(module, leaf_list)
+    output += create_cluster_trunk_vlag(module, non_cluster_leaf, spine_list)
     output += ' '
-    return output
-
-
-def toggle_40g(module):
-    """
-    This method is to modify 40g ports
-    :param module: The Ansible module to fetch input parameters.
-    :return: The output messages for assignment.
-    """
-    output = ''
-    cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
-    clicopy = cli
-    cli += ' fabric-node-show format name no-show-headers '
-    switch_names = run_cli(module, cli).split()
-
-    for switch in switch_names:
-        cli = clicopy
-        cli += ' switch %s lldp-show ' % switch
-        cli += ' format local-port no-show-headers '
-        local_ports = run_cli(module, cli).split()
-
-        cli = clicopy
-        cli += ' switch %s port-config-show speed 40g ' % switch
-        cli += ' format local-port no-show-headers '
-        ports_40g = run_cli(module, cli).split()
-
-        ports_to_modify = list(set(ports_40g) - set(local_ports))
-
-        for port in ports_to_modify:
-            end_port = int(port) + 4
-            range_port = port + '-' + str(end_port)
-
-            cli = clicopy
-            cli += ' switch %s port-config-modify port %s speed disable ' % (
-                switch, range_port)
-            output += run_cli(module, cli)
-
-            cli = clicopy
-            cli += ' switch %s port-config-modify port %s speed 10g ' % (
-                switch, range_port)
-            output += run_cli(module, cli)
-
-            cli = clicopy
-            cli += ' switch %s port-config-modify port %s enable ' % (
-                switch, range_port)
-            output += run_cli(module, cli)
-
+    non_cluster_leaf = find_non_cluster_leafs(module, leaf_list)
+    output += create_non_cluster_leaf_vlag(module, non_cluster_leaf, spine_list)
+    output += ' '
     return output
 
 
 def toggle_40g_local(module):
     """
-    This method is to toggle 40g ports locally.
+    Method to toggle 40g ports to 10g ports.
     :param module: The Ansible module to fetch input parameters.
     :return: The output messages for assignment.
     """
@@ -1015,9 +1018,9 @@ def toggle_40g_local(module):
 
 def assign_inband_ip(module, inband_address):
     """
-    This method is to assign inband ips to switches.
+    Method to assign in-band ips to switches.
     :param module: The Ansible module to fetch input parameters.
-    :param inband_address: The network ip for the inband ips.
+    :param inband_address: The network ip for the in-band ips.
     :return: The output messages for assignment.
     """
     output = ''
@@ -1034,6 +1037,7 @@ def assign_inband_ip(module, inband_address):
     clicopy = cli
     cli += ' fabric-node-show format name no-show-headers '
     switch_names = run_cli(module, cli).split()
+    switch_names.sort()
 
     if len(switch_names) > 0:
         ip_count = 1
@@ -1043,13 +1047,14 @@ def assign_inband_ip(module, inband_address):
                 cli = clicopy
                 cli += ' switch %s switch-setup-modify ' % switch
                 cli += ' in-band-ip ' + ip
-                output += run_cli(module, cli)
-                output += ' '
+                if 'Success' in run_cli(module, cli):
+                    output += ' Assigned in-band ips to ' + switch
+
                 ip_count += 1
         else:
-            output += "Not enough inband ips for all the switches"
+            output += ' Not enough in-band ips available for all the switches '
     else:
-        output += "No switches present"
+        output += ' No switches present '
 
     return output
 
@@ -1060,15 +1065,13 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_cliswitch=dict(required=False, type='str'),
-            pn_fabric_name=dict(required=False, type='str'),
+            pn_fabric_name=dict(required=True, type='str'),
             pn_fabric_network=dict(required=False, type='str',
                                    choices=['mgmt', 'in-band'],
                                    default='mgmt'),
             pn_fabric_type=dict(required=False, type='str',
                                 choices=['layer2', 'layer3'],
                                 default='layer2'),
-            pn_fabric_retry=dict(required=False, type='int', default=1),
             pn_run_l2_l3=dict(required=False, type='bool', default=False),
             pn_net_address=dict(required=False, type='str'),
             pn_cidr=dict(required=False, type='str'),
@@ -1085,14 +1088,6 @@ def main():
             pn_fabric_control_network=dict(required=False, type='str',
                                            choices=['mgmt', 'in-band'],
                                            default='mgmt'),
-            pn_protocol=dict(required=False, type='str'),
-            pn_vrrp_id=dict(required=False, type='str', default='18'),
-            pn_vrrp_ip=dict(required=False, type='str',
-                            dafault='101.101.$.0/24'),
-            pn_active_switch=dict(required=False, type='str',
-                                  default='auto-spine1'),
-            pn_vlan_range=dict(required=False, type='str', default='101-200'),
-            pn_vrrp_no_interface=dict(required=False, type='str', default='4'),
             pn_toggle_40g=dict(required=False, type='bool', default=True),
             pn_current_switch=dict(required=False, type='str'),
         )
@@ -1108,44 +1103,90 @@ def main():
     toggle_40g_flag = module.params['pn_toggle_40g']
     current_switch = module.params['pn_current_switch']
     message = ' '
+    global CHANGED_FLAG
+    CHANGED_FLAG = []
 
     if not run_l2_l3:
-        auto_accept_eula(module)
-        message += ' EULA accepted on ' + current_switch
-        create_fabric(module, fabric_name, fabric_network)
-        message += ' Fabric join completed on ' + current_switch
-        configure_control_network(module, control_network)
-        message += ' Configured control network to mgmt on ' + current_switch
-        modify_stp_local(module, 'disable')
-        message += ' STP disabled on ' + current_switch
-        enable_ports(module)
-        message += ' Ports enabled on ' + current_switch
+        eula_out_msg = auto_accept_eula(module)
+        if 'Setup completed successfully' in eula_out_msg:
+            message += ' EULA accepted on %s! ' % current_switch
+            CHANGED_FLAG.append(True)
+        else:
+            message += eula_out_msg
+            CHANGED_FLAG.append(False)
+
+        if 'already in the fabric' in create_fabric(module, fabric_name,
+                                                    fabric_network):
+            message += ' %s is already in fabric %s! ' % (current_switch,
+                                                          fabric_name)
+            CHANGED_FLAG.append(False)
+        else:
+            message += ' %s has joined fabric %s! ' % (current_switch,
+                                                       fabric_name)
+            CHANGED_FLAG.append(True)
+
+        net_out_msg = configure_control_network(module, control_network)
+        if 'Success' in net_out_msg:
+            message += ' Configured fabric control network to %s on %s! ' % (
+                control_network, current_switch)
+            CHANGED_FLAG.append(True)
+        else:
+            message += net_out_msg
+            CHANGED_FLAG.append(False)
+
+        stp_out_msg = modify_stp_local(module, 'disable')
+        if 'Success' in stp_out_msg:
+            message += ' STP disabled on %s! ' % current_switch
+            CHANGED_FLAG.append(True)
+        else:
+            message += stp_out_msg
+            CHANGED_FLAG.append(False)
+
+        ports_out_msg = enable_ports(module)
+        if 'Success' in ports_out_msg:
+            message += ' Ports enabled on %s! ' % current_switch
+            CHANGED_FLAG.append(True)
+        else:
+            message += ports_out_msg
+            CHANGED_FLAG.append(False)
+
         if toggle_40g_flag:
-            toggle_40g_local(module)
-            message += ' Toggled 40G ports to 10G '
+            if toggle_40g_local(module):
+                message += ' Toggled 40G ports to 10G on %s! ' % current_switch
+                CHANGED_FLAG.append(True)
+            else:
+                CHANGED_FLAG.append(False)
 
     else:
-        # message += assign_inband_ip(module, inband_address)
+        message += assign_inband_ip(module, inband_address)
         if fabric_type == 'layer2':
-            configure_auto_vlag(module)
-            message += ' Configured auto vlags for layer 2 '
-        elif fabric_type == 'layer3':
-            auto_configure_link_ips(module)
-            message += ' Configured  link ips for layer 3 '
+            message += configure_auto_vlag(module)
+
+        if fabric_type == 'layer3':
+            message += auto_configure_link_ips(module)
 
         if update_fabric_to_inband:
-            update_fabric_network_to_inband(module)
-            message += ' Updated fabric network to in-band '
+            if 'Success' in update_fabric_network_to_inband(module):
+                message += ' Updated fabric network to in-band! '
+                CHANGED_FLAG.append(True)
+            else:
+                message += ' Fabric network is already in-band! '
+                CHANGED_FLAG.append(False)
 
-        modify_stp(module, 'enable')
-        message += ' STP enabled '
+        stp_out_msg = modify_stp(module, 'enable')
+        if 'Success' in stp_out_msg:
+            message += ' STP enabled! '
+            CHANGED_FLAG.append(True)
+        else:
+            message += ' STP is already enabled! '
+            CHANGED_FLAG.append(False)
 
     module.exit_json(
         stdout=message,
-        error="0",
+        error='0',
         failed=False,
-        msg="ZTP Configured Successfully.",
-        changed=True
+        msg='ZTP Configured Successfully.',
+        changed=True if True in CHANGED_FLAG else False
     )
 
 

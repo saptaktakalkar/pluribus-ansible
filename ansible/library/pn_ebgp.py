@@ -23,7 +23,8 @@ import shlex
 DOCUMENTATION = """
 ---
 module: pn_ztp_ebgp
-author: "Pluribus Networks (@gauravbajaj)"
+author: 'Pluribus Networks (@gauravbajaj)'
+modified by: 'Pluribus Networks (@saptaktakalkar)'
 version: 1
 short_description: CLI command to do zero touch provisioning with ebgp.
 description:
@@ -47,11 +48,6 @@ options:
         - Provide login password if user is not root.
       required: False
       type: str
-    pn_cliswitch:
-      description:
-        - Target switch(es) to run the CLI on.
-      required: False
-      type: str
     pn_spine_list:
       description:
         - Specify list of Spine hosts
@@ -62,6 +58,25 @@ options:
         - Specify list of leaf hosts
       required: False
       type: list
+    pn_bgp_redistribute:
+      description:
+        - Specify bgp_redistribute value to be added to vrouter.
+      required: False
+      type: str
+      choices: ['none', 'static', 'connected', 'rip', 'ospf']
+      default: 'connected'
+    pn_bgp_maxpath:
+      description:
+        - Specify bgp_maxpath value to be added to vrouter.
+      required: False
+      type: str
+      default: '16'
+    pn_bgp_as_range:
+      description:
+        - Specify bgp_as_range value to be added to vrouter.
+      required: False
+      type: str
+      default: '65000'
 """
 
 EXAMPLES = """
@@ -85,6 +100,9 @@ changed:
 """
 
 
+CHANGED_FLAG = []
+
+
 def pn_cli(module):
     """
     This method is to generate the cli portion to launch the Netvisor cli.
@@ -94,14 +112,11 @@ def pn_cli(module):
     """
     username = module.params['pn_cliusername']
     password = module.params['pn_clipassword']
-    cliswitch = module.params['pn_cliswitch']
+
     if username and password:
-        cli = '/usr/bin/cli --quiet --user %s:%s' % (username, password)
+        cli = '/usr/bin/cli --quiet --user %s:%s ' % (username, password)
     else:
         cli = '/usr/bin/cli --quiet '
-
-    if cliswitch:
-        cli += ' switch ' + cliswitch
 
     return cli
 
@@ -122,26 +137,26 @@ def run_cli(module, cli):
 
     if err:
         module.exit_json(
-            error="1",
+            error='1',
             failed=True,
             stderr=err.strip(),
-            msg="Operation Failed: " + str(cli),
+            msg='Operation Failed: ' + str(cli),
             changed=False
         )
     else:
         return 'Success'
 
 
-def assigning_bgp_as(module, bgp_as):
+def assigning_bgp_as(module, bgp_spine):
     """
-    This method assigns bgp_as to vrouter.
+    Method to assign bgp_as to vrouter.
     :param module: The Ansible module to fetch input parameters.
-    :param bgp_as: The user_input for the bgp_as to be assigned.
+    :param bgp_spine: The user_input for the bgp_as to be assigned.
     :return: The output message of the assignment of the bgp_as
     """
-    output = ' '
-    bgp_as_spine = bgp_as
-    bgp_leaf = int(bgp_as) + 1
+    global CHANGED_FLAG
+    output = ''
+    bgp_leaf = int(bgp_spine) + 1
     spine_list = module.params['pn_spine_list']
 
     cli = pn_cli(module)
@@ -161,18 +176,22 @@ def assigning_bgp_as(module, bgp_as):
             if switch_vrouter[0] in spine_list:
                 cli = clicopy
                 cli += ' vrouter-modify name %s bgp-as %s ' % (vrouter,
-                                                               bgp_as_spine)
-                output += run_cli(module, cli)
-                output += ' '
+                                                               bgp_spine)
+                if 'Success' in run_cli(module, cli):
+                    output += ' Added BGP_AS to %s! ' % vrouter
+                    CHANGED_FLAG.append(True)
             else:
                 cli = clicopy
                 cli += ' vrouter-modify name %s bgp-as %s ' % (vrouter,
                                                                str(bgp_leaf))
-                output += run_cli(module, cli)
-                output += ' '
+                if 'Success' in run_cli(module, cli):
+                    output += ' Added BGP_AS to %s! ' % vrouter
+                    CHANGED_FLAG.append(True)
+
                 bgp_leaf += 1
     else:
-        output += 'No vrouters present/created in this switch'
+        output += ' No vrouters present/created '
+        CHANGED_FLAG.append(False)
 
     return output
 
@@ -183,7 +202,8 @@ def bgp_neighbor(module):
     :param module: The Ansible module to fetch input parameters.
     :return: The output of the adding bgp-neighbor
     """
-    output = ' '
+    global CHANGED_FLAG
+    output = ''
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
@@ -244,28 +264,32 @@ def bgp_neighbor(module):
                 already_added = run_cli(module, cli).split()
 
                 if vrouter in already_added:
-                    output += " already exists bgp in %s " % vrouter
-                    output += ' '
+                    output += ' BGP Neighbour already added for %s! ' % vrouter
+                    CHANGED_FLAG.append(False)
                 else:
                     cli = clicopy
                     cli += ' vrouter-bgp-add vrouter-name ' + vrouter
                     cli += ' neighbor %s remote-as %s ' % (
                         ip_hostname, bgp_hostname[0])
-                    output += run_cli(module, cli)
-                    output += ' added bgp %s ' % vrouter
+                    if 'Success' in run_cli(module, cli):
+                        output += ' Added BGP Neighbour for %s ' % vrouter
+                        CHANGED_FLAG.append(True)
+
     else:
-        print "no vrouter created yet"
+        print ' No vrouters present/created! '
+        CHANGED_FLAG.append(False)
 
     return output
 
 
 def assign_router_id(module):
     """
-    This method assign router id same as loopback ip.
+    Method to assign router id which is same as loopback ip.
     :param module: The Ansible module to fetch input parameters.
     :return: The output message for the assignment.
     """
-    output = ' '
+    global CHANGED_FLAG
+    output = ''
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
@@ -285,10 +309,13 @@ def assign_router_id(module):
             cli = clicopy
             cli += ' vrouter-modify name %s router-id %s ' % (vrouter,
                                                               loopback_ip[0])
-            output += run_cli(module, cli)
-            output += ' '
+            if 'Success' in run_cli(module, cli):
+                output += ' Added router id %s to %s! ' % (loopback_ip[0],
+                                                           vrouter)
+                CHANGED_FLAG.append(True)
     else:
-        print 'No vrouters present/created in this switch.'
+        print ' No vrouters present/created! '
+        CHANGED_FLAG.append(False)
 
     return output
 
@@ -300,7 +327,8 @@ def bgp_redistribute(module, bgp_redis):
     :param bgp_redis: It is 'connected' by default.
     :return: The output message for the assignment.
     """
-    output = ' '
+    global CHANGED_FLAG
+    output = ''
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
@@ -313,8 +341,9 @@ def bgp_redistribute(module, bgp_redis):
         cli = clicopy
         cli += ' vrouter-modify name %s bgp-redistribute %s ' % (vrouter,
                                                                  bgp_redis)
-        output += run_cli(module, cli)
-        output += ' '
+        if 'Success' in run_cli(module, cli):
+            output += ' Added BGP_REDISTRIBUTE to %s! ' % vrouter
+            CHANGED_FLAG.append(True)
 
     return output
 
@@ -326,7 +355,8 @@ def bgp_maxpath(module, bgp_max):
     :param bgp_max: It is '16' by default.
     :return: The output message for the assignment.
     """
-    output = ' '
+    global CHANGED_FLAG
+    output = ''
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
@@ -339,18 +369,19 @@ def bgp_maxpath(module, bgp_max):
         cli = clicopy
         cli += ' vrouter-modify name %s bgp-max-paths %s ' % (vrouter,
                                                               bgp_max)
-        output += run_cli(module, cli)
-        output += ' '
+        if 'Success' in run_cli(module, cli):
+            output += ' Added BGP_MAXPATH to %s! ' % vrouter
+            CHANGED_FLAG.append(True)
 
     return output
 
 
 def leaf_no_cluster(module, leaf_list):
     """
-    This method is to find leafs not in any leafs
+    Method to find leafs not connected to any other leaf switches.
     :param module: The Ansible module to fetch input parameters.
     :param leaf_list: The list of all the leaf switches.
-    :return: The list of leaf in no cluster.
+    :return: The list of non clustered leaf switches.
     """
     cli = pn_cli(module)
     noncluster_leaf = []
@@ -373,7 +404,7 @@ def leaf_no_cluster(module, leaf_list):
 
 def create_cluster(module, switch, name, node1, node2):
     """
-    This method is to create a cluster between two switches.
+    Method to create a cluster between two switches.
     :param module: The Ansible module to fetch input parameters.
     :param switch: Name of the local switch.
     :param name: The name of the cluster to create.
@@ -381,6 +412,7 @@ def create_cluster(module, switch, name, node1, node2):
     :param node2: Second node of the cluster.
     :return: The output of run_cli() method.
     """
+    global CHANGED_FLAG
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
@@ -392,16 +424,19 @@ def create_cluster(module, switch, name, node1, node2):
         cli = clicopy
         cli += ' switch %s cluster-create name %s ' % (switch, name)
         cli += ' cluster-node-1 %s cluster-node-2 %s ' % (node1, node2)
-        return run_cli(module, cli)
+        if 'Success' in run_cli(module, cli):
+            CHANGED_FLAG.append(True)
+            return ' %s created successfully! ' % name
     else:
-        return "Already part of a cluster"
+        CHANGED_FLAG.append(True)
+        return ' %s already exists! ' % name
 
 
-def leaf_cluster_formation(module, noncluster_leaf, spine_list):
+def leaf_cluster_formation(module, non_cluster_leaf, spine_list):
     """
-    This method uses non-clistered leafs and forms cluster
+    Method to create cluster between leaf switches.
     :param module: The Ansible module to fetch input parameters.
-    :param noncluster_leaf: List of all the leaf not in cluster.
+    :param non_cluster_leaf: List of all the leaf not in cluster.
     :param spine_list: The list of spines.
     :return: The output message of success or error
     """
@@ -410,16 +445,14 @@ def leaf_cluster_formation(module, noncluster_leaf, spine_list):
         cli = cli.rpartition('switch')[0]
 
     clicopy = cli
-    output = ' '
+    output = ''
     flag = 0
     while flag == 0:
-        if len(noncluster_leaf) == 0:
-            output += "no more leaf to create cluster"
-            output += ' '
+        if len(non_cluster_leaf) == 0:
             flag += 1
         else:
-            node1 = noncluster_leaf[0]
-            noncluster_leaf.remove(node1)
+            node1 = non_cluster_leaf[0]
+            non_cluster_leaf.remove(node1)
             cli = clicopy
             cli += ' switch %s lldp-show ' % node1
             cli += ' format sys-name no-show-headers '
@@ -431,17 +464,17 @@ def leaf_cluster_formation(module, noncluster_leaf, spine_list):
             while (cluster_count < len(system_names)) and (cluster_flag == 0):
                 switch = system_names[cluster_count]
                 if switch not in spine_list:
-                    if switch in noncluster_leaf:
+                    if switch in non_cluster_leaf:
                         name = node1 + '-to-' + switch + '-cluster'
                         output += create_cluster(module, switch, name, node1,
                                                  switch)
-                        output += ' '
-                        noncluster_leaf.remove(switch)
+                        non_cluster_leaf.remove(switch)
                         cluster_flag += 1
                     else:
-                        print "switch already has a cluster"
+                        print ' Switch is already part of a cluster '
+                        CHANGED_FLAG.append(False)
                 else:
-                    print "switch is a spine"
+                    print ' Switch is spine '
 
                 cluster_count += 1
 
@@ -450,16 +483,15 @@ def leaf_cluster_formation(module, noncluster_leaf, spine_list):
 
 def create_leaf_cluster(module):
     """
-    This method creates leaf cluster with physical link
+    Method to create leaf cluster with physical link
     :param module: The Ansible module to fetch input parameters.
     :return: The output message with success or error.
     """
-    output = ' '
+    output = ''
     spine_list = module.params['pn_spine_list']
     leaf_list = module.params['pn_leaf_list']
-    noncluster_leaf = leaf_no_cluster(module, leaf_list)
-    output += leaf_cluster_formation(module, noncluster_leaf, spine_list)
-    output += ' '
+    non_cluster_leaf = leaf_no_cluster(module, leaf_list)
+    output += leaf_cluster_formation(module, non_cluster_leaf, spine_list)
     return output
 
 
@@ -470,8 +502,6 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_cliswitch=dict(required=False, type='str'),
-            pn_fabric_retry=dict(required=False, type='int', default=1),
             pn_spine_list=dict(required=False, type='list'),
             pn_leaf_list=dict(required=False, type='list'),
             pn_bgp_as_range=dict(required=False, type='str', default='65000'),
@@ -483,30 +513,26 @@ def main():
         )
     )
 
+    global CHANGED_FLAG
+    CHANGED_FLAG = []
     bgp_as_range = module.params['pn_bgp_as_range']
     bgp_redistribute_val = module.params['pn_bgp_redistribute']
     bgp_maxpath_val = module.params['pn_bgp_maxpath']
 
-    message = ' '
-    assigning_bgp_as(module, bgp_as_range)
-    message += ' Assigned BGP_AS to vrouters '
-    bgp_redistribute(module, bgp_redistribute_val)
-    message += ' Assigned BGP_REDISTRIBUTE to vrouters '
-    bgp_maxpath(module, bgp_maxpath_val)
-    message += ' Assigned BGP_MAXPATH to vrouters '
-    bgp_neighbor(module)
-    message += ' Added BGP neighbors for vrouters '
-    assign_router_id(module)
-    message += ' Assigned ID to vrouters '
-    create_leaf_cluster(module)
-    message += ' Created leaf cluster with physical links '
+    message = ''
+    message += assigning_bgp_as(module, bgp_as_range)
+    message += bgp_redistribute(module, bgp_redistribute_val)
+    message += bgp_maxpath(module, bgp_maxpath_val)
+    message += bgp_neighbor(module)
+    message += assign_router_id(module)
+    message += create_leaf_cluster(module)
 
     module.exit_json(
         stdout=message,
-        error="0",
+        error='0',
         failed=False,
-        msg="eBGP setup completed successfully.",
-        changed=True
+        msg='eBGP setup completed successfully.',
+        changed=True if True in CHANGED_FLAG else False
     )
 
 # AnsibleModule boilerplate
