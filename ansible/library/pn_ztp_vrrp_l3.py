@@ -23,7 +23,8 @@ import shlex
 DOCUMENTATION = """
 ---
 module: pn_ztp
-author: "Pluribus Networks (@gauravbajaj)"
+author: 'Pluribus Networks (@gauravbajaj)'
+modified by: 'Pluribus Networks (@saptaktakalkar)'
 version: 1
 short_description: CLI command to configure VRRP - Layer 3 Setup
 description: Virtual Router Redundancy Protocol (VRRP) - Layer 3 Setup
@@ -36,11 +37,6 @@ options:
     pn_clipassword:
       description:
         - Provide login password if user is not root.
-      required: False
-      type: str
-    pn_cliswitch:
-      description:
-        - Target switch(es) to run the CLI on.
       required: False
       type: str
     pn_fabric_name:
@@ -88,6 +84,9 @@ changed:
 """
 
 
+CHANGED_FLAG = []
+
+
 def pn_cli(module):
     """
     This method is to generate the cli portion to launch the Netvisor cli.
@@ -97,15 +96,11 @@ def pn_cli(module):
     """
     username = module.params['pn_cliusername']
     password = module.params['pn_clipassword']
-    cliswitch = module.params['pn_cliswitch']
 
     if username and password:
-        cli = '/usr/bin/cli --quiet --user %s:%s' % (username, password)
+        cli = '/usr/bin/cli --quiet --user %s:%s ' % (username, password)
     else:
         cli = '/usr/bin/cli --quiet '
-
-    if cliswitch:
-        cli += ' switch ' + cliswitch
 
     return cli
 
@@ -138,12 +133,13 @@ def run_cli(module, cli):
 
 def create_vlan_l3(module, vlan_id):
     """
-    This method is to create vlans.
+    Method to create vlans.
     :param module: The Ansible module to fetch input parameters.
-    :param vlan_id: vlan number to be created.
-    :return: Success or failure message for the vlan.
+    :param vlan_id: vlan id to be created.
+    :return: String describing if vlan got created or if it already exists.
     """
-    output = ' '
+    global CHANGED_FLAG
+    output = ''
     cli = pn_cli(module)
 
     clicopy = cli
@@ -158,25 +154,26 @@ def create_vlan_l3(module, vlan_id):
         clicopy += id_str
         clicopy += ' scope fabric '
         output += run_cli(module, clicopy)
-        output += 'vlan ' + vlan_id + ' created'
-        output += '\n'
+        output += ' vlan with id ' + vlan_id + ' created! '
+        CHANGED_FLAG.append(True)
     else:
-        output += 'vlan ' + vlan_id + ' already present'
-        output += '\n'
+        output += ' vlan with id ' + vlan_id + ' already exists! '
+        CHANGED_FLAG.append(False)
 
     return output
 
 
 def create_l3_vrouter(module, switch, vrrp_id):
     """
-    This method is to create vrouter and assign vrrp_id to the switches.
+    Method to create vrouter and assign vrrp_id to the switches.
     :param module: The Ansible module to fetch input parameters.
     :param switch: The switch name on which vrouter will be created.
     :param vrrp_id: The vrrp_id to be assigned.
     :return: The output string informing details of vrouter created and
     interface added or if vrouter already exists.
     """
-    output = ' '
+    global CHANGED_FLAG
+    output = ''
     switch_temp = str(switch[3:]) + '-vrouter'
     vrouter_name = switch_temp
     vnet_name = module.params['pn_fabric_name'] + '-global'
@@ -198,11 +195,12 @@ def create_l3_vrouter(module, switch, vrrp_id):
         cli += ' vrouter-create name %s vnet %s hw-vrrp-id %s enable ' % (
             vrouter_name, vnet_name, vrrp_id)
         run_cli(module, cli)
-        output += ' Created vrouter %s on switch %s ' % (vrouter_name, switch)
-        output += '\n'
+        output += ' Created vrouter %s on switch %s! ' % (vrouter_name, switch)
+        CHANGED_FLAG.append(True)
     else:
-        output += ' Vrouter name %s on switch %s already exists. ' % (
+        output += ' Vrouter name %s on switch %s already exists! ' % (
             vrouter_name, switch)
+        CHANGED_FLAG.append(False)
 
     return output
 
@@ -210,7 +208,7 @@ def create_l3_vrouter(module, switch, vrrp_id):
 def create_l3_interface(module, switch, ip, vlan_id, vrrp_id,
                         ip_count, vrrp_priority):
     """
-    This method is to add vrouter interface and assign IP to it along with
+    Method to add vrouter interface and assign IP to it along with
     vrrp_id and vrrp_priority.
     :param module: The Ansible module to fetch input parameters.
     :param switch: The switch name on which vrouter will be created.
@@ -222,7 +220,8 @@ def create_l3_interface(module, switch, ip, vlan_id, vrrp_id,
     :return: The output string informing details of vrouter created and
     interface added or if vrouter already exists.
     """
-    output = ' '
+    global CHANGED_FLAG
+    output = ''
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
@@ -251,10 +250,11 @@ def create_l3_interface(module, switch, ip, vlan_id, vrrp_id,
         cli += ' ip ' + ip2
         cli += ' vlan %s if data ' % vlan_id
         run_cli(module, cli)
-        output += ' and added vrouter interface with ip: ' + ip2
-        output += ' '
+        output += ' Added vrouter interface with ip %s! ' % ip2
+        CHANGED_FLAG.append(True)
     else:
-        output += ' interface already exists for vrouter ' + vrouter_name[0]
+        output += ' Interface already exists for vrouter %s! ' % vrouter_name[0]
+        CHANGED_FLAG.append(False)
 
     cli = clicopy
     cli += ' vrouter-interface-show vrouter-name %s ip %s vlan %s ' % (
@@ -277,20 +277,23 @@ def create_l3_interface(module, switch, ip, vlan_id, vrrp_id,
         cli += ' vlan %s if data vrrp-id %s ' % (vlan_id, vrrp_id)
         cli += ' vrrp-primary %s vrrp-priority %s ' % (eth_port[0],
                                                        vrrp_priority)
-        output += run_cli(module, cli)
-        output += ' '
+        run_cli(module, cli)
+        output += ' Added vrouter interface with ip %s ' % ip1
+        CHANGED_FLAG.append(True)
+
     else:
-        output += ' interface already added for vrouter ' + vrouter_name[0]
+        output += ' Interface already exists for vrouter %s! ' % vrouter_name[0]
+        CHANGED_FLAG.append(False)
 
     return output
 
 
 def leaf_no_cluster(module, leaf_list):
     """
-    This method is to find leafs not in any leafs.
+    Method to find non clustered leaf nodes.
     :param module: The Ansible module to fetch input parameters.
     :param leaf_list: The list of all the leaf switches.
-    :return: The list of leaf in no cluster.
+    :return: The list of non clustered leaf switches.
     """
     cli = pn_cli(module)
     non_cluster_leaf = []
@@ -300,6 +303,7 @@ def leaf_no_cluster(module, leaf_list):
     clicopy = cli
     clicopy += ' cluster-show format cluster-node-1 no-show-headers '
     cluster1 = run_cli(module, clicopy).split()
+
     clicopy = cli
     clicopy += ' cluster-show format cluster-node-2 no-show-headers '
     cluster2 = run_cli(module, clicopy).split()
@@ -313,7 +317,7 @@ def leaf_no_cluster(module, leaf_list):
 
 def create_cluster(module, switch, name, node1, node2):
     """
-    This method is to create a cluster between two switches.
+    Method to create a cluster between two switches.
     :param module: The Ansible module to fetch input parameters.
     :param switch: Name of the local switch.
     :param name: The name of the cluster to create.
@@ -321,6 +325,7 @@ def create_cluster(module, switch, name, node1, node2):
     :param node2: Second node of the cluster.
     :return: The output of run_cli() method.
     """
+    global CHANGED_FLAG
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
@@ -332,9 +337,12 @@ def create_cluster(module, switch, name, node1, node2):
         cli = clicopy
         cli += ' switch %s cluster-create name %s ' % (switch, name)
         cli += ' cluster-node-1 %s cluster-node-2 %s ' % (node1, node2)
-        return run_cli(module, cli)
+        if 'Success' in run_cli(module, cli):
+            CHANGED_FLAG.append(True)
+            return ' %s created successfully! ' % name
     else:
-        return "Already part of a cluster"
+        CHANGED_FLAG.append(False)
+        return ' %s already exists! ' % name
 
 
 def leaf_cluster_formation(module, non_cluster_leaf, spine_list):
@@ -350,12 +358,11 @@ def leaf_cluster_formation(module, non_cluster_leaf, spine_list):
         cli = cli.rpartition('switch')[0]
 
     clicopy = cli
-    output = ' '
+    output = ''
     flag = 0
     while flag == 0:
         if len(non_cluster_leaf) == 0:
-            output += "no more leaf to create cluster"
-            output += ' '
+            output += ' no more leafs to create cluster '
             flag += 1
         else:
             node1 = non_cluster_leaf[0]
@@ -375,13 +382,12 @@ def leaf_cluster_formation(module, non_cluster_leaf, spine_list):
                         name = node1 + '-to-' + switch + '-cluster'
                         output += create_cluster(module, switch, name, node1,
                                                  switch)
-                        output += ' '
                         non_cluster_leaf.remove(switch)
                         flag1 += 1
                     else:
-                        output += "switch already has a cluster"
+                        output += ' switch already has a cluster '
                 else:
-                    output += "switch is a spine"
+                    output += ' switch is a spine '
 
                 switch_count += 1
 
@@ -394,25 +400,24 @@ def create_leaf_cluster(module):
     :param module: The Ansible module to fetch input parameters.
     :return: The output message with success or error.
     """
-    output = ' '
+    output = ''
     spine_list = module.params['pn_spine_list']
     leaf_list = module.params['pn_leaf_list']
     non_cluster_leaf = leaf_no_cluster(module, leaf_list)
     output += leaf_cluster_formation(module, non_cluster_leaf, spine_list)
-    output += ' '
-
     return output
 
 
 def create_l3_vrouter_novrrp(module, switch):
     """
-    This method is to create vrouter and assign vrrp_id to the switches.
+    Method to create vrouter and assign vrrp_id to the switches.
     :param module: The Ansible module to fetch input parameters.
     :param switch: The switch name on which vrouter will be created.
     :return: The output string informing details of vrouter created and
     interface added or if vrouter already exists.
     """
-    output = ' '
+    global CHANGED_FLAG
+    output = ''
     switch_temp = str(switch[3:]) + '-vrouter'
     vrouter_name = switch_temp
     vnet_name = module.params['pn_fabric_name'] + '-global'
@@ -434,26 +439,27 @@ def create_l3_vrouter_novrrp(module, switch):
         cli += ' vrouter-create name %s vnet %s ' % (
             vrouter_name, vnet_name)
         run_cli(module, cli)
-        output += ' Created vrouter %s on switch %s ' % (vrouter_name, switch)
-        output += '\n'
+        output += ' Created vrouter %s on switch %s! ' % (vrouter_name, switch)
+        CHANGED_FLAG.append(True)
     else:
-        output += ' Vrouter name %s on switch %s already exists. ' % (
+        output += ' Vrouter name %s on switch %s already exists! ' % (
             vrouter_name, switch)
-        output += '\n'
+        CHANGED_FLAG.append(False)
 
     return output
 
 
 def vrrp_noncluster_switch(module, ip, noncluster_leaf, vlan_id):
     """
-    This method is to configure vrrp for non-cluster switches
+    Method to configure vrrp for non-cluster switches
     :param module: The Ansible module to fetch input parameters.
     :param ip: ip address for the default gateway
     :param noncluster_leaf: name of all the non-cluster leaf
     :param vlan_id: The vlan id to be assigned.
     :return: It returns the output in the success or failure
     """
-    output = ' '
+    global CHANGED_FLAG
+    output = ''
     cli = pn_cli(module)
     if 'switch' in cli:
         cli = cli.rpartition('switch')[0]
@@ -482,11 +488,12 @@ def vrrp_noncluster_switch(module, ip, noncluster_leaf, vlan_id):
             cli += ' vlan ' + vlan_id
             cli += ' ip ' + ip1
             run_cli(module, cli)
-            output += ' and added vrouter interface with ip: ' + ip1
-            output += '\n'
+            output += ' Added vrouter interface with ip %s ' % ip1
+            CHANGED_FLAG.append(True)
         else:
-            output += ' interface already exists for vrouter ' + vrouter_name[0]
-            output += '\n'
+            output += ' Interface already exists for vrouter ' + vrouter_name[0]
+            output += ' '
+            CHANGED_FLAG.append(False)
 
     return output
 
@@ -494,7 +501,7 @@ def vrrp_noncluster_switch(module, ip, noncluster_leaf, vlan_id):
 def configure_vrrp_l3_with_cluster(module, vrrp_id, vrrp_ip,
                                    active_switch, vlan_id, switch_list):
     """
-    This method is to configure vrrp.
+    Method to configure vrrp interfaces.
     :param module: The Ansible module to fetch input parameters.
     :param vrrp_id: The vrrp_id need to be assigned.
     :param vrrp_ip: The vrrp_ip needed to be assigned.
@@ -503,7 +510,7 @@ def configure_vrrp_l3_with_cluster(module, vrrp_id, vrrp_ip,
     :param switch_list: List of switches.
     :return: It returns the output of the configuration
     """
-    output = ' '
+    output = ''
     node1 = switch_list[0]
     node2 = switch_list[1]
     name = node1 + '-to-' + node2 + '-cluster'
@@ -515,7 +522,6 @@ def configure_vrrp_l3_with_cluster(module, vrrp_id, vrrp_ip,
 
     for switch in switch_list:
         output += create_l3_vrouter(module, switch, vrrp_id)
-        output += ' '
 
     for switch in switch_list:
         host_count += 1
@@ -543,11 +549,9 @@ def configure_vrrp_l3_without_cluster(module, vlan_id, ip, noncluster_leaf):
     output = ' '
     for switch in noncluster_leaf:
         output += create_l3_vrouter_novrrp(module, switch)
-        output += ' '
 
     output += create_vlan_l3(module, vlan_id)
     output += vrrp_noncluster_switch(module, ip, noncluster_leaf, vlan_id)
-
     return output
 
 
@@ -558,12 +562,11 @@ def configure_vrrp_l3(module, csv_data):
     :param csv_data: String containing vrrp data parsed from csv file.
     :return: Output string of configuration.
     """
-    output = ' '
+    output = ''
     spine_list = module.params['pn_spine_list']
 
     for switch in spine_list:
         output += create_l3_vrouter_novrrp(module, switch)
-        output += ' '
 
     csv_data = csv_data.replace(" ", "")
     csv_data_list = csv_data.split('\n')
@@ -598,25 +601,23 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_cliswitch=dict(required=False, type='str'),
-            pn_fabric_name=dict(required=False, type='str'),
-            pn_fabric_retry=dict(required=False, type='int', default=1),
+            pn_fabric_name=dict(required=True, type='str'),
             pn_spine_list=dict(required=False, type='list'),
             pn_leaf_list=dict(required=False, type='list'),
             pn_csv_data=dict(required=True, type='str'),
         )
     )
 
-    csv_data = module.params['pn_csv_data']
-    configure_vrrp_l3(module, csv_data)
-    message = ' Configured VRRP Layer3 '
+    global CHANGED_FLAG
+    CHANGED_FLAG = []
+    message = configure_vrrp_l3(module, module.params['pn_csv_data'])
 
     module.exit_json(
         stdout=message,
-        error="0",
+        error='0',
         failed=False,
-        msg="VRRP Layer 3 Setup completed successfully.",
-        changed=True
+        msg='VRRP Layer 3 Setup completed successfully.',
+        changed=True if True in CHANGED_FLAG else False
     )
 
 

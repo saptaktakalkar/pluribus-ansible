@@ -1,11 +1,17 @@
 ---
 
-
+# This task is to configure initial ZTP setup on all switches.
+# It uses pn_ztp.py module from library/ directory.
+# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+# Mandatory parameters: pn_fabric_name, pn_run_l2_l3, pn_current_switch
+# When pn_run_l2_l3 is False, it will run initial ZTP setup.
+# If the tasks fails then it will retry as specified by retries count.
 - name: Zero Touch Provisioning - Initial setup
   hosts: all
   serial: 1
   become: true
-  user: root
+  become_method: su
+  become_user: root
 
   vars_files:
   - cli_vault.yml
@@ -15,18 +21,14 @@
       pn_ztp:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        # pn_fabric_retry: 1
-        pn_fabric_name: 'ztp-fabric'
+        pn_fabric_name: 'vrrp-l2-fab'
         pn_run_l2_l3: False
         pn_current_switch: "{{ inventory_hostname }}"
       register: ztp_out
-      until: ztp_out.failed != true  # if the above code fails it will retry the code
-      retries: 3                     # ztp_out.retry can be used in place of 3 if the value is given as pn_fabric_retry
+      until: ztp_out.failed != true  # If the above code fails it will retry the code
+      retries: 3                     # This is the retries count
       delay: 3
       ignore_errors: yes
-
-    - debug:
-        msg: "ZTP initial setup completed on {{ inventory_hostname }}"
 
     - debug:
         var: ztp_out.stdout_lines
@@ -35,10 +37,17 @@
         seconds: 2
 
 
+# This task is to configure ZTP layer 2 setup.
+# It uses pn_ztp.py module from library/ directory.
+# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+# Mandatory parameters: pn_fabric_name, pn_run_l2_l3
+# When pn_run_l2_l3 is True and pn_fabric_type is 'layer2', it will run ZTP layer2 setup.
+# If the tasks fails then it will retry as specified by retries count.
 - name: Zero Touch Provisioning - Layer2 setup
   hosts: spine[0]
   serial: 1
   become: true
+  become_method: su
   become_user: root
 
   vars_files:
@@ -49,21 +58,17 @@
       pn_ztp:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_fabric_name: 'ztp-fabric'
-        # pn_fabric_retry: 1
+        pn_fabric_name: 'vrrp-l2-fab'
         pn_spine_list: "{{ groups['spine'] }}"
         pn_leaf_list: "{{ groups['leaf'] }}"
         pn_fabric_type: 'layer2'
         pn_run_l2_l3: True
-      when: ztp_out.error != '1'         # if the above task fails then this task will not run
+      when: ztp_out.error != "1"         # If the above initial task fails then this task will not run
       register: ztp_l2_out
-      until:  ztp_l2_out.failed != true  # if error pops up it will retry the code
-      retries: 3                         # ztp_l2_out.retry can be used in place of 3 if the value is given as pn_fabric_retry
+      until:  ztp_l2_out.failed != true  # If error pops up it will retry the code
+      retries: 3                         # This is the retries count
       delay: 3
       ignore_errors: yes
-
-    - debug:
-        msg: "ZTP Layer 2 setup completed"
 
     - debug:
         var: ztp_l2_out.stdout_lines
@@ -72,25 +77,27 @@
         seconds: 2
 
 
+# This task is to configure VRRP for Layer 2.
+# It uses pn_ztp_vrrp_l2_tasks.py module from library/ directory.
+# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+# Mandatory parameters: pn_fabric_name, pn_vrrp_id, pn_vrrp_ip
+# If the tasks fails then it will retry as specified by retries count.
 - name: Virtual Router Redundancy Protocol (VRRP) - Layer 2 Setup
   hosts: spine[0]
   serial: 1
   become: true
+  become_method: su
   become_user: root
 
   vars_files:
   - cli_vault.yml
 
-  vars:
-  - csv_file: /etc/ansible/pluribus-ansible/ansible/pn_vrrp_l2.csv
-
   tasks:
-    - name: VRRP L2 setup
-      pn_ztp_vrrp_l2_csv:
+    - name: Configure VRRP L2
+      pn_ztp_vrrp_l2_tasks:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_fabric_name: 'ztp-fabric'
-        # pn_fabric_retry: 1
+        pn_fabric_name: 'vrrp-l2-fab'
         pn_spine_list: "{{ groups['spine'] }}"
         pn_leaf_list: "{{ groups['leaf'] }}"
         pn_vrrp_id: '18'
@@ -99,13 +106,10 @@
         pn_vlan_range: '100-200'
         pn_vrrp_no_interface: '100'
       register: vrrp_out
-      until:  vrrp_out.failed != true  # if error pops up it will retry the code
-      retries: 3                       # vrrp_out.retry can be used in place of 3 if the value is given as pn_fabric_retry
+      until:  vrrp_out.failed != true  # If error pops up it will retry the code
+      retries: 3                       # This is the retries count
       delay: 3
       ignore_errors: yes
-
-    - debug:
-        msg: "VRRP Layer 2 setup completed"
 
     - debug:
         var: vrrp_out.stdout_lines

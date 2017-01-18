@@ -1,35 +1,39 @@
 ---
 
-######## ZTP ##########
-
-- name: "Zero Touch Provisioning - Initial setup"
+# This task is to configure eBGP.
+# It uses pn_ebgp.py module from library/ directory.
+# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+# If you don't specify values for pn_bgp_maxpath, pn_bgp_redistribute, pn_bgp_as_range,
+# then it will take the default values specified in the pn_ebgp.py module.
+# If the tasks fails then it will retry as specified by retries count.
+- name: Zero Touch Provisioning - BGP setup
   hosts: spine[0]
   serial: 1
-  user: root
-  
+  become: true
+  become_method: su
+  become_user: root
+
   vars_files:
   - cli_vault.yml
 
   tasks:
-
-    - name: BGP MODULE
-      pn_ztp2:
+    - name: Configure eBGP
+      pn_ebgp:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        #pn_fabric_retry: 1
-        pn_fabric_name: ztp-fabric
-        pn_run_l2_l3: False
         pn_spine_list: "{{ groups['spine'] }}"
         pn_leaf_list: "{{ groups['leaf'] }}"
-        #pn_bgp_maxpath:                                               #default 16
-        #pn_bgp_redistribute:                                          #default connected
-        #pn_bgp_as_range:                                              #default 65000
-      register: ztp_out
-      until: ztp_out.failed != true              # if the above code fails it will retry the code
-      retries: 3                                # ztp_out.retry can be used in place of 3 if the value is given as pn_fabric_retry
+        # pn_bgp_maxpath:                       # default 16
+        # pn_bgp_redistribute:                  # default connected
+        # pn_bgp_as_range:                      # default 65000
+      register: bgp_out
+      until: bgp_out.failed != true             # If the above code fails it will retry the code
+      retries: 3                                # This is the retries count
       delay: 1
-      ignore_errors: yes      
-       
-    - debug: var=ztp_out
-    - pause: seconds=2
+      ignore_errors: yes
 
+    - debug:
+        var: bgp_out.stdout_lines
+
+    - pause:
+        seconds: 2

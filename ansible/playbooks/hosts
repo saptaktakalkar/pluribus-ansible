@@ -8,11 +8,11 @@
 #
 
 [spine]
-auto-spine1  ansible_connection=ssh  ansible_user=root ansible_ssh_pass=test123
-auto-spine2  ansible_connection=ssh  ansible_user=root ansible_ssh_pass=test123
+auto-spine1
+auto-spine2 
 
 [leaf]
-auto-leaf1  ansible_connection=ssh  ansible_user=root ansible_ssh_pass=test123
-auto-leaf2  ansible_connection=ssh  ansible_user=root ansible_ssh_pass=test123
-auto-leaf3  ansible_connection=ssh  ansible_user=root ansible_ssh_pass=test123
-auto-leaf4  ansible_connection=ssh  ansible_user=root ansible_ssh_pass=test123
+auto-leaf1
+auto-leaf2
+auto-leaf3
+auto-leaf4
