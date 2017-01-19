@@ -1,15 +1,21 @@
 ---
 
-- name: "ZTP Test"
+- name: "ZTP TEST"
   hosts: spine[1]
-  user: root
+  become: true
+  become_method: su
+  become_user: root
 
   vars_files:
   - cli_vault.yml
 
   tasks:
-    - name: Test Zero Touch Provisioning
-      pn_test_ztp_l2:
+    - name: Test Layer3 Zero Touch Provisioning
+      pn_test_ztp_l3:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
         pn_switch_count: '6'
+      register: ztp_out
+
+    - debug:
+        var: ztp_out.stdout_lines
