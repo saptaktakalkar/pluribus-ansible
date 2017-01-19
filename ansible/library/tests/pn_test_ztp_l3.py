@@ -84,7 +84,7 @@ def run_cli(module, cli, find_str, out_msg):
 
     if out:
         if out.find(find_str) > -1:
-            return '%s: Successful' % out_msg
+            return '%s: Successful! ' % out_msg
     else:
         module.exit_json(
             failed=True,
@@ -161,19 +161,14 @@ def main():
         )
     )
 
-    msg = ' '
-    msg += test_fabric_creation(module)
-    msg += '\n'
+    msg = test_fabric_creation(module)
     msg += test_fabric_control_network(module)
-    msg += '\n'
     msg += test_cluster_creation(module)
-    msg += '\n'
     msg += test_vrouter_creation(module)
-    msg += '\n'
     msg += test_vrouter_interface_creation(module)
 
     module.exit_json(
-        msg=msg,
+        stdout=msg,
         changed=False,
     )
 
