@@ -184,14 +184,31 @@ def auto_accept_eula(module):
     rc, out, err = module.run_command(cli)
 
     if err:
-        if 'Setup required' in err:
-            cli = '/usr/bin/cli --quiet'
-            cli += ' --skip-setup --script-password '
-            cli += ' switch-setup-modify password ' + password
-            cli += ' eula-accepted true '
-            return run_cli(module, cli)
+        cli = '/usr/bin/cli --quiet'
+        cli += ' --skip-setup --script-password '
+        cli += ' switch-setup-modify password ' + password
+        cli += ' eula-accepted true '
+        return run_cli(module, cli)
     elif out:
         return ' EULA has been accepted already! '
+
+
+def update_switch_names(module, switch_name):
+    """
+    Method to update switch names.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch_name: Name to assign to the switch.
+    :return: String describing switch name got modified or not.
+    """
+    cli = pn_cli(module)
+    cli += ' switch-setup-show format switch-name '
+    if switch_name in run_cli(module, cli).split()[1]:
+        return ' Switch name is same as hostname! '
+    else:
+        cli = pn_cli(module)
+        cli += ' switch-setup-modify switch-name ' + switch_name
+        run_cli(module, cli)
+        return ' Updated switch name to match hostname! '
 
 
 def modify_stp_local(module, modify_flag):
@@ -446,7 +463,7 @@ def create_vrouter(module, switch):
     :param switch: The switch name on which vrouter will be created.
     :return: The output string informing details of vrouter created.
     """
-    switch_temp = switch[3:]
+    switch_temp = switch
     vrouter_name = switch_temp + '-vrouter'
     vnet_name = module.params['pn_fabric_name'] + '-global'
     global CHANGED_FLAG
@@ -839,7 +856,7 @@ def create_trunk_vlag(module, node1, dest_list):
         string2 += str(node)
 
     src_ports = list(set(src_ports))
-    name = node1[5:] + '-to-' + string2
+    name = node1 + '-to-' + string2
     create_trunk(module, node1, name, src_ports)
     return name
 
@@ -897,7 +914,7 @@ def create_cluster_trunk_vlag(module, non_cluster_leaf, spine_list):
                         name1 = create_trunk_vlag(module, node1, spine_list)
                         name2 = create_trunk_vlag(module, node2, spine_list)
 
-                        name = node1[5:] + node2 + '-to-' + 'spine'
+                        name = node1 + node2 + '-to-' + 'spine'
                         output += create_vlag(module, node1, name, node2,
                                               name1, name2)
 
@@ -906,7 +923,7 @@ def create_cluster_trunk_vlag(module, non_cluster_leaf, spine_list):
                         spine2 = str(spine_list[1])
                         name1 = create_trunk_vlag(module, spine1, list1)
                         name2 = create_trunk_vlag(module, spine2, list1)
-                        name = spine1[5:] + spine2 + '-to-' + node1 + node2
+                        name = spine1 + spine2 + '-to-' + node1 + node2
                         output += create_vlag(module, spine1, name, spine2,
                                               name1, name2)
                         flag1 += 1
@@ -936,7 +953,7 @@ def create_non_cluster_leaf_vlag(module, non_cluster_leaf, spine_list):
         name1 = create_trunk_vlag(module, spine1, list1)
         name2 = create_trunk_vlag(module, spine2, list1)
 
-        name = spine1[5:] + spine2 + '-to-' + leaf
+        name = spine1 + spine2 + '-to-' + leaf
         output += create_vlag(module, spine1, name, spine2, name1, name2)
 
     return output
@@ -1113,6 +1130,11 @@ def main():
             CHANGED_FLAG.append(True)
         else:
             message += eula_out_msg
+            CHANGED_FLAG.append(False)
+
+        if 'Updated' in update_switch_names(module, current_switch):
+            CHANGED_FLAG.append(True)
+        else:
             CHANGED_FLAG.append(False)
 
         if 'already in the fabric' in create_fabric(module, fabric_name,

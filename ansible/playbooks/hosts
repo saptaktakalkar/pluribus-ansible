@@ -8,11 +8,11 @@
 #
 
 [spine]
-auto-spine1
-auto-spine2 
+test-spine1 ansible_host=10.9.21.107
+test-spine2 ansible_host=10.9.21.106
 
 [leaf]
-auto-leaf1
-auto-leaf2
-auto-leaf3
-auto-leaf4
+test-leaf1 ansible_host=10.9.21.226
+test-leaf2 ansible_host=10.9.21.223
+test-leaf3 ansible_host=10.9.21.224
+test-leaf4 ansible_host=10.9.21.225
