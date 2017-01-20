@@ -180,7 +180,7 @@ def create_l2_vrouter(module, switch, vrrp_id):
     """
     global CHANGED_FLAG
     output = ''
-    switch_temp = switch[3:]
+    switch_temp = switch
     vrouter_name = switch_temp + '-vrouter'
     vnet_name = module.params['pn_fabric_name'] + '-global'
     cli = pn_cli(module)

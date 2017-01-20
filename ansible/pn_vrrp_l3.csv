@@ -1,4 +1,4 @@
-100, 172.168.100.0/24, auto-leaf1, auto-leaf2, 19, auto-leaf1
-101, 172.168.101.0/24, auto-leaf3
-102, 172.168.102.0/24, auto-leaf4
-104, 172.168.104.0/24, auto-leaf1, auto-leaf2, 19, auto-leaf1
+100, 172.168.100.0/24, test-leaf1, test-leaf2, 19, test-leaf1
+101, 172.168.101.0/24, test-leaf3
+102, 172.168.102.0/24, test-leaf4
+104, 172.168.104.0/24, test-leaf1, test-leaf2, 19, test-leaf1

@@ -174,7 +174,7 @@ def create_l3_vrouter(module, switch, vrrp_id):
     """
     global CHANGED_FLAG
     output = ''
-    switch_temp = str(switch[3:]) + '-vrouter'
+    switch_temp = str(switch) + '-vrouter'
     vrouter_name = switch_temp
     vnet_name = module.params['pn_fabric_name'] + '-global'
     cli = pn_cli(module)
@@ -418,7 +418,7 @@ def create_l3_vrouter_novrrp(module, switch):
     """
     global CHANGED_FLAG
     output = ''
-    switch_temp = str(switch[3:]) + '-vrouter'
+    switch_temp = str(switch) + '-vrouter'
     vrouter_name = switch_temp
     vnet_name = module.params['pn_fabric_name'] + '-global'
     cli = pn_cli(module)
