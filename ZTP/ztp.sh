@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+##
+# Function to trap and display error messages.
+##
 function error() {
   echo -e "\e[0;33mERROR: The ZTP script failed while running the command $BASH_COMMAND at line $BASH_LINENO.\e[0m" >&2
   exit 1
@@ -9,6 +12,9 @@ trap error ERR
 RED='\033[0;31m'
 NC='\033[0m'
 
+##
+# Sample conf file structure.
+##
 default_conf_file="# If you want to install ansible using GIT then provide GIT keyword in ansible_install_approach variable.Dont use quotes for value.(Default Value - OS-INSTALLER)
 ansible_install_approach=OS-INSTALLER
 # On what interfaces should the DHCP server (dhcpd) serve DHCP requests
@@ -24,16 +30,25 @@ dhcp_domain-name=pluribusnetworks.com
 dhcp_subnet_address=10.9.0.0
 dhcp_range=10.9.1.1 10.9.1.100"
 
+##
+# Sample csv file structure for DHCP.
+##
 default_csv_file="02:42:b4:c9:6d:1e,10.9.1.1,pikachu,spine
 8c:89:a5:f4:28:2f,10.9.1.2,lapras,leaf
 8c:89:a5:f4:23:1f,10.9.1.3,,spine
 8c:89:a5:f3:28:2e,10.9.1.4,gyarados,,"
 
+#
+# Sample csv file structure for ONIE.
+##
 default_csv_file_onie="02:42:b4:c9:6d:1e,10.9.1.1,pikachu,spine,671232X1646008,10g
 8c:89:a5:f4:28:2f,10.9.1.2,lapras,leaf,671232X1645002,40g
 8c:89:a5:f4:23:1f,10.9.1.3,,spine,,10g
 8c:89:a5:f3:28:2e,10.9.1.4,gyarados,spine,,40g"
 
+##
+# The help content displayed when -h/-help is given as input.
+##
 help="
 ${RED}NAME${NC}
      ztp — Script to configure DHCP, ONIE etc
@@ -41,7 +56,7 @@ ${RED}NAME${NC}
 
 ${RED}SYNOPSIS${NC}
      bash ztp.sh [-h/-help] [-dhcp] [-onie] [-conf file.conf] [-csv file.csv] [-reconfigure_dhcp] 
-                 [-skip_ansible] [-all_online] [-all_offline]  [-online_onie] [-offline_onie] [-online_license] [-offline_license] [-checkallsystemsgo]
+                 [-skip_ansible] [-all_offline]  [-online_onie] [-offline_onie] [-online_license] [-offline_license] [-checkallsystemsgo]
 
 ${RED}OPTIONS${NC}
 
@@ -61,9 +76,6 @@ ${RED}OPTIONS${NC}
 
      -skip_ansible:      This field will skip installations of ansible, python and pip modules.
 
-     -all_online:        In this field script will download onie image,activate keys, download keys and copy it to mentioned switches.
-      [Not recommended for first run]: In first run we can not copy keys before installing os on switches.
-
      -all_offline:       In this field user needs to download ONIE image and activation keys manually.
 
      -online_onie:       This field will download ONIE image automatically. User just need to provide versio of image in conf file.
@@ -81,7 +93,6 @@ ${RED}EXAMPLES: ${NC}
      bash ztp.sh -dhcp -conf file.conf -csv file.csv
      bash ztp.sh -dhcp -conf file.conf -csv file.csv -reconfigure_dhcp
      bash ztp.sh -dhcp -conf file.conf -csv file.csv -reconfigure_dhcp -skip_ansible
-     bash ztp.sh -onie -conf file.conf -csv file.csv -all_online -skip_ansible
      bash ztp.sh -onie -conf file.conf -csv file.csv -all_offline -skip_ansible
      bash ztp.sh -onie -conf file.conf -csv file.csv -offline_onie -skip_ansible
      bash ztp.sh -onie -conf file.conf -csv file.csv -online_onie -reconfigure_dhcp
@@ -107,7 +118,9 @@ ${RED}=> For ONIE: Contents of file.csv:${NC}
 $default_csv_file_onie
 
 "
-#Checks operating system type
+##
+# Checks operating system type on the basis of *-release file.
+##
 if [ -f "/etc/redhat-release" ]; then
 OS="Centos"
 elif [ -f "/etc/lsb-release" ]; then
@@ -123,6 +136,10 @@ script_dir=`pwd`
 
 ##
 # This function validates ipaddress and mac address field from CSV file.
+# Checking whether the ip address and mac address are correct.
+# Checking whether the number of arguements in csv files are correct.
+#     If -dhcp: the least comma count required is 2.
+#     If -onie: the least comma count required is 4.
 # Arguments : csv file
 ##
 validate_csv()
@@ -198,6 +215,10 @@ install_ansible_using_git()
 # This function configures dhcp server
 # This function will also install ansible and pip modules, if user has not specified -skip_ansible option. 
 # If user has provided -reconfigure_dhcp option then function will reconfigure dhcpd.conf file. Otherwise it will just keep appending to new entries in conf file.
+# The function checks for the availabilty of csv file and conf file and validate them.
+# It installs ansible, python, pip, dhcp for Ubuntu and Centos according to the operating system.
+# It downloads the yml files from the git repo.
+# It creates host blocks in dhcpd.conf on the basis of csv file input.
 # Arguments: conf file and csv file
 ##
 dhcpserver()
@@ -277,15 +298,17 @@ dhcpserver()
       fi
   fi
 
+  #check if user has provided -skip_ansible, if no then download the yml files
   if ! [[ "$params" == *"-skip_ansible"* ]]; then
     ymlfiles=(bgpsetup.yml bgpteardown.yml cli_vault.yml l2setup.yml l2teardown.yml main.yml pn_ebgp.yml pn_fabric.yml pn_fabric_l3_ebgp.yml pn_l2.yml pn_l2_ztp.yml pn_l3.yml pn_l3_ebgp.yml pn_l3_ztp.yml pn_vrrp.yml)
     sudo mkdir -p /etc/ansible
     cd /etc/ansible
     for i in ${ymlfiles[@]}; do
-      sudo wget --quiet https://raw.githubusercontent.com/amitsi/pluribus-ansible/master/ansible/playbooks/$i -O $i
+      sudo wget --quiet https://github.com/amitsi/pluribus-ansible/blob/master/ansible/$i -O $i
     done
   fi
 
+#check if dhcpd.conf file has any configuration
 check_conf_exists=`cat /etc/dhcp/dhcpd.conf | grep '#DHCP SERVER CONF FILE' | wc -l`
 
   #check if user has provided -reconfigure-dhcp, if yes it will recreate dhcpd.conf file
@@ -317,11 +340,8 @@ subnet $subnet netmask $subnet_mask {  #network
   if [ $processCsv == 1 ]; then
 
     #Appending dhcpd.conf file with mac-ipaddress entries
-    spinehostnames=()
-    leafhostnames=() 
-    spineips=()
-    leafips=()
-  
+    spine=()
+    leaf=()
 
     for line in `cat $csv_file` ;
     do
@@ -365,18 +385,16 @@ subnet $subnet netmask $subnet_mask {  #network
 
       if [ $check_mac_entry_exists == 0 ] && [ $check_ip_entry_exists == 0 ] && [ $check_hostname_entry_exists == 0 ]; then
         sudo sh -c "echo '$host_block' >> /etc/dhcp/dhcpd.conf"
+      else
+        printf "\n  -Host block entry exists in dhcpd.conf file by Hostname:$hostname\n"
       fi
 
       if ! [ -z "$tag" ]; then
         if [ "$tag" == "spine"  ]; then
-          spinehostnames+=($hostname)
-          spineips+=($ip)
+          spine+=($ip)
         else
-          leafhostnames+=($hostname)
-          leafips+=($ip)
+          leaf+=($ip)
         fi
-      else
-        printf "\n  -Tag(spine/leaf) is not provided for host:$hostname. This host is not added in /etc/ansible/hosts file"
       fi
     done
     
@@ -384,15 +402,17 @@ subnet $subnet netmask $subnet_mask {  #network
     #this code creates host file for ansbile from csv file
     if ! [[ "$params" == *"-skip_ansible"* ]]; then
       echo "[spine]" > /etc/ansible/hosts
-      for ((j=1; j<=${#spineips[@]}; j++)); do
-        echo "${spinehostnames[j-1]} ansible_host=${spineips[j-1]}" >> /etc/ansible/hosts
+      for spineswitch in "${spine[@]}"
+      do
+        echo "$spineswitch" >> /etc/ansible/hosts
       done
 
       echo -e "\n" >> /etc/ansible/hosts
 
       echo "[leaf]" >> /etc/ansible/hosts
-      for ((j=1; j<=${#leafips[@]}; j++)); do
-        echo "${leafhostnames[j-1]} ansible_host=${leafips[j-1]}" >> /etc/ansible/hosts
+      for leafswitch in "${leaf[@]}"
+      do
+       echo "$leafswitch" >> /etc/ansible/hosts
       done
     fi
 
@@ -403,7 +423,9 @@ subnet $subnet netmask $subnet_mask {  #network
 }
 
 ##
-# Following function will copy activation key file to all switches which are mentioned in the csv file
+# Following function will copy activation key file to all switches which are mentioned in the csv file.
+# The keys are stored in license_10g folder for 10g activation key.
+# The keys are stored in license_40g folder for 40g activation key.
 ##
 copy_activations_keys()
 {
@@ -462,10 +484,12 @@ EOD
 }
 
 ##
-# This function configures your server to act as a ONIE 
-# This function will install apache2 and JQ parser 
+# This function configures your server to act as a ONIE.
+# This function will install apache2 and JQ parser.
 # It will configure ONIE OS and License either automatically or manually as per user input flags.
-# Arguments: conf file and csv file
+# The function provides all possible options of onie(online as well as offline) provisioning.
+# The function provides all possible options of licensing(online as well as offline).
+# Arguments: conf file and csv file.
 ##
 onie()
 {
@@ -491,7 +515,7 @@ onie()
   comma_count=4
   cookie_file_name="/tmp/cookie"
 
-  #If command line arguments contains online word , it will configure jq json parser
+  #If command line arguments contains 'online' word , it will configure jq json parser
   if [[ "$params" == *"online"* ]]; then
     printf "\n  -configuring JQ json parser"
     if ! [ -f ./jq ]; then
@@ -503,121 +527,20 @@ onie()
     password=`cat $conf_file | grep 'password=' | cut -d = -f2`
   fi
 
-    #If user wants to configure both onie and license online
-  if [[ "$params" == *"-all_online"* ]];then
-    mkdir -p /var/www/html/images
-    mkdir -p /var/www/html/images/license_10g
-    mkdir -p /var/www/html/images/license_40g
-    version=`cat $conf_file | grep 'onie_image_version=' | cut -d = -f2`
-    login_json=`curl -s -X POST https://cloud-web.pluribusnetworks.com/api/login -d login_email=$username\&login_password=$password -k -c $cookie_file_name`
-    login_result=`echo $login_json | jq '.success'`
-
-    if ! [ "$login_result" == true ]; then
-      printf "\n -Login failed: cloud-web.pluribusnetworks.com. Please provide correct credentials in conf file\n"
-      exit 0
-    else
-      csrftoken=`cat $cookie_file_name | grep -Po '(csrftoken\s)\K[^\s]*'`
-    fi
-
-    #check if device_id field is empty or not. If empty then setting no_device_id=1
-    no_device_id=0
-    for ((j=1; j<=${#device_id[@]}; j++)); do
-      commas=`echo $line | awk -F "," '{print NF-1}'`
-      if [ -z "${device_id[j-1]}" ];then
-        no_device_id=1
-        break
-      fi
-    done
-
-    if [ "${#device_id[@]}" == 0 ]; then
-      no_device_id=1
-    fi
-
-    order_details_json=`curl -s -X GET https://cloud-web.pluribusnetworks.com/api/orderDetails -b $cookie_file_name -k`
-    order_detail_id=`echo $order_details_json | jq '.order_details[0].id'`
-    order_detail_id_40g=`echo $order_details_json | jq '.order_details[1].id'` 
-
-    #check if device_ids are provided or not in csv file. if not then script can get it from switches(else part).
-    if [ "$no_device_id" == 0 ]; then
-      i=0
-      for id in "${device_id[@]}"; do
-        printf "\n  -Activating key"
-        if [ "${device_type[i]}" == "40g" ]; then
-          order_detail_id=$order_detail_id_40g
-        fi
-        activation_json=`curl -s -X POST https://cloud-web.pluribusnetworks.com/api/orderActivations -d order_detail_id=$order_detail_id\&device_ids=$id\&csrfmiddlewaretoken=$csrftoken -b $cookie_file_name -k`
-        activation_result=`echo $activation_json | jq '.success'`
-        if ! [ "$activation_result" == true ]; then
-          printf "\n  -Unable to activate key for Device: $id"
-        fi
-        i=$((i+1))
-        order_detail_id=`echo $order_details_json | jq '.order_details[0].id'`
-      done
-      printf "\n\n  -Activation of keys finished. Now downloading Activation key for OrderID:$order_detail_id ..\n"
-      curl -s -X GET https://cloud-web.pluribusnetworks.com/api/offline_bundle/$order_detail_id -b $cookie_file_name -k > /var/www/html/images/license_10g/onvl-activation-keys
-      printf "\n\n  -Activation of keys finished. Now downloading Activation key for OrderID:$order_detail_id_40g ..\n"
-      curl -s -X GET https://cloud-web.pluribusnetworks.com/api/offline_bundle/$order_detail_id_40g -b $cookie_file_name -k > /var/www/html/images/license_40g/onvl-activation-keys
-      #copy_activations_keys
-    else
-      printf "\n  -Device ids are not provided for all switches in CSV file. I can get device ids from the switches.\n   But make sure nvOS is running and DHCP IP is assigned to all switches mentioned in the CSV file.\n   ${RED}Shall I login to switches and get device id Enter (y/n)?:${NC}"
-      read device_choice 
-      all_device_id=() 
-      if [ $device_choice == "y" ]; then
-        for ((j=1; j<=${#ip_arr[@]}; j++)); do
-          for ((i=1; i<=3; i++)); do
-            ####TODO#### Need to change below line
-            ID=`ssh -o StrictHostKeyChecking=no root@${ip_arr[j-1]} 'onie-syseeprom' | grep 'Serial Number' | awk '{ print $5 }'`
-            if ! [ -z $ID ]; then
-              all_device_id+=($ID)           
-              break
-            fi   
-          done 
-        done
-        i=0
-        for id in "${all_device_id[@]}"
-        do
-          printf "\n  -Activating key"
-          if [ "${device_type[i]}" == "40g" ]; then
-            order_detail_id=$order_detail_id_40g
-          fi
-          activation_json=`curl -s -X POST https://cloud-web.pluribusnetworks.com/api/orderActivations -d order_detail_id=$order_detail_id\&device_ids=$id\&csrfmiddlewaretoken=$csrftoken -b $cookie_file_name -k`
-          activation_result=`echo $activation_json | jq '.success'`
-          if ! [ "$activation_result" == true ]; then
-            printf "\n  -Unable to activate key for Device: $id"
-          fi
-          i=$((i+1))
-          order_detail_id=`echo $order_details_json | jq '.order_details[0].id'`
-        done
-        printf "\n\n  -Activation of keys finished. Now downloading Activation key for OrderID:$order_detail_id ..\n"
-        curl -s -X GET https://cloud-web.pluribusnetworks.com/api/offline_bundle/$order_detail_id -b $cookie_file_name -k > /var/www/html/images/license_10g/onvl-activation-keys
-        printf "\n\n  -Activation of keys finished. Now downloading Activation key for OrderID:$order_detail_id_40g ..\n"
-        curl -s -X GET https://cloud-web.pluribusnetworks.com/api/offline_bundle/$order_detail_id_40g -b $cookie_file_name -k > /var/www/html/images/license_40g/onvl-activation-keys
-        #copy_activations_keys
-
-      else
-        printf "\n  -Continuing installations without activating keys.\n   If you want to just activate keys after this installations. Execute: ${RED}bash ztp.sh -conf file.conf -csv file.csv -offline_onie -online_license${NC}\n   But make sure before running this command, provide device_ids in csv file." 
-     
-      fi
-    fi
-
-    cd /var/www/html/images
-    printf "\n\n  -Now Downloading image in /var/www/html/images. Make sure you have provided default-url parameter value as http://ip_of_dhcp_server/images/onie-installer. in conf file\n\n"
-    sleep 1
-    curl -o onie-installer -H 'Accept-Encoding: gzip, deflate, br' -X GET https://cloud-web.pluribusnetworks.com/api/download_image1/onie-installer-$version\?version\=$version -b $cookie_file_name -k
-    printf "\n  -Downloaded image in /var/www/html/images."
-
-
   #If user wants to configure both onie and license offline
-  elif [[ "$params" == *"-all_offline"* ]]; then
+  if [[ "$params" == *"-all_offline"* ]]; then
     printf "\n  -Configuring ONIE: Offline\n"
     printf "\n  -Please Keep onie image in /var/www/html/images/ and activation keys in /var/www/html/images/license_10g and /var/www/html/images/license_40g directories"
-    #copy_activations_keys
+    copy_activations_keys
   fi
 
-  #If user wants to configure online onie or offline onie
+  #Choice: user wants to configure online onie or offline onie
   if [[ "$params" == *"-online_onie"* ]]; then
     mkdir -p /var/www/html/images 
     version=`cat $conf_file | grep 'onie_image_version=' | cut -d = -f2`
+
+    #Api call for logging in and storing the cookie in cookie_file
+    #It takes login_username and login_password as arguements
     login_json=`curl -s -X POST https://cloud-web.pluribusnetworks.com/api/login -d login_email=$username\&login_password=$password -k -c $cookie_file_name`
     login_result=`echo $login_json | jq '.success'`
     if ! [ "$login_result" == true ]; then
@@ -635,20 +558,25 @@ onie()
     printf "\n  -Offline ONIE: Download latest ONIE image and keep it in http server directory. i.e /var/www/html/images." 
   fi
  
-  #If user wants to configure online license or offline license
+  #Choice: user wants to configure online license or offline license
   if [[ "$params" == *"-online_license"* ]]; then
     mkdir -p /var/www/html/images/license_10g
     mkdir -p /var/www/html/images/license_40g
 
+    #Api call for logging in and storing the cookie in cookie_file
+    #It takes login_username and login_password as arguements
     login_json=`curl -s -X POST https://cloud-web.pluribusnetworks.com/api/login -d login_email=$username\&login_password=$password -k -c $cookie_file_name`
     login_result=`echo $login_json | jq '.success'`
+
+    #If logging is successful then strip out csfrtoken from the cookie
     if ! [ "$login_result" == true ]; then
       printf "\n  -Login failed: cloud-web.pluribusnetworks.com. Please provide correct credentials in conf file"
       exit 0
     else
       csrftoken=`cat $cookie_file_name | grep -Po '(csrftoken\s)\K[^\s]*'`
     fi
-
+    
+    #Api call for finding orderDetails using the cookie as input 
     order_details_json=`curl -s -X GET https://cloud-web.pluribusnetworks.com/api/orderDetails -b $cookie_file_name -k`
     order_detail_id=`echo $order_details_json | jq '.order_details[0].id'`
     order_detail_id_40g=`echo $order_details_json | jq '.order_details[1].id'`
@@ -673,6 +601,8 @@ onie()
         if [ "${device_type[i]}" == "40g" ]; then
           order_detail_id=$order_detail_id_40g
         fi
+
+        #OrderActivation using csrftoken, cookie, device_id and order_detail_id
         activation_json=`curl -s -X POST https://cloud-web.pluribusnetworks.com/api/orderActivations -d order_detail_id=$order_detail_id\&device_ids=$id\&csrfmiddlewaretoken=$csrftoken -b $cookie_file_name -k`
         activation_result=`echo $activation_json | jq '.success'`
         if ! [ "$activation_result" == true ]; then
@@ -685,7 +615,7 @@ onie()
       curl -s -X GET https://cloud-web.pluribusnetworks.com/api/offline_bundle/$order_detail_id -b $cookie_file_name -k > /var/www/html/images/license_10g/onvl-activation-keys
       printf "\n\n  -Activation of keys finished. Now downloading Activation key for OrderID:$order_detail_id_40g ..\n"
       curl -s -X GET https://cloud-web.pluribusnetworks.com/api/offline_bundle/$order_detail_id_40g -b $cookie_file_name -k > /var/www/html/images/license_40g/onvl-activation-keys
-      #copy_activations_keys
+      copy_activations_keys
 
     else
       printf "\n  -Device ids are not provided for all switches in CSV file. I can get device ids from the switches.\n   But make sure nvOS is running and DHCP IP is assigned to all switches mentioned in the CSV file.\n   ${RED}Shall I login to switches and get device id Enter (y/n)?:${NC}"
@@ -708,6 +638,8 @@ onie()
           if [ "${device_type[i]}" == "40g" ]; then
             order_detail_id=$order_detail_id_40g
           fi
+
+          #OrderActivation using csrftoken, cookie, device_id and order_detail_id
           activation_json=`curl -s -X POST https://cloud-web.pluribusnetworks.com/api/orderActivations -d order_detail_id=$order_detail_id\&device_ids=$id\&csrfmiddlewaretoken=$csrftoken -b $cookie_file_name -k`
           activation_result=`echo $activation_json | jq '.success'`
           if ! [ "$activation_result" == true ]; then
@@ -716,11 +648,13 @@ onie()
           i=$((i+1))
           order_detail_id=`echo $order_details_json | jq '.order_details[0].id'`
         done
+
+        #Downloading the keys to onvl_activation-keys_10g if it is 10g else to onvl_activation-keys_40g if it is 40g
         printf "\n\n  -Activation of keys finished. Now downloading Activation key for OrderID:$order_detail_id ..\n"
         curl -s -X GET https://cloud-web.pluribusnetworks.com/api/offline_bundle/$order_detail_id -b $cookie_file_name -k > /etc/pluribuslicense/onvl-activation-keys_10g
         printf "\n\n  -Activation of keys finished. Now downloading Activation key for OrderID:$order_detail_id_40g ..\n"
         curl -s -X GET https://cloud-web.pluribusnetworks.com/api/offline_bundle/$order_detail_id_40g -b $cookie_file_name -k > /etc/pluribuslicense/onvl-activation-keys_40g
-        #copy_activations_keys
+        copy_activations_keys
 
       else
         printf "\n  -Continuing installations without activating keys.\n   If you want to just activate keys after this installations. Execute: ${RED}bash ztp.sh -conf file.conf -csv file.csv -offline_onie -online_license${NC}\n   But make sure before running this command, provide device_ids in csv file."
@@ -729,7 +663,7 @@ onie()
   elif [[ "$params" == *"-offline_license"* ]] ; then
     printf "\n  -Configuring Onie License: Offline\n"
     printf "\n  -Please Keep onie image in /var/www/html/images/ and activation keys in /var/www/html/images/license_10g and /var/www/html/images/license_40g directories"
-    #copy_activations_keys
+    copy_activations_keys
   fi
 
   cd $script_dir
@@ -740,7 +674,8 @@ onie()
 }
  
 ##
-# This function checks availability of hosts provided in csv file. 
+# This function checks availability of hosts provided in csv file.
+# It uses ping to check the availability. 
 # Arguments: csv file
 ##
 checkallsystemsgo()
@@ -778,6 +713,7 @@ checkallsystemsgo()
 
 ##
 # This is the main function which parses the arguments and depending on that it calls different functions.
+# It configures ONIE OR DHCP OR BOTH according to the user input.
 ##
 main()
 {
@@ -789,6 +725,7 @@ main()
   fi
 
   #####DHCP#######
+  #If user provides the input '-dhcp'
   if  [[ "$params" == *"-dhcp"* ]]; then
     choice="n"
     choice1="n"
@@ -805,8 +742,9 @@ main()
     fi
     dhcpserver "$params"
     exit 0
-
+  
   ########ONIE##############
+  #If user provides the input '-onie'
   elif [[ "$params" == *"-onie"* ]]; then
     if ! [[ "$params" == *"-conf"* ]] && ! [[ "$params" == *"-csv"* ]]; then
       printf "\nScript requires conf and csv file as an argument. These files will be passed as an argument to dhcpserver function. \nExample: ${RED}bash ${0##*/} -onie -conf filename.conf -csv filename.csv ${NC}\n\n"
@@ -828,6 +766,7 @@ onie_image_version=2.5.1-10309 #In case of online version"
       exit 0
     fi
 
+    #Taking the conf file name and storing in conf_file
     conf_file=`echo "${params#*-conf[$IFS]}" | awk '{ print $1 }'`
     if [[ `cat $conf_file | grep 'default-url='` ]]; then
       url=`cat $conf_file | grep 'default-url=' | cut -d = -f2`
@@ -836,11 +775,13 @@ onie_image_version=2.5.1-10309 #In case of online version"
       exit 0
     fi
 
-    if ! [[ "$params" == *"-all_offline"* ]] && ! [[ "$params" == *"-all_online"* ]] && ! [[ "$params" == *"-offline_onie"* ]] && ! [[ "$params" == *"-online_onie"* ]] && ! [[ "$params" == *"-offline_license"* ]] && ! [[ "$params" == *"-online_license"* ]]; then
-      printf "\nPlease provide one of these parameters \n1. -all_online \n2. -all_offline \n3. -online_onie \n4. -offline_onie \n5. -online_license \n6. -offline_license\n"
+    #Exiting if the user has not provided provisioning method for licensing and configuring onie
+    if ! [[ "$params" == *"-all_offline"* ]] && ! [[ "$params" == *"-offline_onie"* ]] && ! [[ "$params" == *"-online_onie"* ]] && ! [[ "$params" == *"-offline_license"* ]] && ! [[ "$params" == *"-online_license"* ]]; then
+      printf "\nPlease provide one of these parameters \n1. -all_offline \n2. -online_onie \n3. -offline_onie \n4. -online_license \n5. -offline_license\n"
       exit 0
     fi
 
+    #Input user-credentials from conf file incase of online onie and online licensing
     if [[ "$params" == *"-online_license"* ]] || [[ "$params" == *"-online_onie"* ]] ; then
       if ! [ `cat $conf_file | grep 'username='` ]; then
         printf "\nPlease provide username value in conf file.\n\n"
