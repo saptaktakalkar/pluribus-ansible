@@ -178,9 +178,6 @@ def create_l3_vrouter(module, switch, vrrp_id):
     vrouter_name = switch_temp
     vnet_name = module.params['pn_fabric_name'] + '-global'
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     cli += ' switch ' + switch
     cli_copy = cli
 
@@ -223,11 +220,8 @@ def create_l3_interface(module, switch, ip, vlan_id, vrrp_id,
     global CHANGED_FLAG
     output = ''
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
     clicopy = cli
 
-    cli = clicopy
     cli += ' vrouter-show location %s format name no-show-headers ' % switch
     vrouter_name = run_cli(module, cli).split()
     ip_addr = ip.split('.')
@@ -297,9 +291,6 @@ def leaf_no_cluster(module, leaf_list):
     """
     cli = pn_cli(module)
     non_cluster_leaf = []
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     clicopy += ' cluster-show format cluster-node-1 no-show-headers '
     cluster1 = run_cli(module, clicopy).split()
@@ -327,9 +318,6 @@ def create_cluster(module, switch, name, node1, node2):
     """
     global CHANGED_FLAG
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     cli += ' switch %s cluster-show format name no-show-headers ' % node1
     cluster_list = run_cli(module, cli).split()
@@ -354,9 +342,6 @@ def leaf_cluster_formation(module, non_cluster_leaf, spine_list):
     :return: The output message of success or error
     """
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     output = ''
     flag = 0
@@ -422,9 +407,6 @@ def create_l3_vrouter_novrrp(module, switch):
     vrouter_name = switch_temp
     vnet_name = module.params['pn_fabric_name'] + '-global'
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     cli += ' switch ' + switch
     cli_copy = cli
 
@@ -461,8 +443,6 @@ def vrrp_noncluster_switch(module, ip, noncluster_leaf, vlan_id):
     global CHANGED_FLAG
     output = ''
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
     clicopy = cli
 
     for switch in noncluster_leaf:

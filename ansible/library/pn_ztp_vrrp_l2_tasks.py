@@ -211,9 +211,6 @@ def create_l2_vrouter(module, switch, vrrp_id):
     vrouter_name = switch_temp + '-vrouter'
     vnet_name = module.params['pn_fabric_name'] + '-global'
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     cli += ' switch ' + switch
     cli_copy = cli
 
@@ -255,9 +252,6 @@ def create_l2_interface(module, switch, ip, vlan_id, vrrp_id, ip_count,
     global CHANGED_FLAG
     output = ''
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     cli += ' vrouter-show location %s format name no-show-headers ' % switch
     vrouter_name = run_cli(module, cli).split()
