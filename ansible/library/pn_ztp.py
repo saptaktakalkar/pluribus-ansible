@@ -244,7 +244,7 @@ def modify_stp(module, modify_flag):
     switch_names = run_cli(module, cli).split()
     for switch in switch_names:
         cli = clicopy
-        cli += ' switch-local stp-show format enable '
+        cli += ' switch %s stp-show format enable ' % switch
         current_state = run_cli(module, cli).split()[1]
         if current_state != 'yes':
             cli = clicopy
@@ -284,42 +284,34 @@ def enable_ports(module):
     :return: The output of run_cli() method.
     """
     cli = pn_cli(module)
-    cli += ' switch-local port-config-show format enable '
-    port_list = run_cli(module, cli).split()
-    port_list = list(set(port_list))
+    cli += ' port-config-show format port no-show-headers '
+    out = run_cli(module, cli)
 
-    if 'off' in port_list:
-        cli = pn_cli(module)
-        cli += ' port-config-show format port no-show-headers '
-        out = run_cli(module, cli)
+    cli = pn_cli(module)
+    cli += ' port-config-show format port speed 40g no-show-headers '
+    out_40g = run_cli(module, cli)
+    out_remove10g = []
 
-        cli = pn_cli(module)
-        cli += ' port-config-show format port speed 40g no-show-headers '
-        out_40g = run_cli(module, cli)
-        out_remove10g = []
+    if len(out_40g) > 0 and out_40g != 'Success':
+        out_40g = out_40g.split()
+        out_40g = list(set(out_40g))
+        if len(out_40g) > 0:
+            for port_number in out_40g:
+                out_remove10g.append(str(int(port_number) + int(1)))
+                out_remove10g.append(str(int(port_number) + int(2)))
+                out_remove10g.append(str(int(port_number) + int(3)))
 
-        if len(out_40g) > 0 and out_40g != 'Success':
-            out_40g = out_40g.split()
-            out_40g = list(set(out_40g))
-            if len(out_40g) > 0:
-                for port_number in out_40g:
-                    out_remove10g.append(str(int(port_number) + int(1)))
-                    out_remove10g.append(str(int(port_number) + int(2)))
-                    out_remove10g.append(str(int(port_number) + int(3)))
-
+    if out:
+        out = out.split()
+        out = set(out) - set(out_remove10g)
+        out = list(out)
         if out:
-            out = out.split()
-            out = set(out) - set(out_remove10g)
-            out = list(out)
-            if out:
-                ports = ','.join(out)
-                cli = pn_cli(module)
-                cli += ' port-config-modify port %s enable ' % ports
-                return run_cli(module, cli)
-        else:
-            return out
+            ports = ','.join(out)
+            cli = pn_cli(module)
+            cli += ' port-config-modify port %s enable ' % ports
+            return run_cli(module, cli)
     else:
-        return ' All ports are enabled already! '
+        return out
 
 
 def create_fabric(module, fabric_name, fabric_network):
@@ -469,9 +461,6 @@ def create_vrouter(module, switch):
     global CHANGED_FLAG
 
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     cli += ' switch ' + switch
     cli_copy = cli
 
@@ -504,12 +493,9 @@ def create_interface(module, switch, ip, port):
     :return: The output string informing details of vrouter created and
     interface added or if vrouter already exists.
     """
-    output = ' '
+    output = ''
     global CHANGED_FLAG
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     cli += ' vrouter-show location %s format name no-show-headers ' % switch
     vrouter_name = run_cli(module, cli).split()
@@ -525,9 +511,23 @@ def create_interface(module, switch, ip, port):
         cli += ' vrouter-interface-add vrouter-name ' + vrouter_name[0]
         cli += ' ip ' + ip
         cli += ' l3-port ' + port
-
         run_cli(module, cli)
         output += ' Added vrouter interface with ip %s on %s! ' % (ip, switch)
+
+        if module.params['pn_bfd']:
+            cli = clicopy
+            cli += ' vrouter-interface-show vrouter-name ' + vrouter_name[0]
+            cli += ' l3-port %s format nic no-show-headers ' % port
+            nic = run_cli(module, cli).split()[1]
+
+            cli = clicopy
+            cli += ' vrouter-interface-config-add '
+            cli += ' vrouter-name %s nic %s ' % (vrouter_name[0], nic)
+            cli += ' bfd-min-rx ' + module.params['pn_bfd_min_rx']
+            cli += ' bfd-multiplier ' + module.params['pn_bfd_multiplier']
+            run_cli(module, cli)
+            output += ' Added BFD config to ' + vrouter_name[0]
+
         CHANGED_FLAG.append(True)
     else:
         output += ' Interface already exists on %s! ' % vrouter_name[0]
@@ -536,19 +536,21 @@ def create_interface(module, switch, ip, port):
     return output + ' '
 
 
-def disable_trunk(module, switch):
+def modify_auto_trunk_setting(module, switch, flag):
     """
-    Method to disable trunk setting on a switch.
+    Method to enable/disable auto trunk setting of a switch.
     :param module: The Ansible module to fetch input parameters.
     :param switch: Name of the local switch.
+    :param flag: Enable/disable flag for the cli command.
     :return: The output of run_cli() method.
     """
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
-    cli += ' switch %s system-settings-modify no-auto-trunk ' % switch
-    return run_cli(module, cli)
+    if flag.lower() == 'enable':
+        cli += ' switch %s system-settings-modify auto-trunk ' % switch
+        return run_cli(module, cli)
+    elif flag.lower() == 'disable':
+        cli += ' switch %s system-settings-modify no-auto-trunk ' % switch
+        return run_cli(module, cli)
 
 
 def delete_trunk(module, switch, switch_port, peer_switch):
@@ -562,9 +564,6 @@ def delete_trunk(module, switch, switch_port, peer_switch):
     :return: The output of run_cli() method.
     """
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     cli += ' switch %s port-show port %s hostname %s ' % (switch, switch_port,
                                                           peer_switch)
@@ -596,9 +595,6 @@ def assign_loopback_ip(module, loopback_address):
     static_part += str(address[2]) + '.'
 
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     cli += ' vrouter-show format name no-show-headers '
     vrouter_names = run_cli(module, cli).split()
@@ -648,7 +644,7 @@ def auto_configure_link_ips(module):
     cidr = module.params['pn_cidr']
     supernet = module.params['pn_supernet']
 
-    output = ' '
+    output = ''
     cli = pn_cli(module)
     clicopy = cli
 
@@ -657,7 +653,7 @@ def auto_configure_link_ips(module):
     switch_names = list(set(switch_names))
 
     for switch in switch_names:
-        disable_trunk(module, switch)
+        modify_auto_trunk_setting(module, switch, 'disable')
 
     available_ips = calculate_link_ip_addresses(address, cidr, supernet)
 
@@ -701,6 +697,9 @@ def auto_configure_link_ips(module):
         loopback_address = module.params['pn_loopback_ip']
         output += assign_loopback_ip(module, loopback_address)
 
+    for switch in switch_names:
+        modify_auto_trunk_setting(module, switch, 'enable')
+
     return output
 
 
@@ -716,9 +715,6 @@ def create_cluster(module, switch, name, node1, node2):
     """
     global CHANGED_FLAG
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     cli += ' switch %s cluster-show format name no-show-headers ' % node1
     cluster_list = run_cli(module, cli).split()
@@ -743,9 +739,6 @@ def get_ports(module, switch, peer_switch):
     :return: List of connected ports.
     """
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     cli += ' switch %s port-show hostname %s' % (switch, peer_switch)
     cli += ' format port no-show-headers '
     return run_cli(module, cli).split()
@@ -762,9 +755,6 @@ def create_trunk(module, switch, name, ports):
     """
     global CHANGED_FLAG
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     cli += ' switch %s trunk-show format name no-show-headers ' % switch
     trunk_list = run_cli(module, cli).split()
@@ -790,9 +780,6 @@ def find_non_cluster_leafs(module, leaf_list):
     """
     cli = pn_cli(module)
     non_cluster_leafs = []
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     clicopy += ' cluster-show format cluster-node-1 no-show-headers '
     cluster1 = run_cli(module, clicopy).split()
@@ -821,9 +808,6 @@ def create_vlag(module, switch, name, peer_switch, port, peer_port):
     """
     global CHANGED_FLAG
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     cli += ' switch %s vlag-show format name no-show-headers ' % switch
     vlag_list = run_cli(module, cli).split()
@@ -871,9 +855,6 @@ def create_cluster_trunk_vlag(module, non_cluster_leaf, spine_list):
     :return: The output message related to vlag, lag and cluster creation.
     """
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     output = ' '
     flag = 0
@@ -988,9 +969,6 @@ def toggle_40g_local(module):
     """
     output = ''
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     cli += ' switch-local lldp-show format local-port no-show-headers '
     local_ports = run_cli(module, cli).split()
@@ -1011,23 +989,18 @@ def toggle_40g_local(module):
             cli += ' switch-local port-config-modify port %s ' % range_port
             cli += ' speed disable '
             output += 'port range_port ' + range_port + ' disabled'
-            output += '\n'
             output += run_cli(module, cli)
 
             cli = clicopy
             cli += ' switch-local port-config-modify port %s ' % range_port
             cli += ' speed 10g '
             output += 'port range_port ' + range_port + ' 10g converted'
-            output += '\n'
-
             output += run_cli(module, cli)
 
             cli = clicopy
             cli += ' switch-local port-config-modify port %s ' % range_port
             cli += ' enable '
             output += 'port range_port ' + range_port + '  enabled'
-            output += '\n'
-
             output += run_cli(module, cli)
 
     return output
@@ -1048,9 +1021,6 @@ def assign_inband_ip(module, inband_address):
     subnet = last_octet[1]
 
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     cli += ' fabric-node-show format name no-show-headers '
     switch_names = run_cli(module, cli).split()
@@ -1099,7 +1069,7 @@ def main():
                                             default=False),
             pn_assign_loopback=dict(required=False, type='bool', default=False),
             pn_loopback_ip=dict(required=False, type='str',
-                                default='101.101.101.0/32'),
+                                default='109.109.109.0/24'),
             pn_inband_ip=dict(required=False, type='str',
                               default='172.16.0.0/24'),
             pn_fabric_control_network=dict(required=False, type='str',
@@ -1107,6 +1077,9 @@ def main():
                                            default='mgmt'),
             pn_toggle_40g=dict(required=False, type='bool', default=True),
             pn_current_switch=dict(required=False, type='str'),
+            pn_bfd=dict(required=False, type='bool', default=False),
+            pn_bfd_min_rx=dict(required=False, type='str'),
+            pn_bfd_multiplier=dict(required=False, type='str')
         )
     )
 

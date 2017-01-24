@@ -160,9 +160,6 @@ def assigning_bgp_as(module, bgp_spine):
     spine_list = module.params['pn_spine_list']
 
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     cli += ' vrouter-show format name no-show-headers '
     vrouter_names = run_cli(module, cli).split()
@@ -205,9 +202,6 @@ def bgp_neighbor(module):
     global CHANGED_FLAG
     output = ''
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     cli += ' vrouter-show format name no-show-headers '
     vrouter_names = run_cli(module, cli).split()
@@ -269,8 +263,11 @@ def bgp_neighbor(module):
                 else:
                     cli = clicopy
                     cli += ' vrouter-bgp-add vrouter-name ' + vrouter
-                    cli += ' neighbor %s remote-as %s ' % (
-                        ip_hostname, bgp_hostname[0])
+                    cli += ' neighbor %s remote-as %s ' % (ip_hostname,
+                                                           bgp_hostname[0])
+                    if module.params['pn_bfd']:
+                        cli += ' bfd '
+
                     if 'Success' in run_cli(module, cli):
                         output += ' Added BGP Neighbour for %s ' % vrouter
                         CHANGED_FLAG.append(True)
@@ -291,9 +288,6 @@ def assign_router_id(module):
     global CHANGED_FLAG
     output = ''
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     cli += ' vrouter-show format name no-show-headers '
     vrouter_names = run_cli(module, cli).split()
@@ -330,9 +324,6 @@ def bgp_redistribute(module, bgp_redis):
     global CHANGED_FLAG
     output = ''
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     cli += ' vrouter-show format name no-show-headers '
     vrouter_names = run_cli(module, cli).split()
@@ -358,9 +349,6 @@ def bgp_maxpath(module, bgp_max):
     global CHANGED_FLAG
     output = ''
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     cli += ' vrouter-show format name no-show-headers '
     vrouter_names = run_cli(module, cli).split()
@@ -385,9 +373,6 @@ def leaf_no_cluster(module, leaf_list):
     """
     cli = pn_cli(module)
     noncluster_leaf = []
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     clicopy += ' cluster-show format cluster-node-1 no-show-headers '
     cluster1 = run_cli(module, clicopy).split()
@@ -414,9 +399,6 @@ def create_cluster(module, switch, name, node1, node2):
     """
     global CHANGED_FLAG
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     cli += ' switch %s cluster-show format name no-show-headers ' % node1
     cluster_list = run_cli(module, cli).split()
@@ -441,9 +423,6 @@ def leaf_cluster_formation(module, non_cluster_leaf, spine_list):
     :return: The output message of success or error
     """
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
     clicopy = cli
     output = ''
     flag = 0
@@ -509,7 +488,8 @@ def main():
                                      choices=['none', 'static', 'connected',
                                               'rip', 'ospf'],
                                      default='connected'),
-            pn_bgp_maxpath=dict(required=False, type='str', default='16')
+            pn_bgp_maxpath=dict(required=False, type='str', default='16'),
+            pn_bfd=dict(required=False, type='bool', default=False)
         )
     )
 
