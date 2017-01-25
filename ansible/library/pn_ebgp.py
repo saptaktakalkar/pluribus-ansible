@@ -18,6 +18,7 @@
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+from ansible.module_utils.basic import AnsibleModule
 import shlex
 
 DOCUMENTATION = """
@@ -158,6 +159,8 @@ def assigning_bgp_as(module, bgp_spine):
     output = ''
     bgp_leaf = int(bgp_spine) + 1
     spine_list = module.params['pn_spine_list']
+    leaf_list = module.params['pn_leaf_list']
+    modified_vrouters = []
 
     cli = pn_cli(module)
     clicopy = cli
@@ -169,23 +172,58 @@ def assigning_bgp_as(module, bgp_spine):
             cli = clicopy
             cli += ' vrouter-show name ' + vrouter
             cli += ' format location no-show-headers '
-            switch_vrouter = run_cli(module, cli).split()
-            if switch_vrouter[0] in spine_list:
+            switch_name = run_cli(module, cli).split()[0]
+            if switch_name in spine_list:
                 cli = clicopy
                 cli += ' vrouter-modify name %s bgp-as %s ' % (vrouter,
                                                                bgp_spine)
-                if 'Success' in run_cli(module, cli):
-                    output += ' Added BGP_AS to %s! ' % vrouter
-                    CHANGED_FLAG.append(True)
-            else:
-                cli = clicopy
-                cli += ' vrouter-modify name %s bgp-as %s ' % (vrouter,
-                                                               str(bgp_leaf))
+
                 if 'Success' in run_cli(module, cli):
                     output += ' Added BGP_AS to %s! ' % vrouter
                     CHANGED_FLAG.append(True)
 
+            if (switch_name in leaf_list and
+                    vrouter not in modified_vrouters):
+                cli = clicopy
+                cli += ' vrouter-modify name %s bgp-as %s ' % (
+                    vrouter, str(bgp_leaf))
+
+                if 'Success' in run_cli(module, cli):
+                    output += ' Added BGP_AS to %s! ' % vrouter
+                    CHANGED_FLAG.append(True)
+                    modified_vrouters.append(vrouter)
+
+                cli = clicopy
+                cli += ' cluster-show format name no-show-headers '
+                cluster_list = run_cli(module, cli).split()
+                for cluster in cluster_list:
+                    if str(switch_name) in str(cluster):
+                        cli = clicopy
+                        cli += ' cluster-show cluster-node-1 ' + switch_name
+                        cli += ' format cluster-node-2 no-show-headers '
+                        cluster_node_2 = run_cli(module, cli).split()[0]
+
+                        cli = clicopy
+                        cli += ' cluster-show cluster-node-2 ' + switch_name
+                        cli += ' format cluster-node-1 no-show-headers '
+                        cluster_node_1 = run_cli(module, cli).split()[0]
+
+                        if 'Success' in cluster_node_2:
+                            vrouter_name = str(cluster_node_1) + '-vrouter'
+                        else:
+                            vrouter_name = str(cluster_node_2) + '-vrouter'
+
+                        cli = clicopy
+                        cli += ' vrouter-modify name %s bgp-as %s ' % (
+                            vrouter_name, str(bgp_leaf))
+
+                        if 'Success' in run_cli(module, cli):
+                            output += ' Added BGP_AS to %s! ' % vrouter_name
+                            CHANGED_FLAG.append(True)
+                            modified_vrouters.append(vrouter_name)
+
                 bgp_leaf += 1
+
     else:
         output += ' No vrouters present/created '
         CHANGED_FLAG.append(False)
@@ -267,6 +305,16 @@ def bgp_neighbor(module):
                                                            bgp_hostname[0])
                     if module.params['pn_bfd']:
                         cli += ' bfd '
+
+                    leaf_switches = module.params['pn_leaf_list']
+                    if switch[0] in leaf_switches:
+                        temp_cli = clicopy
+                        temp_cli += ' cluster-show format name no-show-headers'
+                        cluster_list = run_cli(module, temp_cli).split()
+                        for cluster in cluster_list:
+                            if switch[0] in cluster:
+                                cli += ' weight 100 allowas-in '
+                                break
 
                     if 'Success' in run_cli(module, cli):
                         output += ' Added BGP Neighbour for %s ' % vrouter
@@ -515,8 +563,6 @@ def main():
         changed=True if True in CHANGED_FLAG else False
     )
 
-# AnsibleModule boilerplate
-from ansible.module_utils.basic import AnsibleModule
 
 if __name__ == '__main__':
     main()
