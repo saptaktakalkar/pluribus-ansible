@@ -18,6 +18,7 @@
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+from ansible.module_utils.basic import AnsibleModule
 import shlex
 
 DOCUMENTATION = """
@@ -209,6 +210,51 @@ def update_switch_names(module, switch_name):
         cli += ' switch-setup-modify switch-name ' + switch_name
         run_cli(module, cli)
         return ' Updated switch name to match hostname! '
+
+
+def make_switch_setup_static(module):
+    """
+    Method to assign static values to different switch setup parameters.
+    :param module: The Ansible module to fetch input parameters.
+    """
+    mgmt_ip = module.params['pn_mgmt_ip']
+    mgmt_ip_subnet = module.params['pn_mgmt_ip_subnet']
+    gateway_ip = module.params['pn_gateway_ip']
+    dns_ip = module.params['pn_dns_ip']
+    dns_secondary_ip = module.params['pn_dns_secondary_ip']
+    domain_name = module.params['pn_domain_name']
+    ntp_server = module.params['pn_ntp_server']
+
+    if mgmt_ip:
+        cli = pn_cli(module)
+        ip = mgmt_ip + '/' + mgmt_ip_subnet
+        cli += ' switch-setup-modify mgmt-ip ' + ip
+        run_cli(module, cli)
+
+    if gateway_ip:
+        cli = pn_cli(module)
+        cli += ' switch-setup-modify gateway-ip ' + gateway_ip
+        run_cli(module, cli)
+
+    if dns_ip:
+        cli = pn_cli(module)
+        cli += ' switch-setup-modify dns-ip ' + dns_ip
+        run_cli(module, cli)
+
+    if dns_secondary_ip:
+        cli = pn_cli(module)
+        cli += ' switch-setup-modify dns-secondary-ip ' + dns_secondary_ip
+        run_cli(module, cli)
+
+    if domain_name:
+        cli = pn_cli(module)
+        cli += ' switch-setup-modify domain-name ' + domain_name
+        run_cli(module, cli)
+
+    if ntp_server:
+        cli = pn_cli(module)
+        cli += ' switch-setup-modify ntp-server ' + ntp_server
+        run_cli(module, cli)
 
 
 def modify_stp_local(module, modify_flag):
@@ -1079,7 +1125,15 @@ def main():
             pn_current_switch=dict(required=False, type='str'),
             pn_bfd=dict(required=False, type='bool', default=False),
             pn_bfd_min_rx=dict(required=False, type='str'),
-            pn_bfd_multiplier=dict(required=False, type='str')
+            pn_bfd_multiplier=dict(required=False, type='str'),
+            pn_static_setup=dict(required=False, type='bool', default=False),
+            pn_mgmt_ip=dict(required=False, type='str'),
+            pn_mgmt_ip_subnet=dict(required=False, type='str'),
+            pn_gateway_ip=dict(required=False, type='str'),
+            pn_dns_ip=dict(required=False, type='str'),
+            pn_dns_secondary_ip=dict(required=False, type='str'),
+            pn_domain_name=dict(required=False, type='str'),
+            pn_ntp_server=dict(required=False, type='str'),
         )
     )
 
@@ -1109,6 +1163,9 @@ def main():
             CHANGED_FLAG.append(True)
         else:
             CHANGED_FLAG.append(False)
+
+        if module.params['pn_static_setup']:
+            make_switch_setup_static(module)
 
         if 'already in the fabric' in create_fabric(module, fabric_name,
                                                     fabric_network):
@@ -1184,9 +1241,6 @@ def main():
         changed=True if True in CHANGED_FLAG else False
     )
 
-
-# AnsibleModule boilerplate
-from ansible.module_utils.basic import AnsibleModule
 
 if __name__ == '__main__':
     main()
