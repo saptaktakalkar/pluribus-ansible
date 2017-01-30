@@ -24,6 +24,7 @@
         pn_fabric_name: 'vrrp-l2-fab'
         pn_run_l2_l3: False
         pn_current_switch: "{{ inventory_hostname }}"
+        pn_toggle_40g: True          # It is true by default
       register: ztp_out
       until: ztp_out.failed != true  # If the above code fails it will retry the code
       retries: 3                     # This is the retries count
@@ -63,6 +64,7 @@
         pn_leaf_list: "{{ groups['leaf'] }}"
         pn_fabric_type: 'layer2'
         pn_run_l2_l3: True
+        pn_inband_ip: '172.16.0.0/24'    # It is 172.16.0.0/24 by default
       when: ztp_out.error != "1"         # If the above initial task fails then this task will not run
       register: ztp_l2_out
       until:  ztp_l2_out.failed != true  # If error pops up it will retry the code
