@@ -1,0 +1,23 @@
+---
+
+
+- name: Switch Config Reset
+  hosts: all
+  serial: 1
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Reset switch - {{ inventory_hostname }}
+      pn_switch_config_reset:
+        pn_cliusername: "{{ USERNAME }}"  # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ PASSWORD }}"  # Cli password (value comes from cli_vault.yml).
+      register: reset_out                 # Variable to hold/register output of the above tasks.
+
+    - debug:
+        msg: Switch config reset completed on {{ inventory_hostname }}
+      when: reset_out.failed != true
+
+    - pause:
+        seconds: 5                        # Pause playbook execution for specified amount of time.
