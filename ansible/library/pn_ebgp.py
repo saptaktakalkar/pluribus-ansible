@@ -231,6 +231,98 @@ def assigning_bgp_as(module, bgp_spine):
     return output
 
 
+def vrouter_interface_ibgp_add(module, switch_name, interface_ip, neighbor_ip):
+    output = ''
+    vlan_id = module.params['pn_ibgp_vlan']
+
+    cli = pn_cli(module)
+    clicopy = cli
+
+    cli = clicopy
+    cli += ' switch %s vlan-show format id no-show-headers ' % switch_name
+    existing_vlans = run_cli(module, cli).split()
+
+    if vlan_id not in existing_vlans:
+        cli = clicopy
+        cli += ' switch %s vlan-create id %s scope local ' % (switch_name, vlan_id)
+        output += run_cli(module, cli)
+    else:
+        output += 'vlan %s already present for switch %s! ' % (vlan_id, switch_name)
+
+    cli = clicopy
+    cli += ' vrouter-show location %s format name, no-show-headers ' % switch_name
+    vrouter = run_cli(module, cli).split()[0]
+
+    cli = clicopy
+    cli += ' vrouter-show name %s format bgp-as, no-show-headers ' % vrouter
+    remote_as = run_cli(module, cli).split()[0]
+
+    cli = clicopy
+    cli += ' vrouter-interface-show ip %s vlan %s format switch no-show-headers ' % (interface_ip, vlan_id)
+    existing_vrouter_interface = run_cli(module, cli).split()
+
+    if vrouter not in existing_vrouter_interface:
+        cli = clicopy
+        cli += ' vrouter-interface-add vrouter-name %s ip %s vlan %s ' % (vrouter, interface_ip, vlan_id)
+        output += run_cli(module, cli)
+    else:
+        output += 'vrouter interface already present for vrouter %s! ' % vrouter
+
+    neighbor_ip = neighbor_ip.split('/')[0]
+
+    cli = clicopy
+    cli += ' vrouter-bgp-show remote-as ' + remote_as
+    cli += ' neighbor %s format switch no-show-headers ' % (neighbor_ip)
+    already_added = run_cli(module, cli).split()
+
+    if vrouter not in already_added:
+        cli = clicopy
+        cli += ' vrouter-bgp-add vrouter-name %s neighbor %s remote-as %s next-hop-self ' % (vrouter, neighbor_ip, remote_as)
+        output += run_cli(module, cli)
+    else:
+        output += 'vrouter ibgp neighbour already present for vrouter %s! ' % vrouter
+
+    return output
+
+
+def assigning_ibgp_interface(module):
+    output = ''
+    ibgp_ip_range = module.params['pn_ibgp_ip_range']
+    spine_list = module.params['pn_spine_list']
+    subnet_count = 0
+
+    cli = pn_cli(module)
+    clicopy = cli
+
+    address = ibgp_ip_range.split('.')
+    static_part = str(address[0]) + '.' + str(address[1]) + '.'
+    static_part += str(address[2]) + '.'
+
+    cli = clicopy
+    cli += ' cluster-show format name no-show-headers '
+    cluster_list = run_cli(module, cli).split()
+
+    for cluster in cluster_list:
+        cli = clicopy
+        cli += ' cluster-show name %s format cluster-node-1 no-show-headers ' % cluster
+        cluster_node_1 = run_cli(module, cli).split()[0]
+
+        if cluster_node_1 not in spine_list:
+            ip_count = subnet_count * 4
+            ip1 = static_part + str(ip_count + 1) + '/' + str(30)
+            ip2 = static_part + str(ip_count + 2) + '/' + str(30)
+
+            cli = clicopy
+            cli += ' cluster-show name %s format cluster-node-2 no-show-headers ' % cluster
+            cluster_node_2 = run_cli(module, cli).split()[0]
+            
+            output += vrouter_interface_ibgp_add(module, cluster_node_1, ip1, ip2)
+            output += vrouter_interface_ibgp_add(module, cluster_node_2, ip2, ip1)
+      
+            subnet_count += 1
+
+    return output
+
 def bgp_neighbor(module):
     """
     This method add bgp_neighbor to the vrouter.
@@ -537,7 +629,9 @@ def main():
                                               'rip', 'ospf'],
                                      default='connected'),
             pn_bgp_maxpath=dict(required=False, type='str', default='16'),
-            pn_bfd=dict(required=False, type='bool', default=False)
+            pn_bfd=dict(required=False, type='bool', default=False),
+            pn_ibgp_ip_range=dict(required=False, type='str', default='75.75.75.0/30'),
+            pn_ibgp_vlan=dict(required=False, type='str', default='4040'),
         )
     )
 
@@ -546,9 +640,10 @@ def main():
     bgp_as_range = module.params['pn_bgp_as_range']
     bgp_redistribute_val = module.params['pn_bgp_redistribute']
     bgp_maxpath_val = module.params['pn_bgp_maxpath']
-
+ 
     message = ''
     message += assigning_bgp_as(module, bgp_as_range)
+    message += assigning_ibgp_interface(module)
     message += bgp_redistribute(module, bgp_redistribute_val)
     message += bgp_maxpath(module, bgp_maxpath_val)
     message += bgp_neighbor(module)
