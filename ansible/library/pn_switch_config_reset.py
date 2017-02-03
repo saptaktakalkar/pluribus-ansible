@@ -84,16 +84,33 @@ def main():
     rc, out, err = module.run_command(cli)
 
     if err:
-        module.exit_json(
-            error='1',
-            failed=True,
-            stderr=err.strip(),
-            msg='Operation Failed: ' + str(cli),
-            changed=False
-        )
+        if 'User authorization failed' in err:
+            module.exit_json(
+                stdout='Switch has been already reset.',
+                error='0',
+                failed=False,
+                changed=False
+            )
+        elif 'nvOSd not running' in err:
+            stdout_msg = 'Switch has been just reset. '
+            stdout_msg += 'Please wait for nvOSd to reboot completely.'
+            module.exit_json(
+                stdout=stdout_msg,
+                error='0',
+                failed=False,
+                changed=False
+            )
+        else:
+            module.exit_json(
+                error='1',
+                failed=True,
+                stderr=err.strip(),
+                msg='Operation Failed: ' + str(cli),
+                changed=False
+            )
     else:
         module.exit_json(
-            msg='Switch Config Reset Successful.',
+            stdout='Switch config reset completed successfully.',
             error='0',
             failed=False,
             changed=True
