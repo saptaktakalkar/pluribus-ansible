@@ -91,6 +91,132 @@ options:
         - Specify supernet value to be used in configuring link IPs for layer3.
       required: False
       type: str
+    pn_spine_list:
+      description:
+        - Specify list of Spine hosts.
+      required: False
+      type: list
+    pn_leaf_list:
+      description:
+        - Specify list of leaf hosts.
+      required: False
+      type: list
+    pn_update_fabric_to_inband:
+      description:
+        - Flag to indicate if fabric network should be updated to in-band.
+      required: False
+      default: False
+      type: bool
+    pn_assign_loopback:
+      description:
+        - Flag to indicate if loopback ips should be assigned to vrouters
+        in layer3 fabric.
+      required: False
+      default: False
+      type: bool
+    pn_loopback_ip:
+      description:
+        - Loopback ip value for vrouters in layer3 fabric.
+      required: False
+      default: 109.109.109.0/24
+      type: str
+    pn_inband_ip:
+      description:
+        - Inband ips to be assigned to switches starting with this value.
+      required: False
+      default: 172.16.0.0/24.
+      type: str
+    pn_fabric_control_network:
+      description:
+        - Specify fabric control network as either mgmt or in-band.
+      required: False
+      type: str
+      choices: ['mgmt', 'in-band']
+      default: 'mgmt'
+    pn_toggle_40g:
+      description:
+        - Flag to indicate if 40g ports should be converted to 10g ports or not.
+      required: False
+      default: True
+      type: bool
+    pn_current_switch:
+      description:
+        - Name of the switch on which this task is currently getting executed.
+      required: False
+      type: str
+    pn_bfd:
+      description:
+        - Flag to indicate if BFD config should be added to vrouter interfaces
+        in case of layer3 fabric.
+      required: False
+      default: False
+      type: bool
+    pn_bfd_min_rx:
+      description:
+        - Specify BFD-MIN-RX value required for adding BFD configuration
+        to vrouter interfaces.
+      required: False
+      type: str
+    pn_bfd_multiplier:
+      description:
+        - Specify BFD_MULTIPLIER value required for adding BFD configuration
+        to vrouter interfaces.
+      required: False
+      type: str
+    pn_static_setup:
+      description:
+        - Flag to indicate if static values should be assign to
+        following switch setup params.
+      required: False
+      default: False
+      type: bool
+    pn_mgmt_ip:
+      description:
+        - Specify MGMT-IP value to be assign if pn_static_setup is True.
+      required: False
+      type: str
+    pn_mgmt_ip_subnet:
+      description:
+        - Specify subnet mask for MGMT-IP value to be assign if
+        pn_static_setup is True.
+      required: False
+      type: str
+    pn_gateway_ip:
+      description:
+        - Specify GATEWAY-IP value to be assign if pn_static_setup is True.
+      required: False
+      type: str
+    pn_dns_ip:
+      description:
+        - Specify DNS-IP value to be assign if pn_static_setup is True.
+      required: False
+      type: str
+    pn_dns_secondary_ip:
+      description:
+        - Specify DNS-SECONDARY-IP value to be assign if pn_static_setup is True
+      required: False
+      type: str
+    pn_domain_name:
+      description:
+        - Specify DOMAIN-NAME value to be assign if pn_static_setup is True.
+      required: False
+      type: str
+    pn_ntp_server:
+      description:
+        - Specify NTP-SERVER value to be assign if pn_static_setup is True.
+      required: False
+      type: str
+    pn_web_api:
+      description:
+        - Flag to enable web api.
+      default: True
+      type: bool
+    pn_stp:
+      description:
+        - Flag to enable STP at the end.
+      required: False
+      default: False
+      type: bool
 """
 
 EXAMPLES = """
@@ -397,6 +523,16 @@ def create_fabric(module, fabric_name, fabric_network):
                 return 'Switch already in the fabric'
 
     return run_cli(module, cli)
+
+
+def enable_web_api(module):
+    """
+    Method to enable web api on switches.
+    :param module: The Ansible module to fetch input parameters.
+    """
+    cli = pn_cli(module)
+    cli += ' admin-service-modify web if mgmt '
+    run_cli(module, cli)
 
 
 def update_fabric_network_to_inband(module):
@@ -1134,6 +1270,8 @@ def main():
             pn_dns_secondary_ip=dict(required=False, type='str'),
             pn_domain_name=dict(required=False, type='str'),
             pn_ntp_server=dict(required=False, type='str'),
+            pn_web_api=dict(type='bool', default=True),
+            pn_stp=dict(required=False, type='bool', default=False),
         )
     )
 
@@ -1151,6 +1289,7 @@ def main():
     CHANGED_FLAG = []
 
     if not run_l2_l3:
+        # Auto accept EULA
         eula_out_msg = auto_accept_eula(module)
         if 'Setup completed successfully' in eula_out_msg:
             message += ' EULA accepted on %s! ' % current_switch
@@ -1159,14 +1298,17 @@ def main():
             message += eula_out_msg
             CHANGED_FLAG.append(False)
 
+        # Update switch names to match host names from hosts file
         if 'Updated' in update_switch_names(module, current_switch):
             CHANGED_FLAG.append(True)
         else:
             CHANGED_FLAG.append(False)
 
+        # Make switch setup static
         if module.params['pn_static_setup']:
             make_switch_setup_static(module)
 
+        # Create/join fabric
         if 'already in the fabric' in create_fabric(module, fabric_name,
                                                     fabric_network):
             message += ' %s is already in fabric %s! ' % (current_switch,
@@ -1177,6 +1319,7 @@ def main():
                                                        fabric_name)
             CHANGED_FLAG.append(True)
 
+        # Configure fabric control network to either mgmt or in-band
         net_out_msg = configure_control_network(module, control_network)
         if 'Success' in net_out_msg:
             message += ' Configured fabric control network to %s on %s! ' % (
@@ -1186,6 +1329,11 @@ def main():
             message += net_out_msg
             CHANGED_FLAG.append(False)
 
+        # Enable web api if flag is True
+        if module.params['pn_web_api']:
+            enable_web_api(module)
+
+        # Disable STP
         stp_out_msg = modify_stp_local(module, 'disable')
         if 'Success' in stp_out_msg:
             message += ' STP disabled on %s! ' % current_switch
@@ -1194,6 +1342,7 @@ def main():
             message += stp_out_msg
             CHANGED_FLAG.append(False)
 
+        # Enable ports
         ports_out_msg = enable_ports(module)
         if 'Success' in ports_out_msg:
             message += ' Ports enabled on %s! ' % current_switch
@@ -1202,6 +1351,7 @@ def main():
             message += ports_out_msg
             CHANGED_FLAG.append(False)
 
+        # Toggle 40g ports to 10g
         if toggle_40g_flag:
             if toggle_40g_local(module):
                 message += ' Toggled 40G ports to 10G on %s! ' % current_switch
@@ -1210,13 +1360,18 @@ def main():
                 CHANGED_FLAG.append(False)
 
     else:
+        # Assign in-band ips
         message += assign_inband_ip(module, inband_address)
+
         if fabric_type == 'layer2':
+            # L2 setup (auto-vlag)
             message += configure_auto_vlag(module)
 
         if fabric_type == 'layer3':
+            # L3 setup (link ips)
             message += auto_configure_link_ips(module)
 
+        # Update fabric network to in-band if flag is True
         if update_fabric_to_inband:
             if 'Success' in update_fabric_network_to_inband(module):
                 message += ' Updated fabric network to in-band! '
@@ -1225,14 +1380,17 @@ def main():
                 message += ' Fabric network is already in-band! '
                 CHANGED_FLAG.append(False)
 
-        stp_out_msg = modify_stp(module, 'enable')
-        if 'Success' in stp_out_msg:
-            message += ' STP enabled! '
-            CHANGED_FLAG.append(True)
-        else:
-            message += ' STP is already enabled! '
-            CHANGED_FLAG.append(False)
+        # Enable STP if flag is True
+        if module.params['pn_stp']:
+            stp_out_msg = modify_stp(module, 'enable')
+            if 'Success' in stp_out_msg:
+                message += ' STP enabled! '
+                CHANGED_FLAG.append(True)
+            else:
+                message += ' STP is already enabled! '
+                CHANGED_FLAG.append(False)
 
+    # Exit the module and return the required JSON
     module.exit_json(
         stdout=message,
         error='0',
