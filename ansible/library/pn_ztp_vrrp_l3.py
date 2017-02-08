@@ -536,107 +536,6 @@ def configure_vrrp_l3_without_cluster(module, vlan_id, ip, noncluster_leaf):
     return output
 
 
-def create_vlan_with_vxlan_mapping(module, vlan_id, vxlan):
-    """
-    Method to create vlan with vxlan mapping.
-    :param module: The Ansible module to fetch input parameters.
-    :param vlan_id: vlan id to be created.
-    :param vxlan: vxlan id to be assigned to vlan.
-    :return: String describing if vlan got created or if it already exists.
-    """
-    global CHANGED_FLAG
-    output = ''
-    cli = pn_cli(module)
-    clicopy = cli
-    cli += ' vlan-show format id no-show-headers '
-    existing_vlan_ids = run_cli(module, cli).split()
-    existing_vlan_ids = list(set(existing_vlan_ids))
-
-    if vlan_id not in existing_vlan_ids:
-        cli = clicopy
-        cli += ' vlan-create id ' + vlan_id
-        cli += ' vxlan ' + vxlan
-        run_cli(module, cli)
-        output += ' vlan with id ' + vlan_id + ' created! '
-        CHANGED_FLAG.append(True)
-    else:
-        output += ' vlan with id ' + vlan_id + ' already exists! '
-        CHANGED_FLAG.append(False)
-
-    return output
-
-
-def create_tunnel(module, tunnel_name, local_ip, remote_ip, vrouter_name):
-    """
-    Method to create tunnel to carry vxlan traffic.
-    :param module: The Ansible module to fetch input parameters.
-    :param tunnel_name: Name of the tunnel to create.
-    :param local_ip: Local vrouter interface ip.
-    :param remote_ip: Remote vrouter interface ip.
-    :param vrouter_name: Name of the vrouter.
-    :return: String describing if tunnel got created or if it already exists.
-    """
-    global CHANGED_FLAG
-    cli = pn_cli(module)
-    cli += ' tunnel-show format name no-show-headers '
-    existing_tunnels = run_cli(module, cli).split()
-
-    if tunnel_name not in existing_tunnels:
-        cli = pn_cli(module)
-        cli += ' tunnel-create name %s scope local ' % tunnel_name
-        cli += ' local-ip %s remote-ip %s vrouter-name %s ' % (local_ip,
-                                                               remote_ip,
-                                                               vrouter_name)
-        if 'Success' in run_cli(module, cli):
-            CHANGED_FLAG.append(True)
-            return ' %s on %s created successfully! ' % (tunnel_name,
-                                                         vrouter_name)
-        else:
-            CHANGED_FLAG.append(False)
-            return ' Could not create %s! ' % tunnel_name
-    else:
-        CHANGED_FLAG.append(False)
-        return ' %s on %s already exists! ' % (tunnel_name, vrouter_name)
-
-
-def add_vxlan_to_tunnel(module, vxlan, tunnel_name):
-    """
-    Method to add vxlan to created tunnel so that it can carry vxlan traffic.
-    :param module: The Ansible module to fetch input parameters.
-    :param vxlan: vxlan id to add to tunnel.
-    :param tunnel_name: Name of the tunnel on which vxlan will be added.
-    :return: String describing if vxlan got added to tunnel or not.
-    """
-    global CHANGED_FLAG
-    cli = pn_cli(module)
-    cli += ' tunnel-vxlan-show format name no-show-headers '
-    existing_tunnel_vxlans = run_cli(module, cli).split()
-
-    if tunnel_name not in existing_tunnel_vxlans:
-        cli = pn_cli(module)
-        cli += ' tunnel-vxlan-add name %s vxlan %s ' % (tunnel_name, vxlan)
-        if 'Success' in run_cli(module, cli):
-            CHANGED_FLAG.append(True)
-            return ' Added vxlan %s to %s! ' % (vxlan, tunnel_name)
-        else:
-            CHANGED_FLAG.append(False)
-            return ' Could not add vxlan %s to %s! ' % (vxlan, tunnel_name)
-    else:
-        CHANGED_FLAG.append(False)
-        return ' vxlan %s already added to %s! ' % (vxlan, tunnel_name)
-
-
-def add_ports_to_vxlan_loopback_trunk(module, ports):
-    """
-    Method to add ports to vxlan-loopback-trunk.
-    :param module: The Ansible module to fetch input parameters.
-    :param ports: Port number to add to vxlan-loopback-trunk.
-    """
-    cli = pn_cli(module)
-    cli += ' trunk-modify name vxlan-loopback-trunk ports ' + ports
-    run_cli(module, cli)
-
-
 def configure_vrrp_l3(module, csv_data):
     """
     Method to configure VRRP L3.
@@ -655,20 +554,16 @@ def configure_vrrp_l3(module, csv_data):
     for row in csv_data_list:
         elements = row.split(',')
         if len(elements) > 3:
-            if len(elements) <= 6:
-                switch_list = []
-                vlan_id = elements[0]
-                vrrp_ip = elements[1]
-                switch_list.append(str(elements[2]))
-                switch_list.append(str(elements[3]))
-                vrrp_id = elements[4]
-                active_switch = str(elements[5])
-                output += configure_vrrp_l3_with_cluster(module, vrrp_id,
-                                                         vrrp_ip, active_switch,
-                                                         vlan_id, switch_list)
-            else:
-                pass    # TODO: Add logic to call vxlan code.
-
+            switch_list = []
+            vlan_id = elements[0]
+            vrrp_ip = elements[1]
+            switch_list.append(str(elements[2]))
+            switch_list.append(str(elements[3]))
+            vrrp_id = elements[4]
+            active_switch = str(elements[5])
+            output += configure_vrrp_l3_with_cluster(module, vrrp_id, vrrp_ip,
+                                                     active_switch, vlan_id,
+                                                     switch_list)
         else:
             noncluster_leaf = []
             vlan_id = elements[0]
