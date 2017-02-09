@@ -1,6 +1,20 @@
-### Run playbooks
+## Setup Ansible Config
 
-#### Switch-Config-Reset Playbook
+Update the following in /etc/ansible/ansible.cfg to appropriate location:
+
+```
+library        = /etc/ansible/pluribus-ansible/ansible/library
+```
+
+And also uncomment the following:
+
+```
+host_key_checking = False
+```
+
+## Run playbooks
+
+### Switch-Config-Reset Playbook
 
 Playbook command:
 
@@ -41,7 +55,7 @@ ansible-spine2             : ok=3    changed=0    unreachable=0    failed=0
 --snip--
 ```
 
-#### Fabric Playbook
+### Fabric Playbook
 
 Playbook command:
 
@@ -79,7 +93,7 @@ ansible-spine2             : ok=4    changed=1    unreachable=0    failed=0
 --snip--
 ```
 
-#### Fabric Playbook - L2 with VRRP
+### Fabric Playbook - L2 with VRRP
 
 Create a CSV file. Sample CSV file:
 ```
@@ -103,7 +117,7 @@ Playbook command:
 # ansible-playbook -i hosts pn_vrrp_l2_with_csv.yml -u pluribus --ask-pass --ask-vault-pass -K
 ```
 
-#### Fabric Playbook - L3
+### Fabric Playbook - L3
 
 Playbook command:
 
@@ -111,7 +125,7 @@ Playbook command:
 # ansible-playbook -i hosts pn_l3_ztp.yml -u pluribus --ask-pass --ask-vault-pass -K
 ```
 
-#### Fabric Playbook - L3 with VRRP
+### Fabric Playbook - L3 with VRRP
 
 Create a CSV file. Sample CSV file:
 
