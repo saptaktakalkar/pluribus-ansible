@@ -122,7 +122,56 @@ Playbook command:
 Playbook command:
 
 ```
-# ansible-playbook -i hosts pn_l3_ztp.yml -u pluribus --ask-pass --ask-vault-pass -K
+# ansible-playbook -i hosts pn_ztp_l3.yml -u pluribus --ask-pass --ask-vault-pass -K
+```
+
+Output snippet:
+
+```
+PLAY [Zero Touch Provisioning - Initial setup] *********************************
+
+TASK [setup] *******************************************************************
+ok: [gui-spine1]
+
+TASK [Auto accept EULA, Disable STP, enable ports and create/join fabric] ******
+changed: [gui-spine1]
+
+TASK [debug] *******************************************************************
+ok: [gui-spine1] => {
+    "ztp_out.stdout_lines": [
+        "  EULA accepted on gui-spine1!  gui-spine1 has joined fabric vz-fab!  Configured fabric control network to mgmt on gui-spine1!  STP disabled on gui-spine1!  Ports enabled on gui-spine1!  Toggled 40G ports to 10G on gui-spine1! "
+    ]
+}
+.
+.
+TASK [debug] *******************************************************************
+ok: [gui-spine1] => {
+    "ztp_l3_out.stdout_lines": [
+        "  Created vrouter gui-spine2-vrouter on switch gui-spine2   Created vrouter gui-spine1-vrouter on switch gui-spine1   Created vrouter gui-leaf4-vrouter on switch gui-leaf4   Created vrouter gui-leaf3-vrouter on switch gui-leaf3
+ Created vrouter gui-leaf2-vrouter on switch gui-leaf2   Created vrouter gui-leaf1-vrouter on switch gui-leaf1   Added vrouter interface with ip 172.168.1.1/30 on gui-leaf1!  Added BFD config to gui-leaf1-vrouter  Added vrouter interface
+with ip 172.168.1.2/30 on gui-spine1!  Added BFD config to gui-spine1-vrouter  Added vrouter interface with ip 172.168.1.5/30 on gui-leaf2!  Added BFD config to gui-leaf2-vrouter  Added vrouter interface with ip 172.168.1.6/30 on gui-spin
+e1!  Added BFD config to gui-spine1-vrouter  Added vrouter interface with ip 172.168.1.9/30 on gui-leaf3!  Added BFD config to gui-leaf3-vrouter  Added vrouter interface with ip 172.168.1.10/30 on gui-spine1!  Added BFD config to gui-spin
+e1-vrouter  Added vrouter interface with ip 172.168.1.13/30 on gui-leaf4!  Added BFD config to gui-leaf4-vrouter  Added vrouter interface with ip 172.168.1.14/30 on gui-spine1!  Added BFD config to gui-spine1-vrouter  Added vrouter interf
+ace with ip 172.168.1.17/30 on gui-leaf1!  Added BFD config to gui-leaf1-vrouter  Added vrouter interface with ip 172.168.1.18/30 on gui-spine2!  Added BFD config to gui-spine2-vrouter  Added vrouter interface with ip 172.168.1.21/30 on g
+ui-leaf2!  Added BFD config to gui-leaf2-vrouter  Added vrouter interface with ip 172.168.1.22/30 on gui-spine2!  Added BFD config to gui-spine2-vrouter  Added vrouter interface with ip 172.168.1.25/30 on gui-leaf3!  Added BFD config to g
+ui-leaf3-vrouter  Added vrouter interface with ip 172.168.1.26/30 on gui-spine2!  Added BFD config to gui-spine2-vrouter  Added vrouter interface with ip 172.168.1.29/30 on gui-leaf4!  Added BFD config to gui-leaf4-vrouter  Added vrouter
+interface with ip 172.168.1.30/30 on gui-spine2!  Added BFD config to gui-spine2-vrouter   Added loopback ip for vrouter gui-spine2-vrouter!  Added loopback ip for vrouter gui-spine1-vrouter!  Added loopback ip for vrouter gui-leaf4-vrout
+er!  Added loopback ip for vrouter gui-leaf3-vrouter!  Added loopback ip for vrouter gui-leaf2-vrouter!  Added loopback ip for vrouter gui-leaf1-vrouter! "
+    ]
+}
+
+TASK [pause] *******************************************************************
+Pausing for 2 seconds
+(ctrl+C then 'C' = continue early, ctrl+C then 'A' = abort)
+ok: [gui-spine1]
+
+PLAY RECAP *********************************************************************
+gui-leaf1                  : ok=4    changed=1    unreachable=0    failed=0
+gui-leaf2                  : ok=4    changed=1    unreachable=0    failed=0
+gui-leaf3                  : ok=4    changed=1    unreachable=0    failed=0
+gui-leaf4                  : ok=4    changed=1    unreachable=0    failed=0
+gui-spine1                 : ok=8    changed=2    unreachable=0    failed=0
+gui-spine2                 : ok=4    changed=1    unreachable=0    failed=0
 ```
 
 ### Fabric Playbook - L3 with VRRP
