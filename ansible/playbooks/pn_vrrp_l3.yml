@@ -83,7 +83,7 @@
   - cli_vault.yml
 
   vars:
-  - csv_file: /etc/ansible/pluribus-asnible/ansible/l3.csv  # CSV file path
+  - csv_file: /etc/ansible/pluribus-ansible/ansible/l3.csv  # CSV file path
 
   tasks:
     - name: Configure VRRP L3 setup
