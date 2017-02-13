@@ -767,11 +767,11 @@ def assign_loopback_ip(module, loopback_address):
     """
     Method to add loopback interface to vrouter.
     :param module: The Ansible module to fetch input parameters.
-    :param loopback_address: The network ip of the ips to be assigned
-    :return: The success or the error message.
+    :param loopback_address: The loopback ip to be assigned.
+    :return: String describing if loopback ips got assigned or not.
     """
     global CHANGED_FLAG
-    output = ' '
+    output = ''
     address = loopback_address.split('.')
     static_part = str(address[0]) + '.' + str(address[1]) + '.'
     static_part += str(address[2]) + '.'
@@ -797,9 +797,11 @@ def assign_loopback_ip(module, loopback_address):
                     cli += vrouter
                     cli += ' ip ' + ip
                     run_cli(module, cli)
-                    output += ' Added loopback ip for vrouter %s! ' % vrouter
+                    output += ' Added loopback ip %s to %s! ' % (ip, vrouter)
                     CHANGED_FLAG.append(True)
                 else:
+                    output += ' Loopback ip %s for %s already exists! ' % (
+                        ip, vrouter)
                     CHANGED_FLAG.append(False)
 
                 vrouter_count += 1
@@ -807,7 +809,7 @@ def assign_loopback_ip(module, loopback_address):
             output += ' Not enough loopback ips available for all vrouters! '
             CHANGED_FLAG.append(False)
     else:
-        output += ' No vrouters exists! '
+        output += ' No vrouters exists to assign loopback ips! '
         CHANGED_FLAG.append(False)
 
     return output

@@ -19,6 +19,7 @@
 #
 
 from ansible.module_utils.basic import AnsibleModule
+import re
 import shlex
 
 DOCUMENTATION = """
@@ -41,11 +42,6 @@ options:
         - Provide login password if user is not root.
       required: False
       type: str
-    pn_spine_list:
-      description:
-        - Specify list of Spine hosts
-      required: False
-      type: list
     pn_leaf_list:
       description:
         - Specify list of leaf hosts
@@ -63,7 +59,6 @@ EXAMPLES = """
       pn_vxlan:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_spine_list: "{{ groups['spine'] }}"
         pn_leaf_list: "{{ groups['leaf'] }}"
         pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"
 """
@@ -107,58 +102,43 @@ def run_cli(module, cli):
     output.
     :param module: The Ansible module to fetch input parameters.
     :param cli: the complete cli string to be executed on the target node(s).
-    :return: Output/Error or Success message depending upon.
+    :return: Output/Error or Success message depending upon
     the response from cli.
     """
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
+
     if out:
         return out
 
     if err:
         module.exit_json(
-            error="1",
+            error='1',
             failed=True,
             stderr=err.strip(),
-            msg="Operation Failed: " + str(cli),
+            msg='Operation Failed: ' + str(cli),
             changed=False
         )
     else:
         return 'Success'
 
 
-def create_vlan_with_vxlan_mapping(module, vlan_id, vxlan):
+def add_vxlan_to_vlan(module, vlan_id, vxlan):
     """
-    Method to create vlan with vxlan mapping.
+    Method to add vxlan mapping to vlan.
     :param module: The Ansible module to fetch input parameters.
-    :param vlan_id: vlan id to be created.
+    :param vlan_id: vlan id to be modified.
     :param vxlan: vxlan id to be assigned to vlan.
-    :return: String describing if vlan got created or if it already exists.
+    :return: String describing if vxlan for added or not.
     """
-    global CHANGED_FLAG
-    output = ''
     cli = pn_cli(module)
-    clicopy = cli
-    cli += ' vlan-show format id no-show-headers '
-    existing_vlan_ids = run_cli(module, cli).split()
-    existing_vlan_ids = list(set(existing_vlan_ids))
-
-    if vlan_id not in existing_vlan_ids:
-        cli = clicopy
-        cli += ' vlan-create id ' + vlan_id
-        cli += ' vxlan ' + vxlan
-        cli += ' scope fabric '
-        run_cli(module, cli)
-        output += ' vlan with id ' + vlan_id + ' created! '
-        CHANGED_FLAG.append(True)
-    else:
-        output += ' vlan with id ' + vlan_id + ' already exists! '
-        CHANGED_FLAG.append(False)
-
-    return output
+    cli += ' vlan-modify id %s vxlan %s ' % (vlan_id, vxlan)
+    run_cli(module, cli)
+    return ' Added vxlan %s to vlan %s! ' % (vxlan, vlan_id)
 
 
-def create_tunnel(module, tunnel_name, local_ip, remote_ip, vrouter_name):
+def create_tunnel(module, tunnel_name, local_ip, remote_ip, vrouter_name,
+                  switch):
     """
     Method to create tunnel to carry vxlan traffic.
     :param module: The Ansible module to fetch input parameters.
@@ -166,16 +146,18 @@ def create_tunnel(module, tunnel_name, local_ip, remote_ip, vrouter_name):
     :param local_ip: Local vrouter interface ip.
     :param remote_ip: Remote vrouter interface ip.
     :param vrouter_name: Name of the vrouter.
+    :param switch: Name of the switch on which tuneel will be created.
     :return: String describing if tunnel got created or if it already exists.
     """
     global CHANGED_FLAG
     cli = pn_cli(module)
-    cli += ' tunnel-show format name no-show-headers '
+    cli += ' switch %s tunnel-show format name no-show-headers ' % switch
     existing_tunnels = run_cli(module, cli).split()
 
     if tunnel_name not in existing_tunnels:
         cli = pn_cli(module)
-        cli += ' tunnel-create name %s scope local ' % tunnel_name
+        cli += ' switch %s tunnel-create name %s scope local ' % (switch,
+                                                                  tunnel_name)
         cli += ' local-ip %s remote-ip %s vrouter-name %s ' % (local_ip,
                                                                remote_ip,
                                                                vrouter_name)
@@ -191,39 +173,6 @@ def create_tunnel(module, tunnel_name, local_ip, remote_ip, vrouter_name):
         return ' %s on %s already exists! ' % (tunnel_name, vrouter_name)
 
 
-def find_vrouter_interface_ip(module, local_switch, vrouter_name,
-                              remote_switch):
-    """
-    Method to find vrouter interface ip on a vrouter needed for tunnel creation.
-    :param module: The Ansible module to fetch input parameters.
-    :param local_switch: Name of the local switch.
-    :param vrouter_name: Name of the vrouter on that local switch.
-    :param remote_switch: Name of the remote switch.
-    :return: Required vrouter interface ip.
-    """
-    cli = pn_cli(module)
-    clicopy = cli
-    cli += ' vrouter-interface-show vrouter-name %s ' % vrouter_name
-    cli += ' format l3-port no-show-headers '
-    port_numbers = run_cli(module, cli).split()
-    port_numbers = list(set(port_numbers))
-    port_numbers.remove(vrouter_name)
-
-    for port in port_numbers:
-        cli = clicopy
-        cli += ' switch %s port-show port %s ' % (local_switch, port)
-        cli += ' format hostname no-show-headers '
-        hostname = run_cli(module, cli).split()[0]
-        if hostname in remote_switch:
-            cli = clicopy
-            cli += ' vrouter-interface-show vrouter-name %s ' % vrouter_name
-            cli += ' l3-port %s format ip no-show-headers ' % port
-            ip_with_subnet = run_cli(module, cli).split()
-            ip_with_subnet.remove(vrouter_name)
-            ip_with_subnet = ip_with_subnet[0].split('/')
-            return ip_with_subnet[0]
-
-
 def get_vrouter_name(module, switch_name):
     """
     Method to return name of the vrouter.
@@ -237,60 +186,130 @@ def get_vrouter_name(module, switch_name):
     return run_cli(module, cli).split()[0]
 
 
-def configure_vtep(module, local_switch, csv_data_list):
+def get_loopback_ip(module, switch):
     """
-    Method to configure virtual tunnel end points.
+    Method to get loopback ip of a switch.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch: Name of the switch.
+    :return: Loopback ip.
+    """
+    vrouter_name = get_vrouter_name(module, switch)
+    cli = pn_cli(module)
+    cli += ' vrouter-loopback-interface-show vrouter-name ' + vrouter_name
+    cli += ' format ip no-show-headers '
+    return run_cli(module, cli).split()[1]
+
+
+def get_vrouter_interface_ip(module, switch, vlan):
+    """
+    Method to get vrouter interface ip to be used as local ip.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch: Name of the local switch.
+    :param vlan: Vlan id for which to find vrouter interface ip.
+    :return: Vrouter interface ip.
+    """
+    vrouter_name = get_vrouter_name(module, switch)
+    cli = pn_cli(module)
+    cli += ' vrouter-interface-show vrouter-name ' + vrouter_name
+    cli += ' vlan %s format ip no-show-headers ' % vlan
+    output = run_cli(module, cli).split()
+    output = list(set(output))
+    output.remove(vrouter_name)
+    regex = re.compile(r'^\d.*1/')
+    ip_with_subnet = [ip for ip in output if not regex.match(ip)]
+    return ip_with_subnet[0].split('/')[0]
+
+
+def configure_vtep_for_clustered_leafs(module, local_switch, vlan, vxlan):
+    """
+    Method to configure virtual tunnel end points for clustered leafs.
     :param module: The Ansible module to fetch input parameters.
     :param local_switch: Name of the local switch.
-    :param csv_data_list: vxlan data in comma separated format.
+    :param vlan: vlan id.
+    :param vxlan: Vxlan to add to tunnel.
     :return: String describing output of configuration.
     """
-    spine_list = module.params['pn_spine_list']
-    leaf_list = module.params['pn_leaf_list']
-    local_vrouter_name = get_vrouter_name(module, local_switch)
+    non_clustered_leafs = find_non_clustered_leafs(module)
+    local_ip = get_vrouter_interface_ip(module, local_switch, vlan)
     output = ''
-    for row in csv_data_list:
-        elements = row.split(',')
-        if len(elements) > 6 and local_switch not in elements[2]:
-            vxlan_id = elements[6]
-            remote_switch = elements[2]
-            remote_vrouter_name = get_vrouter_name(module, remote_switch)
-            tunnel_name = local_switch + '-to-' + remote_switch + '-tunnel'
+    if non_clustered_leafs:
+        for leaf in non_clustered_leafs:
+            # local to remote tunnel
+            vrouter_name = get_vrouter_name(module, local_switch)
+            remote_ip = get_loopback_ip(module, leaf)
+            tunnel_name = local_switch + '-to-' + leaf + '-tunnel'
+            output += create_tunnel(module, tunnel_name, local_ip,
+                                    remote_ip, vrouter_name, local_switch)
+            output += add_vxlan_to_tunnel(module, vxlan, tunnel_name,
+                                          local_switch)
 
-            if local_switch in spine_list or remote_switch in spine_list:
-                # Leaf to Spine or Spine to Leaf
-                local_ip = find_vrouter_interface_ip(module, local_switch,
-                                                     local_vrouter_name,
-                                                     remote_switch)
-                remote_ip = find_vrouter_interface_ip(module, remote_switch,
-                                                      remote_vrouter_name,
-                                                      local_switch)
-
-                output += create_tunnel(module, tunnel_name, local_ip,
-                                        remote_ip, local_vrouter_name)
-                output += add_vxlan_to_tunnel(module, vxlan_id, tunnel_name)
-            else:
-                pass    # TODO: Leaf to Leaf
+            # Remote to local tunnel
+            vrouter_name = get_vrouter_name(module, leaf)
+            tunnel_name = leaf + '-to-' + local_switch + '-tunnel'
+            output += create_tunnel(module, tunnel_name, remote_ip,
+                                    local_ip, vrouter_name, leaf)
+            output += add_vxlan_to_tunnel(module, vxlan, tunnel_name, leaf)
 
     return output
 
 
-def add_vxlan_to_tunnel(module, vxlan, tunnel_name):
+def configure_vtep_for_non_clustered_leafs(module, local_switch, vlan, vxlan):
+    """
+    Method to configure virtual tunnel end points for non clustered leafs.
+    :param module: The Ansible module to fetch input parameters.
+    :param local_switch: Name of the local switch.
+    :param vlan: vlan id.
+    :param vxlan: Vxlan to add to tunnel.
+    :return: String describing output of configuration.
+    """
+    non_clustered_leafs = find_non_clustered_leafs(module)
+    local_ip = get_loopback_ip(module, local_switch)
+    output = ''
+    for leaf in module.params['pn_leaf_list']:
+        if leaf != local_switch:
+            # local to remote tunnel
+            if leaf in non_clustered_leafs:
+                remote_ip = get_loopback_ip(module, leaf)
+            else:
+                remote_ip = get_vrouter_interface_ip(module, leaf, vlan)
+
+            vrouter_name = get_vrouter_name(module, local_switch)
+            tunnel_name = local_switch + '-to-' + leaf + '-tunnel'
+            output += create_tunnel(module, tunnel_name, local_ip,
+                                    remote_ip, vrouter_name, local_switch)
+            output += add_vxlan_to_tunnel(module, vxlan, tunnel_name,
+                                          local_switch)
+
+            # Remote to local tunnel
+            vrouter_name = get_vrouter_name(module, leaf)
+            tunnel_name = leaf + '-to-' + local_switch + '-tunnel'
+            output += create_tunnel(module, tunnel_name, remote_ip,
+                                    local_ip, vrouter_name, leaf)
+            output += add_vxlan_to_tunnel(module, vxlan, tunnel_name, leaf)
+
+    return output
+
+
+def add_vxlan_to_tunnel(module, vxlan, tunnel_name, switch):
     """
     Method to add vxlan to created tunnel so that it can carry vxlan traffic.
     :param module: The Ansible module to fetch input parameters.
     :param vxlan: vxlan id to add to tunnel.
     :param tunnel_name: Name of the tunnel on which vxlan will be added.
+    :param switch: Name of the switch on which tunnel exists.
     :return: String describing if vxlan got added to tunnel or not.
     """
     global CHANGED_FLAG
     cli = pn_cli(module)
-    cli += ' tunnel-vxlan-show format switch no-show-headers '
+    cli += ' switch %s tunnel-vxlan-show format switch no-show-headers ' % (
+        switch)
     existing_tunnel_vxlans = run_cli(module, cli).split()
 
     if tunnel_name not in existing_tunnel_vxlans:
         cli = pn_cli(module)
-        cli += ' tunnel-vxlan-add name %s vxlan %s ' % (tunnel_name, vxlan)
+        cli += ' switch %s tunnel-vxlan-add name %s vxlan %s ' % (switch,
+                                                                  tunnel_name,
+                                                                  vxlan)
         if 'Success' in run_cli(module, cli):
             CHANGED_FLAG.append(True)
             return ' Added vxlan %s to %s! ' % (vxlan, tunnel_name)
@@ -313,6 +332,28 @@ def add_ports_to_vxlan_loopback_trunk(module, ports):
     run_cli(module, cli)
 
 
+def find_non_clustered_leafs(module):
+    """
+    Method to find leafs which are not part of any cluster.
+    :param module: The Ansible module to fetch input parameters.
+    :return: The list of non clustered leaf switches.
+    """
+    non_clustered_leafs = []
+    cli = pn_cli(module)
+    clicopy = cli
+    cli += ' cluster-show format cluster-node-1 no-show-headers '
+    cluster_node_1 = run_cli(module, cli).split()
+    cli = clicopy
+    cli += ' cluster-show format cluster-node-2 no-show-headers '
+    cluster_node_2 = run_cli(module, cli).split()
+
+    for leaf in module.params['pn_leaf_list']:
+        if (leaf not in cluster_node_1) and (leaf not in cluster_node_2):
+            non_clustered_leafs.append(leaf)
+
+    return non_clustered_leafs
+
+
 def configure_vxlan(module, csv_data):
     """
     Method to parse vxlan data from csv file and configure it.
@@ -325,13 +366,24 @@ def configure_vxlan(module, csv_data):
     csv_data_list = csv_data.split('\n')
     for row in csv_data_list:
         elements = row.split(',')
-        if len(elements) > 6:
-            vlan_id = elements[0]
-            switch_name = elements[2]
+        vlan_id = elements[0]
+        leaf_switch_1 = elements[2]
+        if len(elements) == 8:
+            leaf_switch_2 = elements[3]
             vxlan_id = elements[6]
             loopback_port = elements[7]
-            output += create_vlan_with_vxlan_mapping(module, vlan_id, vxlan_id)
-            output += configure_vtep(module, switch_name, csv_data_list)
+            output += add_vxlan_to_vlan(module, vlan_id, vxlan_id)
+            output += configure_vtep_for_clustered_leafs(module, leaf_switch_1,
+                                                         vlan_id, vxlan_id)
+            output += configure_vtep_for_clustered_leafs(module, leaf_switch_2,
+                                                         vlan_id, vxlan_id)
+            add_ports_to_vxlan_loopback_trunk(module, loopback_port)
+        elif len(elements) == 5:
+            vxlan_id = elements[3]
+            loopback_port = elements[4]
+            output += add_vxlan_to_vlan(module, vlan_id, vxlan_id)
+            output += configure_vtep_for_non_clustered_leafs(
+                module, leaf_switch_1, vlan_id, vxlan_id)
             add_ports_to_vxlan_loopback_trunk(module, loopback_port)
 
     return output
@@ -343,7 +395,6 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_spine_list=dict(required=False, type='list'),
             pn_leaf_list=dict(required=False, type='list'),
             pn_csv_data=dict(required=True, type='str'),
         )
