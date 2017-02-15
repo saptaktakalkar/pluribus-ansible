@@ -18,5 +18,14 @@
     - debug:
         var: reset_out.stdout_lines
 
-    - pause:
-        seconds: 10                       # Pause playbook execution for specified amount of time.
+    - name: Wait for nvOSd to reboot
+      pause:
+        minutes: 3                       # Pause playbook execution for specified amount of time.
+      when: reset_out.stdout_lines != ["Switch has been already reset."]
+
+    - name: Check nvOSd status (Retry until it's online)
+      command: service svc-nvOSd status
+      register: status
+      until: status.stdout == 'online'   # Keep on checking the nvOSd status until it's online.
+      retries: 10
+      changed_when: False
