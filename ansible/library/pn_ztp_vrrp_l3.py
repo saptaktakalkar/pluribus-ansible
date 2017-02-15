@@ -182,6 +182,7 @@ def create_vrouter(module, switch, vrrp_id):
     :return: String describing if vrouter got created or if it already exists.
     """
     global CHANGED_FLAG
+    output = ''
     vrouter_name = str(switch) + '-vrouter'
     vnet_name = module.params['pn_fabric_name'] + '-global'
     cli = pn_cli(module)
@@ -198,13 +199,25 @@ def create_vrouter(module, switch, vrrp_id):
         cli += ' vrouter-create name %s vnet %s hw-vrrp-id %s enable ' % (
             vrouter_name, vnet_name, vrrp_id)
         run_cli(module, cli)
-        output = ' Created vrouter %s on switch %s! ' % (vrouter_name, switch)
+        output += ' Created vrouter %s on switch %s! ' % (vrouter_name, switch)
         CHANGED_FLAG.append(True)
     else:
-        output = ' Vrouter name %s on switch %s already exists! ' % (
-            vrouter_name, switch)
-        CHANGED_FLAG.append(False)
-
+        cli = clicopy
+        cli += ' vrouter-show name ' + vrouter_name
+        cli += ' format hw-vrrp-id no-show-headers'
+        hw_vrrp_id = run_cli(module, cli).split()[0]
+        if hw_vrrp_id == vrrp_id:
+            output += ' Vrouter name %s on switch %s already exists! ' % (
+                vrouter_name, switch)
+            CHANGED_FLAG.append(False)
+        else:
+            cli = clicopy
+            cli += ' vrouter-modify name %s hw-vrrp-id %s ' % (
+                vrouter_name, vrrp_id)
+            run_cli(module, cli)
+            output += ' Modified hw-vrrp-id on vrouter %s on switch %s! ' % (
+                   vrouter_name, switch)
+            CHANGED_FLAG.append(True)
     return output
 
 
@@ -241,6 +254,7 @@ def create_vrouter_interface(module, switch, ip, vlan_id, vrrp_id,
 
     if vrouter_name not in existing_vrouter:
         cli = clicopy
+        cli += ' switch ' + switch
         cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
         cli += ' ip ' + ip2
         cli += ' vlan %s if data ' % vlan_id
@@ -269,6 +283,7 @@ def create_vrouter_interface(module, switch, ip, vlan_id, vrrp_id,
 
     if vrouter_name not in existing_vrouter:
         cli = clicopy
+        cli += ' switch ' + switch
         cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
         cli += ' ip ' + ip1
         cli += ' vlan %s if data vrrp-id %s ' % (vlan_id, vrrp_id)
