@@ -232,6 +232,15 @@ def assigning_bgp_as(module, bgp_spine):
 
 
 def vrouter_interface_ibgp_add(module, switch_name, interface_ip, neighbor_ip):
+    """
+    Method to create interfaces and add ibgp neighbors.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch_name: The name of the switch to run interface.
+    :param interface_ip: Interface ip to create a vrouter interface.
+    :param neighbor_ip: Neighbor_ip for the ibgp neighbor.
+    :return: The output of all cli commands.
+    """
+    global CHANGED_FLAG
     output = ''
     vlan_id = module.params['pn_ibgp_vlan']
 
@@ -244,13 +253,18 @@ def vrouter_interface_ibgp_add(module, switch_name, interface_ip, neighbor_ip):
 
     if vlan_id not in existing_vlans:
         cli = clicopy
-        cli += ' switch %s vlan-create id %s scope local ' % (switch_name, vlan_id)
+        cli += ' switch %s vlan-create id %s scope local ' % (switch_name,
+                                                              vlan_id)
         output += run_cli(module, cli)
+        CHANGED_FLAG.append(True)
     else:
-        output += 'vlan %s already present for switch %s! ' % (vlan_id, switch_name)
+        output += 'vlan %s already present for switch %s! ' % (vlan_id,
+                                                               switch_name)
+        CHANGED_FLAG.append(False)
 
     cli = clicopy
-    cli += ' vrouter-show location %s format name, no-show-headers ' % switch_name
+    cli += ' vrouter-show location %s format name' % switch_name
+    cli += ' no-show-headers'
     vrouter = run_cli(module, cli).split()[0]
 
     cli = clicopy
@@ -258,37 +272,52 @@ def vrouter_interface_ibgp_add(module, switch_name, interface_ip, neighbor_ip):
     remote_as = run_cli(module, cli).split()[0]
 
     cli = clicopy
-    cli += ' vrouter-interface-show ip %s vlan %s format switch no-show-headers ' % (interface_ip, vlan_id)
+    cli += ' vrouter-interface-show ip %s vlan %s' % (interface_ip, vlan_id)
+    cli += ' format switch no-show-headers'
     existing_vrouter_interface = run_cli(module, cli).split()
 
     if vrouter not in existing_vrouter_interface:
         cli = clicopy
-        cli += ' vrouter-interface-add vrouter-name %s ip %s vlan %s ' % (vrouter, interface_ip, vlan_id)
+        cli += ' vrouter-interface-add vrouter-name %s ip %s vlan %s ' % (
+            vrouter, interface_ip, vlan_id)
         output += run_cli(module, cli)
+        CHANGED_FLAG.append(True)
     else:
         output += 'vrouter interface already present for vrouter %s! ' % vrouter
+        CHANGED_FLAG.append(False)
 
     neighbor_ip = neighbor_ip.split('/')[0]
 
     cli = clicopy
     cli += ' vrouter-bgp-show remote-as ' + remote_as
-    cli += ' neighbor %s format switch no-show-headers ' % (neighbor_ip)
+    cli += ' neighbor %s format switch no-show-headers' % neighbor_ip
     already_added = run_cli(module, cli).split()
 
     if vrouter not in already_added:
         cli = clicopy
-        cli += ' vrouter-bgp-add vrouter-name %s neighbor %s remote-as %s next-hop-self ' % (vrouter, neighbor_ip, remote_as)
+        cli += ' vrouter-bgp-add vrouter-name %s' % vrouter
+        cli += ' neighbor %s remote-as %s next-hop-self' % (neighbor_ip,
+                                                            remote_as)
         output += run_cli(module, cli)
+        CHANGED_FLAG.append(True)
     else:
-        output += 'vrouter ibgp neighbour already present for vrouter %s! ' % vrouter
+        output += 'vrouter ibgp neighbour already present for vrouter %s! ' % (
+            vrouter)
+        CHANGED_FLAG.append(False)
 
     return output
 
 
 def assigning_ibgp_interface(module):
+    """
+    Method to create interfaces and add ibgp neighbors.
+    :param module: The Ansible module to fetch input parameters.
+    :return: The output of all cli commands.
+    """
     output = ''
     ibgp_ip_range = module.params['pn_ibgp_ip_range']
     spine_list = module.params['pn_spine_list']
+    leaf_list = module.params['pn_leaf_list']
     subnet_count = 0
 
     cli = pn_cli(module)
@@ -302,26 +331,34 @@ def assigning_ibgp_interface(module):
     cli += ' cluster-show format name no-show-headers '
     cluster_list = run_cli(module, cli).split()
 
-    for cluster in cluster_list:
-        cli = clicopy
-        cli += ' cluster-show name %s format cluster-node-1 no-show-headers ' % cluster
-        cluster_node_1 = run_cli(module, cli).split()[0]
-
-        if cluster_node_1 not in spine_list:
-            ip_count = subnet_count * 4
-            ip1 = static_part + str(ip_count + 1) + '/' + str(30)
-            ip2 = static_part + str(ip_count + 2) + '/' + str(30)
-
+    if len(cluster_list) > 0 and cluster_list[0] != 'Success':
+        for cluster in cluster_list:
             cli = clicopy
-            cli += ' cluster-show name %s format cluster-node-2 no-show-headers ' % cluster
-            cluster_node_2 = run_cli(module, cli).split()[0]
-            
-            output += vrouter_interface_ibgp_add(module, cluster_node_1, ip1, ip2)
-            output += vrouter_interface_ibgp_add(module, cluster_node_2, ip2, ip1)
-      
-            subnet_count += 1
+            cli += ' cluster-show name %s format cluster-node-1' % cluster
+            cli += ' no-show-headers'
+            cluster_node_1 = run_cli(module, cli).split()[0]
+
+            if cluster_node_1 not in spine_list and cluster_node_1 in leaf_list:
+                ip_count = subnet_count * 4
+                ip1 = static_part + str(ip_count + 1) + '/' + str(30)
+                ip2 = static_part + str(ip_count + 2) + '/' + str(30)
+
+                cli = clicopy
+                cli += ' cluster-show name %s format cluster-node-2' % cluster
+                cli += ' no-show-headers'
+                cluster_node_2 = run_cli(module, cli).split()[0]
+
+                output += vrouter_interface_ibgp_add(module, cluster_node_1,
+                                                     ip1, ip2)
+                output += vrouter_interface_ibgp_add(module, cluster_node_2,
+                                                     ip2, ip1)
+
+                subnet_count += 1
+    else:
+        output += 'No leaf cluster to add ibgp! '
 
     return output
+
 
 def bgp_neighbor(module):
     """
@@ -642,14 +679,13 @@ def main():
     bgp_maxpath_val = module.params['pn_bgp_maxpath']
  
     message = ''
+    message += create_leaf_cluster(module)
     message += assigning_bgp_as(module, bgp_as_range)
-    message += assigning_ibgp_interface(module)
     message += bgp_redistribute(module, bgp_redistribute_val)
     message += bgp_maxpath(module, bgp_maxpath_val)
     message += bgp_neighbor(module)
     message += assign_router_id(module)
-    message += create_leaf_cluster(module)
-
+    message += assigning_ibgp_interface(module)
     module.exit_json(
         stdout=message,
         error='0',
