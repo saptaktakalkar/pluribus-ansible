@@ -22,7 +22,7 @@
       pn_ztp:
         pn_cliusername: "{{ USERNAME }}"  # Cli username (value comes from cli_vault.yml).
         pn_clipassword: "{{ PASSWORD }}"  # Cli password (value comes from cli_vault.yml).
-        pn_fabric_name: 'vz-fab'          # Name of the fabric to create/join.
+        pn_fabric_name: 'verizon-ibgp-fab'          # Name of the fabric to create/join.
         pn_run_l2_l3: False               # Flag to indicate if ZTP L2/L3 should get configured or not.
         pn_current_switch: "{{ inventory_hostname }}"  # Name of the switch on which this task is currently getting executed.
         pn_toggle_40g: True               # Flag to indicate if 40g ports should be converted to 10g ports or not.
@@ -36,7 +36,7 @@
         # pn_update_fabric_to_inband: False       # Flag to indicate if fabric network should be updated to in-band. Default: False.
         # pn_assign_loopback: False               # Flag to indicate if loopback ips should be assigned to vrouters in layer3 fabric. Default: False.
         # pn_loopback_ip: '109.109.109.0/24'      # Loopback ip value for vrouters in layer3 fabric. Default: 109.109.109.0/24.
-        # pn_inband_ip: '172.16.0.0/24'           # Inband ips to be assigned to switches starting with this value. Default: 172.16.0.0/24.
+        # pn_inband_ip: '172.16.5.0/24'           # Inband ips to be assigned to switches starting with this value. Default: 172.16.0.0/24.
         # pn_fabric_control_network: 'mgmt'       # Choices: in-band or mgmt.  Default: mgmt
         # pn_bfd: True                            # Flag to indicate if BFD config should be added to vrouter interfaces in case of layer3 fabric. Default: False.
         # pn_bfd_min_rx: 200                      # BFD-MIN-RX value required for adding BFD configuration to vrouter interfaces.
@@ -49,8 +49,6 @@
         # pn_dns_secondary_ip: '10.20.4.1'        # Specify DNS-SECONDARY-IP value to be assign if pn_static_setup is True.
         # pn_domain_name: 'pluribusnetworks.com'  # Specify DOMAIN-NAME value to be assign if pn_static_setup is True.
         # pn_ntp_server: '0.us.pool.ntp.org'      # Specify NTP-SERVER value to be assign if pn_static_setup is True.
-        # pn_web_api: True                        # Specify False if you want to not enable web. Default: True.
-        # pn_stp: False                           # Specify True if you want to enable STP at the end. Default: False.
 
       register: ztp_out              # Variable to hold/register output of the above tasks.
       until: ztp_out.failed != true  # If the above code fails it will retry the code
@@ -83,14 +81,14 @@
   - cli_vault.yml
 
   vars:
-  - csv_file: /etc/ansible/pluribus-ansible/ansible/l3csv.csv  # CSV file path
+  - csv_file: /etc/ansible/fabric_over_l3.csv  # CSV file path
 
   tasks:
     - name: Configure VRRP L3 setup
       pn_ztp_vrrp_l3:
         pn_cliusername: "{{ USERNAME }}"  # Cli username (value comes from cli_vault.yml).
         pn_clipassword: "{{ PASSWORD }}"  # Cli password (value comes from cli_vault.yml).
-        pn_fabric_name: 'vz-fab'          # Name of the fabric to create/join.
+        pn_fabric_name: 'verizon-ibgp-fab'          # Name of the fabric to create/join.
         pn_spine_list: "{{ groups['spine'] }}"  # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_leaf_list: "{{ groups['leaf'] }}"    # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"  # VRRP Layer3 data specified in CSV file.
@@ -128,7 +126,7 @@
       pn_ztp:
         pn_cliusername: "{{ USERNAME }}"  # Cli username (value comes from cli_vault.yml).
         pn_clipassword: "{{ PASSWORD }}"  # Cli password (value comes from cli_vault.yml).
-        pn_fabric_name: 'vz-fab'          # Name of the fabric to create/join.
+        pn_fabric_name: 'verizon-ibgp-fab'          # Name of the fabric to create/join.
         pn_spine_list: "{{ groups['spine'] }}"  # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_leaf_list: "{{ groups['leaf'] }}"    # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_fabric_type: 'layer3'                # Choices: layer2 or layer3. Default: layer2
@@ -137,7 +135,7 @@
         pn_cidr: '24'                           # Subnet mask required to calculate link IPs for layer3 fabric.
         pn_supernet: '30'                       # Supernet mask required to calculate link IPs for layer3 fabric.
         pn_assign_loopback: True                # Flag to indicate if loopback ips should be assigned to vrouters in layer3 fabric. Default: False.
-        pn_inband_ip: '172.1.15.0/24'           # Inband ips to be assigned to switches starting with this value. Default: 172.16.0.0/24.
+        pn_inband_ip: '172.2.15.0/24'           # Inband ips to be assigned to switches starting with this value. Default: 172.16.0.0/24.
         pn_loopback_ip: '109.109.109.0/24'      # Loopback ip value for vrouters in layer3 fabric. Default: 109.109.109.0/24.
         pn_bfd: True                            # Flag to indicate if BFD config should be added to vrouter interfaces in case of layer3 fabric. Default: False.
         pn_bfd_min_rx: 200                      # BFD-MIN-RX value required for adding BFD configuration to vrouter interfaces.
@@ -170,13 +168,13 @@
         seconds: 2                       # Pause playbook execution for specified amount of time.
 
 
-# This task is to configure eBGP.
-# It uses pn_ebgp.py module from library/ directory.
+# This task is to configure eBGP/OSPF.
+# It uses pn_ebgp_ospf.py module from library/ directory.
 # pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 # If you don't specify values for pn_bgp_maxpath, pn_bgp_redistribute, pn_bgp_as_range,
-# then it will take the default values specified in the pn_ebgp.py module.
+# then it will take the default values specified in the pn_ebgp_ospf.py module.
 # If the tasks fails then it will retry as specified by retries count.
-- name: Zero Touch Provisioning - BGP setup
+- name: Zero Touch Provisioning - BGP/OSPF setup
   hosts: spine[0]
   serial: 1
   become: true
@@ -187,18 +185,20 @@
   - cli_vault.yml
 
   tasks:
-    - name: Configure eBGP
-      pn_ebgp:
+    - name: Configure eBGP/OSPF
+      pn_ebgp_ospf:
         pn_cliusername: "{{ USERNAME }}"        # Cli username (value comes from cli_vault.yml).
         pn_clipassword: "{{ PASSWORD }}"        # Cli password (value comes from cli_vault.yml).
         pn_spine_list: "{{ groups['spine'] }}"  # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_leaf_list: "{{ groups['leaf'] }}"    # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_bfd: True                            # Flag to indicate if BFD config should be added to eBGP. Default: False.
+        pn_routing_protocol: 'ospf'             # Routing protocol to configure. Choices are ['ebgp', 'ospf']
         # pn_bgp_maxpath: '16'                  # BGP-MAXPATH value to be assigned to vrouters. Default: 16
         # pn_bgp_redistribute: 'connected'      # BGP-REDISTRIBUTE value to be assigned to vrouters. Chocies: none, static, connected, rip, ospf. Default: connected
         # pn_bgp_as_range: '65000'              # BGP-AS-RANGE value to be assigned to vrouters. Default: 65000
         # pn_ibgp_ip_range: '75.75.75.0/30'     # iBGP IP range to be assign to interfaces. Default: '75.75.75.0/30'
         # pn_ibgp_vlan: '4040'                  # iBGP vlan value to be assigned to interfaces. Default 4040
+        # pn_ospf_area_id: '0'                  # Area id to configure to ospf
       register: bgp_out                         # Variable to hold/register output of the above tasks.
       until: bgp_out.failed != true             # If the above code fails it will retry the code
       retries: 3                                # This is the retries count
@@ -225,7 +225,7 @@
   - cli_vault.yml
 
   vars:
-  - command_file: /etc/ansible/pluribus-ansible/ansible/disable_ports.txt  # Commands file path.
+  - command_file: /etc/ansible/disable_ports.txt  # Commands file path.
 
   tasks:
     - name: Disable ports
