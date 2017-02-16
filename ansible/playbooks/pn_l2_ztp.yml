@@ -7,7 +7,6 @@
 # If the tasks fails then it will retry as specified by retries count.
 - name: Zero Touch Provisioning - Layer2 setup
   hosts: spine[0]
-  serial: 1
   become: true
   become_method: su
   become_user: root
@@ -16,13 +15,13 @@
   - cli_vault.yml
 
   tasks:
-    - name: Configure auto vlags
+    - name: Configure auto vlag
       pn_l2_ztp:
         pn_cliusername: "{{ USERNAME }}"        # Cli username (value comes from cli_vault.yml).
         pn_clipassword: "{{ PASSWORD }}"        # Cli password (value comes from cli_vault.yml).
         pn_spine_list: "{{ groups['spine'] }}"  # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_leaf_list: "{{ groups['leaf'] }}"    # List of all leaf switches mentioned under [leaf] grp in hosts file.
-        pn_inband_ip: '172.15.0.0/24'           # Inband ips to be assigned to switches starting with this value. Default: 172.16.0.0/24.
+        # pn_update_fabric_to_inband: False     # Flag to indicate if fabric network should be updated to in-band. Default: False.
         # pn_stp: False                         # Specify True if you want to enable STP at the end. Default: False.
 
       register: ztp_l2_out                      # Variable to hold/register output of the above tasks.
