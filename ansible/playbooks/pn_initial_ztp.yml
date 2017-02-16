@@ -23,6 +23,7 @@
         pn_fabric_name: 'ztp-fabric'                   # Name of the fabric to create/join.
         pn_current_switch: "{{ inventory_hostname }}"  # Name of the switch on which this task is currently getting executed.
         # pn_toggle_40g: True                          # Flag to indicate if 40g ports should be converted to 10g ports or not.
+        # pn_inband_ip: '172.16.1.0/24'                # Inband ips to be assigned to switches starting with this value. Default: 172.16.0.0/24.
         # pn_fabric_network: 'mgmt'                    # Choices: in-band or mgmt.  Default: mgmt
         # pn_fabric_control_network: 'mgmt'            # Choices: in-band or mgmt.  Default: mgmt
         # pn_static_setup: False                       # Flag to indicate if static values should be assign to following switch setup params. Default: True.
@@ -34,6 +35,7 @@
         # pn_domain_name: 'pluribusnetworks.com'       # Specify DOMAIN-NAME value to be assign if pn_static_setup is True.
         # pn_ntp_server: '0.us.pool.ntp.org'           # Specify NTP-SERVER value to be assign if pn_static_setup is True.
         # pn_web_api: True                             # Flag to enable web api. Default: True
+        # pn_stp: False                                # Specify True if you want to enable STP at the end. Default: False.
 
       register: ztp_out              # Variable to hold/register output of the above tasks.
       until: ztp_out.failed != true  # If the above code fails it will retry the code

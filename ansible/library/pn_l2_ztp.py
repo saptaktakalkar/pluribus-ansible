@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI Zero Touch Provisioning (ZTP) """
+""" PN CLI Layer2 Zero Touch Provisioning (ZTP) """
 
 #
 # This file is part of Ansible
@@ -52,12 +52,6 @@ options:
         - Specify list of leaf hosts.
       required: False
       type: list
-    pn_inband_ip:
-      description:
-        - Inband ips to be assigned to switches starting with this value.
-      required: False
-      default: 172.16.0.0/24.
-      type: str
     pn_update_fabric_to_inband:
       description:
         - Flag to indicate if fabric network should be updated to in-band.
@@ -447,69 +441,6 @@ def configure_auto_vlag(module):
     return output
 
 
-def assign_inband_ip(module, inband_address):
-    """
-    Method to assign in-band ips to switches.
-    :param module: The Ansible module to fetch input parameters.
-    :param inband_address: The network ip for the in-band ips.
-    :return: String describing if in-band ip got assigned or not.
-    """
-    output = ''
-    address = inband_address.split('.')
-    static_part = str(address[0]) + '.' + str(address[1]) + '.'
-    static_part += str(address[2]) + '.'
-    last_octet = str(address[3]).split('/')
-    subnet = last_octet[1]
-
-    # Get the list of all switches present in fabric.
-    cli = pn_cli(module)
-    clicopy = cli
-    cli += ' fabric-node-show format name no-show-headers '
-    switch_names = run_cli(module, cli).split()
-    switch_names.sort()
-
-    if len(switch_names) > 0:
-        ip_count = 0
-        if len(switch_names) <= 255:
-            for switch in switch_names:
-                ip_count += 1
-                ip = static_part + str(ip_count) + '/' + subnet
-                # Get existing in-band ip.
-                cli = clicopy
-                cli += ' fabric-node-show name %s format in-band-ip ' % switch
-                cli += ' no-show-headers '
-                existing_inband_ip = run_cli(module, cli).split()[0]
-                # If existing in-band ip is not the same then assign new ip.
-                if ip != existing_inband_ip:
-                    cli = clicopy
-                    cli += ' fabric-node-show format in-band-ip '
-                    cli += ' no-show-headers '
-                    assigned_ips = run_cli(module, cli).split()
-                    # Make sure ip has not been assigned to any of the switches.
-                    while ip in assigned_ips:
-                        # If ip is not unique, increase the ip count by 1.
-                        ip_count += 1
-                        ip = static_part + str(ip_count) + '/' + subnet
-
-                    # Assign unique in-band ip to the switch.
-                    cli = clicopy
-                    cli += ' switch %s switch-setup-modify ' % switch
-                    cli += ' in-band-ip ' + ip
-                    if 'Setup completed successfully' in run_cli(module, cli):
-                        output += ' Assigned in-band ip %s to %s! ' % (ip,
-                                                                       switch)
-
-                else:
-                    output += ' %s has been already assigned to %s! ' % (ip,
-                                                                         switch)
-        else:
-            output += ' Not enough in-band ips available for all the switches! '
-    else:
-        output += ' No switches present in fabric for in-band ips assignment! '
-
-    return output
-
-
 def update_fabric_network_to_inband(module):
     """
     Method to update fabric network type to in-band
@@ -544,23 +475,17 @@ def main():
             pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_spine_list=dict(required=False, type='list'),
             pn_leaf_list=dict(required=False, type='list'),
-            pn_inband_ip=dict(required=False, type='str',
-                              default='172.16.0.0/24'),
             pn_update_fabric_to_inband=dict(required=False, type='bool',
                                             default=False),
             pn_stp=dict(required=False, type='bool', default=False),
         )
     )
 
-    message = ''
     global CHANGED_FLAG
     CHANGED_FLAG = []
 
-    # Assign in-band ips.
-    message += assign_inband_ip(module, module.params['pn_inband_ip'])
-
     # L2 setup (auto-vlag).
-    message += configure_auto_vlag(module)
+    message = configure_auto_vlag(module)
 
     # Update fabric network to in-band if flag is True.
     if module.params['pn_update_fabric_to_inband']:

@@ -71,6 +71,12 @@ options:
       required: False
       default: True
       type: bool
+    pn_inband_ip:
+      description:
+        - Inband ips to be assigned to switches starting with this value.
+      required: False
+      default: 172.16.0.0/24.
+      type: str
     pn_current_switch:
       description:
         - Name of the switch on which this task is currently getting executed.
@@ -458,6 +464,74 @@ def toggle_40g_local(module):
     return output
 
 
+def assign_inband_ip(module, inband_address):
+    """
+    Method to assign in-band ips to switches.
+    :param module: The Ansible module to fetch input parameters.
+    :param inband_address: The network ip for the in-band ips.
+    :return: String describing if in-band ip got assigned or not.
+    """
+    global CHANGED_FLAG
+    output = ''
+    address = inband_address.split('.')
+    static_part = str(address[0]) + '.' + str(address[1]) + '.'
+    static_part += str(address[2]) + '.'
+    last_octet = str(address[3]).split('/')
+    subnet = last_octet[1]
+
+    # Get the list of all switches present in fabric.
+    cli = pn_cli(module)
+    clicopy = cli
+    cli += ' fabric-node-show format name no-show-headers '
+    switch_names = run_cli(module, cli).split()
+    switch_names.sort()
+
+    if len(switch_names) > 0:
+        ip_count = 0
+        for switch in switch_names:
+            if ip_count <= 255:
+                ip_count += 1
+                ip = static_part + str(ip_count) + '/' + subnet
+                # Get existing in-band ip.
+                cli = clicopy
+                cli += ' fabric-node-show name %s format in-band-ip ' % switch
+                cli += ' no-show-headers '
+                existing_inband_ip = run_cli(module, cli).split()[0]
+                # If existing in-band ip is not the same then assign new ip.
+                if ip != existing_inband_ip:
+                    cli = clicopy
+                    cli += ' fabric-node-show format in-band-ip '
+                    cli += ' no-show-headers '
+                    assigned_ips = run_cli(module, cli).split()
+                    # Make sure ip has not been assigned to any of the switches.
+                    while ip in assigned_ips:
+                        # If ip is not unique, increase the ip count by 1.
+                        ip_count += 1
+                        ip = static_part + str(ip_count) + '/' + subnet
+
+                    # Assign unique in-band ip to the switch.
+                    cli = clicopy
+                    cli += ' switch %s switch-setup-modify ' % switch
+                    cli += ' in-band-ip ' + ip
+                    if 'Setup completed successfully' in run_cli(module, cli):
+                        output += ' Assigned in-band ip %s to %s! ' % (ip,
+                                                                       switch)
+                        CHANGED_FLAG.append(True)
+
+                else:
+                    output += ' %s has been already assigned to %s! ' % (ip,
+                                                                         switch)
+                    CHANGED_FLAG.append(False)
+            else:
+                output += ' Not enough in-band ips available for all switches! '
+                CHANGED_FLAG.append(False)
+    else:
+        output += ' No switches present in fabric for in-band ips assignment! '
+        CHANGED_FLAG.append(False)
+
+    return output
+
+
 def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
@@ -472,6 +546,8 @@ def main():
                                            choices=['mgmt', 'in-band'],
                                            default='mgmt'),
             pn_toggle_40g=dict(required=False, type='bool', default=True),
+            pn_inband_ip=dict(required=False, type='str',
+                              default='172.16.0.0/24'),
             pn_current_switch=dict(required=False, type='str'),
             pn_static_setup=dict(required=False, type='bool', default=False),
             pn_mgmt_ip=dict(required=False, type='str'),
@@ -564,6 +640,9 @@ def main():
             CHANGED_FLAG.append(True)
         else:
             CHANGED_FLAG.append(False)
+
+    # Assign in-band ips.
+    message = assign_inband_ip(module, module.params['pn_inband_ip'])
 
     # Enable STP if flag is True
     if module.params['pn_stp']:
