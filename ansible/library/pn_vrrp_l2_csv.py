@@ -18,13 +18,13 @@
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+from ansible.module_utils.basic import AnsibleModule
 import shlex
 
 DOCUMENTATION = """
 ---
-module: pn_ztp
-author: "Pluribus Networks (@gauravbajaj)"
-version: 1
+module: pn_ztp_vrrp_l2_csv
+author: 'Pluribus Networks (devops@pluribusnetworks.com)'
 short_description: CLI command to configure VRRP - Layer 2 Setup
 description: Virtual Router Redundancy Protocol (VRRP) - Layer 2 Setup
 options:
@@ -36,16 +36,6 @@ options:
     pn_clipassword:
       description:
         - Provide login password if user is not root.
-      required: False
-      type: str
-    pn_cliswitch:
-      description:
-        - Target switch(es) to run the CLI on.
-      required: False
-      type: str
-    pn_fabric_name:
-      description:
-        - Specify name of the fabric.
       required: False
       type: str
     pn_spine_list:
@@ -72,11 +62,10 @@ options:
 """
 
 EXAMPLES = """
-    - name: VRRP L2 setup
+    - name: Configure VRRP L2 setup
       pn_ztp_vrrp_l2_csv:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_fabric_name: 'ztp-fabric'
         pn_spine_list: "{{ groups['spine'] }}"
         pn_leaf_list: "{{ groups['leaf'] }}"
         pn_vrrp_id: '18'
@@ -84,7 +73,7 @@ EXAMPLES = """
 """
 
 RETURN = """
-msg:
+stdout:
   description: The set of responses for each command.
   returned: always
   type: str
@@ -92,37 +81,39 @@ changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
   type: bool
+failed:
+  description: Indicates whether or not the execution failed on the target.
+  returned: always
+  type: bool
 """
+
+
+CHANGED_FLAG = []
 
 
 def pn_cli(module):
     """
-    This method is to generate the cli portion to launch the Netvisor cli.
-    It parses the username, password, switch parameters from module.
-    :param module: The Ansible module to fetch username, password and switch
-    :return: The cli string for further processing
+    Method to generate the cli portion to launch the Netvisor cli.
+    :param module: The Ansible module to fetch username and password.
+    :return: The cli string for further processing.
     """
     username = module.params['pn_cliusername']
     password = module.params['pn_clipassword']
-    cliswitch = module.params['pn_cliswitch']
 
     if username and password:
-        cli = '/usr/bin/cli --quiet --user %s:%s' % (username, password)
+        cli = '/usr/bin/cli --quiet --user %s:%s ' % (username, password)
     else:
         cli = '/usr/bin/cli --quiet '
-
-    if cliswitch:
-        cli += ' switch ' + cliswitch
 
     return cli
 
 
 def run_cli(module, cli):
     """
-    This method executes the cli command on the target node(s) and returns the
+    Method to execute the cli command on the target node(s) and returns the
     output.
     :param module: The Ansible module to fetch input parameters.
-    :param cli: the complete cli string to be executed on the target node(s).
+    :param cli: The complete cli string to be executed on the target node(s).
     :return: Output/Error or Success msg depending upon the response from cli.
     """
     cli = shlex.split(cli)
@@ -132,10 +123,10 @@ def run_cli(module, cli):
 
     if err:
         module.exit_json(
-            error="1",
+            error='1',
             failed=True,
             stderr=err.strip(),
-            msg="Operation Failed: " + str(cli),
+            msg='Operation Failed: ' + str(cli),
             changed=False
         )
     else:
@@ -144,54 +135,64 @@ def run_cli(module, cli):
 
 def create_vlan(module, vlan_id):
     """
-    This method is to create vlans.
+    Method to create a vlan.
     :param module: The Ansible module to fetch input parameters.
-    :param vlan_id: vlan number to be created.
-    :return: Success or failure message for the vlan.
+    :param vlan_id: vlan id to be created.
+    :return: String describing if vlan got created or if it already exists.
     """
-    output = ' '
+    global CHANGED_FLAG
     cli = pn_cli(module)
     clicopy = cli
 
-    clicopy += ' vlan-show format id no-show-headers '
-    already_vlan_id = run_cli(module, clicopy).split()
-    already_vlan_id = list(set(already_vlan_id))
+    cli += ' vlan-show format id no-show-headers '
+    existing_vlans = run_cli(module, cli).split()
+    existing_vlans = list(set(existing_vlans))
 
-    id_str = str(vlan_id)
-    if id_str not in already_vlan_id:
-        clicopy = cli
-        clicopy += ' vlan-create id '
-        clicopy += id_str
-        clicopy += ' scope fabric '
-        output += run_cli(module, clicopy)
-        output += 'vlan ' + vlan_id + ' created'
-        output += "\n"
+    if vlan_id not in existing_vlans:
+        cli = clicopy
+        cli += ' vlan-create id %s scope fabric ' % vlan_id
+        run_cli(module, cli)
+        output = ' vlan with id %s created successfully! ' % vlan_id
+        CHANGED_FLAG.append(True)
     else:
-        output += 'vlan ' + vlan_id + ' already present'
-        output += "\n"
+        output = ' vlan with id %s already exists! ' % vlan_id
+        CHANGED_FLAG.append(False)
 
     return output
 
 
-def create_l2_vrouter(module, switch, vrrp_id):
+def get_vrouter_name(module, switch_name):
     """
-    This method is to create vrouter and assign vrrp_id to the switches.
+    Method to return name of the vrouter.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch_name: Name of the switch for which to find the vrouter.
+    :return: Vrouter name.
+    """
+    cli = pn_cli(module)
+    cli += ' vrouter-show location ' + switch_name
+    cli += ' format name no-show-headers '
+    return run_cli(module, cli).split()[0]
+
+
+def create_vrouter(module, switch, vrrp_id):
+    """
+    Method to create vrouter and assign vrrp_id to the switches.
     :param module: The Ansible module to fetch input parameters.
     :param switch: The switch name on which vrouter will be created.
     :param vrrp_id: The vrrp_id to be assigned.
     :return: The output string informing details of vrouter created and
     interface added or if vrouter already exists.
     """
-    output = ' '
-    switch_temp = switch[3:]
-    vrouter_name = switch_temp + '-vrouter'
-    vnet_name = module.params['pn_fabric_name'] + '-global'
+    global CHANGED_FLAG
     cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
+    clicopy = cli
+    cli += ' fabric-node-show format fab-name no-show-headers '
+    fabric_name = list(set(run_cli(module, cli).split()))[0]
+    vnet_name = str(fabric_name) + '-global'
+    vrouter_name = switch + '-vrouter'
+    cli = clicopy
     cli += ' switch ' + switch
-    cli_copy = cli
+    clicopy = cli
 
     # Check if vrouter already exists
     cli += ' vrouter-show format name no-show-headers '
@@ -199,73 +200,71 @@ def create_l2_vrouter(module, switch, vrrp_id):
 
     # If vrouter doesn't exists then create it
     if vrouter_name not in existing_vrouter_names:
-        cli = cli_copy
+        cli = clicopy
         cli += ' vrouter-create name %s vnet %s hw-vrrp-id %s enable ' % (
             vrouter_name, vnet_name, vrrp_id)
         run_cli(module, cli)
-        output += ' Created vrouter %s on switch %s ' % (vrouter_name, switch)
+        output = ' Created vrouter %s on switch %s! ' % (vrouter_name, switch)
+        CHANGED_FLAG.append(True)
     else:
-        output += ' Vrouter name %s on switch %s already exists. ' % (
+        output = ' Vrouter name %s on switch %s already exists! ' % (
             vrouter_name, switch)
+        CHANGED_FLAG.append(False)
 
     return output
 
 
-def create_l2_interface(module, switch, ip, vlan_id, vrrp_id, ip_count,
-                        vrrp_priority):
+def create_vrouter_interface(module, switch, ip, vlan_id, vrrp_id, ip_count,
+                             vrrp_priority):
     """
-    This method is to add vrouter interface and assign IP to it along with
+    Method to add vrouter interface and assign IP to it along with
     vrrp_id and vrrp_priority.
     :param module: The Ansible module to fetch input parameters.
-    :param switch: The switch name on which vrouter will be created.
+    :param switch: The switch name on which interfaces will be created.
     :param ip: IP address to be assigned to vrouter interface.
-    :param vlan_id: vlan_id to be assigned
-    :param vrrp_id: vrrp id to be assigned.
+    :param vlan_id: vlan_id to be assigned.
+    :param vrrp_id: vrrp_id to be assigned.
     :param vrrp_priority: priority to be given(110 for active switch).
     :param ip_count: The value of fourth octet in the ip
-    :return: The output string informing details of vrouter created and
-    interface added or if vrouter already exists.
+    :return: String describing if vrouter interface got added or not.
     """
-    output = ' '
-    cli = pn_cli(module)
-    if 'switch' in cli:
-        cli = cli.rpartition('switch')[0]
-
-    clicopy = cli
-    cli += ' vrouter-show location %s format name no-show-headers ' % switch
-    vrouter_name = run_cli(module, cli).split()
-
+    global CHANGED_FLAG
+    vrouter_name = get_vrouter_name(module, switch)
     ip_addr = ip.split('.')
-    fourth = ip_addr[3].split('/')
-    subnet = fourth[1]
+    fourth_octet = ip_addr[3].split('/')
+    subnet = fourth_octet[1]
 
-    first = ip_addr[0] + '.' + ip_addr[1] + '.' + ip_addr[2] + '.'
-    ip1 = first + '1' + '/' + subnet
-    ip2 = first + ip_count + '/' + subnet
+    static_ip = ip_addr[0] + '.' + ip_addr[1] + '.' + ip_addr[2] + '.'
+    ip1 = static_ip + '1' + '/' + subnet
+    ip2 = static_ip + ip_count + '/' + subnet
 
-    cli = clicopy
+    cli = pn_cli(module)
+    clicopy = cli
     cli += ' vrouter-interface-show vlan %s ip %s ' % (vlan_id, ip2)
     cli += ' format switch no-show-headers '
     existing_vrouter = run_cli(module, cli).split()
     existing_vrouter = list(set(existing_vrouter))
 
-    if vrouter_name[0] not in existing_vrouter:
+    if vrouter_name not in existing_vrouter:
         cli = clicopy
-        cli += ' vrouter-interface-add vrouter-name ' + vrouter_name[0]
+        cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
         cli += ' ip ' + ip2
         cli += ' vlan %s if data ' % vlan_id
         run_cli(module, cli)
-        output += ' and added vrouter interface with ip: ' + ip2
-        output += ' '
+        output = ' Added vrouter interface with ip %s to %s!' % (ip2,
+                                                                 vrouter_name)
+        CHANGED_FLAG.append(True)
     else:
-        output += ' interface already exists for vrouter %s ' % vrouter_name[0]
+        output = ' Interface %s already exists for vrouter %s! ' % (
+            ip2, vrouter_name)
+        CHANGED_FLAG.append(False)
 
     cli = clicopy
     cli += ' vrouter-interface-show vrouter-name %s ip %s vlan %s ' % (
-        vrouter_name[0], ip2, vlan_id)
+        vrouter_name, ip2, vlan_id)
     cli += ' format nic no-show-headers '
     eth_port = run_cli(module, cli).split()
-    eth_port.remove(vrouter_name[0])
+    eth_port.remove(vrouter_name)
 
     cli = clicopy
     cli += ' vrouter-interface-show vlan %s ip %s vrrp-primary %s ' % (
@@ -274,24 +273,29 @@ def create_l2_interface(module, switch, ip, vlan_id, vrrp_id, ip_count,
     existing_vrouter = run_cli(module, cli).split()
     existing_vrouter = list(set(existing_vrouter))
 
-    if vrouter_name[0] not in existing_vrouter:
+    if vrouter_name not in existing_vrouter:
         cli = clicopy
-        cli += ' vrouter-interface-add vrouter-name ' + vrouter_name[0]
+        cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
         cli += ' ip ' + ip1
         cli += ' vlan %s if data vrrp-id %s ' % (vlan_id, vrrp_id)
         cli += ' vrrp-primary %s vrrp-priority %s ' % (eth_port[0],
                                                        vrrp_priority)
-        output += run_cli(module, cli)
-        output += ' '
+        run_cli(module, cli)
+        output += ' Added vrouter interface with ip %s to %s! ' % (ip1,
+                                                                   vrouter_name)
+        CHANGED_FLAG.append(True)
+
     else:
-        output += ' interface already added for vrouter ' + vrouter_name[0]
+        output += ' Interface %s already exists for vrouter %s! ' % (
+            ip1, vrouter_name)
+        CHANGED_FLAG.append(False)
 
     return output
 
 
 def configure_vrrp(module, vrrp_id, vrrp_ip, active_switch, vlan_id):
     """
-    This method is to configure vrrp.
+    Method to configure vrrp interfaces.
     :param module: The Ansible module to fetch input parameters.
     :param vrrp_id: The vrrp_id need to be assigned.
     :param vrrp_ip: The vrrp_ip needed to be assigned.
@@ -299,35 +303,28 @@ def configure_vrrp(module, vrrp_id, vrrp_ip, active_switch, vlan_id):
     :param vlan_id: The vlan_id to be assigned.
     :return: Output of the created vrrp configuration.
     """
-    spine_list = module.params['pn_spine_list']
     output = create_vlan(module, vlan_id)
     host_count = 1
-    for spine in spine_list:
+    for spine in module.params['pn_spine_list']:
         host_count += 1
-        if spine == active_switch:
-            vrrp_priority = '110'
-        else:
-            vrrp_priority = '100'
-
-        output += create_l2_interface(module, spine, vrrp_ip, vlan_id, vrrp_id,
-                                      str(host_count), vrrp_priority)
+        vrrp_priority = '110' if spine == active_switch else '100'
+        output += create_vrouter_interface(module, spine, vrrp_ip, vlan_id,
+                                           vrrp_id, str(host_count),
+                                           vrrp_priority)
     return output
 
 
 def configure_vrrp_l2(module, csv_data, vrrp_id):
     """
-    This method is to configure VRRP L2.
+    Method to configure VRRP for L2.
     :param module: The Ansible module to fetch input parameters.
     :param csv_data: CSV data describing different vrrp attributes.
     :param vrrp_id: The vrrp id to be assigned.
     :return: Output of created vrrp configuration.
     """
-    output = ' '
-    spine_list = module.params['pn_spine_list']
-
-    for switch in spine_list:
-        output += create_l2_vrouter(module, switch, vrrp_id)
-        output += ' '
+    output = ''
+    for switch in module.params['pn_spine_list']:
+        output += create_vrouter(module, switch, vrrp_id)
 
     csv_data = csv_data.replace(" ", "")
     csv_data_list = csv_data.split('\n')
@@ -348,9 +345,6 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_cliswitch=dict(required=False, type='str'),
-            pn_fabric_name=dict(required=False, type='str'),
-            pn_fabric_retry=dict(required=False, type='int', default=1),
             pn_spine_list=dict(required=False, type='list'),
             pn_leaf_list=dict(required=False, type='list'),
             pn_vrrp_id=dict(required=False, type='str', default='18'),
@@ -358,22 +352,18 @@ def main():
         )
     )
 
-    vrrp_id = module.params['pn_vrrp_id']
-    csv_data = module.params['pn_csv_data']
-    configure_vrrp_l2(module, csv_data, vrrp_id)
-    message = ' Configured VRRP Layer2 '
+    global CHANGED_FLAG
+    CHANGED_FLAG = []
+    message = configure_vrrp_l2(module, module.params['pn_csv_data'],
+                                module.params['pn_vrrp_id'])
 
     module.exit_json(
         stdout=message,
-        error="0",
+        error='0',
         failed=False,
-        msg="VRRP Layer 2 Setup completed successfully",
-        changed=True
+        changed=True if True in CHANGED_FLAG else False
     )
 
-
-# AnsibleModule boilerplate
-from ansible.module_utils.basic import AnsibleModule
 
 if __name__ == '__main__':
     main()

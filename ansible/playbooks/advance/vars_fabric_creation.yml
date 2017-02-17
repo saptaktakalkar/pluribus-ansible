@@ -1,0 +1,23 @@
+---
+
+### Variables for fabric creation. ###
+
+# pn_fabric_name is a mandatory variable. No default values exists for it.
+pn_fabric_name: 'ztp-fabric'                      # Name of the fabric to create/join.
+
+# Following variables are optional since default value exists for them.
+pn_toggle_40g: True                               # Flag to indicate if 40g ports should be converted to 10g ports or not.
+pn_inband_ip: '172.16.1.0/24'                     # Inband ips to be assigned to switches starting with this value. Default: 172.16.0.0/24.
+pn_fabric_network: 'mgmt'                         # Choices: in-band or mgmt.  Default: mgmt
+pn_fabric_control_network: 'mgmt'                 # Choices: in-band or mgmt.  Default: mgmt
+pn_static_setup: False                            # Flag to indicate if static values should be assign to following switch setup params. Default: True.
+pn_mgmt_ip: "{{ ansible_default_ipv4.address }}"  # Specify mgmt-ip value to be assigned to the switch if pn_static_setup is True.
+pn_mgmt_ip_subnet: '16'                           # Specify subnet mask for mgmt-ip.
+pn_gateway_ip: '10.9.9.0'                         # Specify gateway-ip value to be assigned to the switch if pn_static_setup is True.
+pn_dns_ip: '10.20.41.1'                           # Specify dns-ip value to be assigned to the switch if pn_static_setup is True.
+pn_dns_secondary_ip: '10.20.4.1'                  # Specify dns-secondary-ip value to be assigned to the switch if pn_static_setup is True.
+pn_domain_name: 'pluribusnetworks.com'            # Specify domain-name value to be assigned to the switch if pn_static_setup is True.
+pn_ntp_server: '0.us.pool.ntp.org'                # Specify ntp-server value to be assign if pn_static_setup is True.
+pn_web_api: True                                  # Specify True if you want to enable web. Default: True
+pn_stp: False                                     # Specify True if you want to enable STP at the end. Default: False.
+

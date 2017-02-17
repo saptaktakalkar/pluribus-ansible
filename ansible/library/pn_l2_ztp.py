@@ -24,9 +24,7 @@ import shlex
 DOCUMENTATION = """
 ---
 module: pn_l2_ztp
-author: 'Pluribus Networks (@saptaktakalkar)'
-modified by: 'Pluribus Networks (@gauravbajaj)'
-version: 1
+author: 'Pluribus Networks (devops@pluribusnetworks.com)'
 short_description: CLI command to configure L2 zero touch provisioning.
 description:
     Zero Touch Provisioning (ZTP) allows you to provision new switches in your
@@ -96,9 +94,8 @@ CHANGED_FLAG = []
 
 def pn_cli(module):
     """
-    This method is to generate the cli portion to launch the Netvisor cli.
-    It parses the username, password, switch parameters from module.
-    :param module: The Ansible module to fetch username, password and switch.
+    Method to generate the cli portion to launch the Netvisor cli.
+    :param module: The Ansible module to fetch username and password.
     :return: The cli string for further processing.
     """
     username = module.params['pn_cliusername']
@@ -114,16 +111,14 @@ def pn_cli(module):
 
 def run_cli(module, cli):
     """
-    This method executes the cli command on the target node(s) and returns the
+    Method to execute the cli command on the target node(s) and returns the
     output.
     :param module: The Ansible module to fetch input parameters.
-    :param cli: the complete cli string to be executed on the target node(s).
-    :return: Output/Error or Success message depending upon
-    the response from cli.
+    :param cli: The complete cli string to be executed on the target node(s).
+    :return: Output/Error or Success msg depending upon the response from cli.
     """
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
-
     if out:
         return out
 
@@ -316,7 +311,7 @@ def configure_trunk_vlag_for_clustered_leafs(module, non_clustered_leafs,
     :param module: The Ansible module to fetch input parameters.
     :param non_clustered_leafs: The list of non clustered leaf switches.
     :param spine_list: The list of spine switches.
-    :return: Output of create_cluster(0 and create_vlag() methods.
+    :return: Output of create_cluster() and create_vlag() methods.
     """
     cli = pn_cli(module)
     clicopy = cli
