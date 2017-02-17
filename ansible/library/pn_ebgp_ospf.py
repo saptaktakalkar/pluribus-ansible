@@ -715,6 +715,35 @@ def configure_ospf_bfd(module, vrouter, ip):
     return output
 
 
+def configure_ospf_bfd(module, vrouter, ip):
+    """
+    This method add ospf_bfd to the vrouter.
+    :param module: The Ansible module to fetch input parameters.
+    :param vrouter: The vrouter name to add ospf bfd.
+    :ip: The interface ip to associate the ospf bfd.
+    :return: The output of the adding ospf-neighbor.
+    """
+    output = ''
+    cli = pn_cli(module)
+    clicopy = cli
+
+    cli = clicopy
+    cli += ' vrouter-interface-show vrouter-name %s' % vrouter
+    cli += ' ip %s format nic no-show-headers ' % ip
+    nic_interface = run_cli(module, cli).split()
+    nic_interface = list(set(nic_interface))
+    nic_interface.remove(vrouter)    
+
+    cli = clicopy
+    cli += ' vrouter-interface-config-modify vrouter-name %s' % (
+         vrouter)
+    cli += ' nic %s ospf-bfd enable' % nic_interface[0]
+    if 'Success' in run_cli(module, cli):
+        output += ' Added ospf bfd for %s! ' % vrouter
+
+    return output
+
+
 def ospf_neighbor(module):
     """
     Method to add ospf_neighbor to the vrouters.
@@ -772,6 +801,11 @@ def ospf_neighbor(module):
                 ospf_last_octet = int(last_octet[0]) - last_octet_ip_mod
                 ospf_network = static_part + str(
                     ospf_last_octet) + '/' + netmask
+
+                leaf_last_octet = int(last_octet[0]) - 1
+                ip_leaf = static_part + str(leaf_last_octet)
+
+                ip_spine = static_part + last_octet[0]
 
                 leaf_last_octet = int(last_octet[0]) - 1
                 ip_leaf = static_part + str(leaf_last_octet)
