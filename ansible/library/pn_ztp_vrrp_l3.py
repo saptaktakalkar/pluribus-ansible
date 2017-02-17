@@ -23,10 +23,8 @@ import shlex
 
 DOCUMENTATION = """
 ---
-module: pn_ztp
-author: 'Pluribus Networks (@gauravbajaj)'
-modified by: 'Pluribus Networks (@saptaktakalkar)'
-version: 1
+module: pn_ztp_vrrp_l3
+author: 'Pluribus Networks (devops@pluribusnetworks.com)'
 short_description: CLI command to configure VRRP - Layer 3 Setup
 description: Virtual Router Redundancy Protocol (VRRP) - Layer 3 Setup
 options:
@@ -38,11 +36,6 @@ options:
     pn_clipassword:
       description:
         - Provide login password if user is not root.
-      required: False
-      type: str
-    pn_fabric_name:
-      description:
-        - Specify name of the fabric.
       required: False
       type: str
     pn_spine_list:
@@ -67,14 +60,13 @@ EXAMPLES = """
       pn_ztp_vrrp_l3:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_fabric_name: 'ztp-fabric'
         pn_spine_list: "{{ groups['spine'] }}"
         pn_leaf_list: "{{ groups['leaf'] }}"
         pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"
 """
 
 RETURN = """
-msg:
+stdout:
   description: The set of responses for each command.
   returned: always
   type: str
@@ -82,17 +74,19 @@ changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
   type: bool
+failed:
+  description: Indicates whether or not the execution failed on the target.
+  returned: always
+  type: bool
 """
-
 
 CHANGED_FLAG = []
 
 
 def pn_cli(module):
     """
-    This method is to generate the cli portion to launch the Netvisor cli.
-    It parses the username, password, switch parameters from module.
-    :param module: The Ansible module to fetch username, password and switch
+    Method to generate the cli portion to launch the Netvisor cli.
+    :param module: The Ansible module to fetch username and password.
     :return: The cli string for further processing
     """
     username = module.params['pn_cliusername']
@@ -108,10 +102,10 @@ def pn_cli(module):
 
 def run_cli(module, cli):
     """
-    This method executes the cli command on the target node(s) and returns the
+    Method to execute the cli command on the target node(s) and returns the
     output.
     :param module: The Ansible module to fetch input parameters.
-    :param cli: the complete cli string to be executed on the target node(s).
+    :param cli: The complete cli string to be executed on the target node(s).
     :return: Output/Error or Success message depending upon.
     the response from cli.
     """
@@ -216,7 +210,7 @@ def create_vrouter(module, switch, vrrp_id):
                 vrouter_name, vrrp_id)
             run_cli(module, cli)
             output += ' Modified hw-vrrp-id on vrouter %s on switch %s! ' % (
-                   vrouter_name, switch)
+                vrouter_name, switch)
             CHANGED_FLAG.append(True)
     return output
 
@@ -338,8 +332,12 @@ def create_vrouter_without_vrrp(module, switch):
     """
     global CHANGED_FLAG
     vrouter_name = str(switch) + '-vrouter'
-    vnet_name = module.params['pn_fabric_name'] + '-global'
     cli = pn_cli(module)
+    clicopy = cli
+    cli += ' fabric-node-show format fab-name no-show-headers '
+    fabric_name = list(set(run_cli(module, cli).split()))[0]
+    vnet_name = str(fabric_name) + '-global'
+    cli = clicopy
     cli += ' switch ' + switch
     clicopy = cli
 
@@ -373,7 +371,7 @@ def configure_vrrp_for_non_cluster_leafs(module, ip, non_cluster_leaf, vlan_id):
     """
     global CHANGED_FLAG
     vrouter_name = get_vrouter_name(module, non_cluster_leaf)
-    
+
     ip_addr = ip.split('.')
     fourth_octet = ip_addr[3].split('/')
     subnet = fourth_octet[1]
@@ -419,7 +417,7 @@ def configure_vrrp_for_clustered_switches(module, vrrp_id, vrrp_ip,
     node2 = switch_list[1]
     name = node1 + '-to-' + node2 + '-cluster'
     host_count = 1
-    
+
     output = create_cluster(module, node2, name, node1, node2)
     output += create_vlan(module, vlan_id)
 
@@ -448,7 +446,7 @@ def configure_vrrp_for_non_clustered_switches(module, vlan_id, ip,
     """
     output = create_vrouter_without_vrrp(module, non_cluster_leaf)
     output += create_vlan(module, vlan_id)
-    output += configure_vrrp_for_non_cluster_leafs(module, ip, 
+    output += configure_vrrp_for_non_cluster_leafs(module, ip,
                                                    non_cluster_leaf, vlan_id)
     return output
 
@@ -457,7 +455,7 @@ def configure_vrrp(module, csv_data):
     """
     Method to configure VRRP L3.
     :param module: The Ansible module to fetch input parameters.
-    :param csv_data: String containing vrrp data parsed from csv file.
+    :param csv_data: String containing vrrp data passed from csv file.
     :return: Output string of configuration.
     """
     output = ''
@@ -499,7 +497,6 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_fabric_name=dict(required=True, type='str'),
             pn_spine_list=dict(required=False, type='list'),
             pn_leaf_list=dict(required=False, type='list'),
             pn_csv_data=dict(required=True, type='str'),
@@ -514,7 +511,6 @@ def main():
         stdout=message,
         error='0',
         failed=False,
-        msg='VRRP Layer 3 Setup completed successfully.',
         changed=True if True in CHANGED_FLAG else False
     )
 

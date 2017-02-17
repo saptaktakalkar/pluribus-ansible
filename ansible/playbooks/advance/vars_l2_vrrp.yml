@@ -1,0 +1,11 @@
+---
+
+### Variables for L2 VRRP setup. ###
+
+# These are mandatory variables since default values exists for them.
+csv_file: /etc/ansible/pluribus-ansible/ansible/pn_vrrp_l2.csv  # VRRP Layer2 data csv file path.
+
+# These are optional since default value exists for them.
+pn_vrrp_id: '18'                        # Specify VRRP ID to be assigned. Default: 18
+
+
