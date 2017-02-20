@@ -3,7 +3,7 @@
 ### Variables for fabric creation. ###
 
 # pn_fabric_name is a mandatory variable. No default values exists for it.
-pn_fabric_name: 'ztp-fabric'                      # Name of the fabric to create/join.
+pn_fabric_name: 'gui-fabric'                      # Name of the fabric to create/join.
 
 # Following variables are optional since default value exists for them.
 pn_toggle_40g: True                               # Flag to indicate if 40g ports should be converted to 10g ports or not.
