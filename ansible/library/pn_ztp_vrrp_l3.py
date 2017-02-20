@@ -178,8 +178,13 @@ def create_vrouter(module, switch, vrrp_id):
     global CHANGED_FLAG
     output = ''
     vrouter_name = str(switch) + '-vrouter'
-    vnet_name = module.params['pn_fabric_name'] + '-global'
     cli = pn_cli(module)
+    clicopy = cli
+    cli += ' fabric-node-show format fab-name no-show-headers '
+    fabric_name = list(set(run_cli(module, cli).split()))[0]
+    vnet_name = str(fabric_name) + '-global'
+
+    cli = clicopy
     cli += ' switch ' + switch
     clicopy = cli
 

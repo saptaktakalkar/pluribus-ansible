@@ -744,7 +744,7 @@ def configure_ospf_bfd(module, vrouter, ip):
     return output
 
 
-def ospf_neighbor(module):
+def add_ospf_neighbor(module):
     """
     Method to add ospf_neighbor to the vrouters.
     :param module: The Ansible module to fetch input parameters.
