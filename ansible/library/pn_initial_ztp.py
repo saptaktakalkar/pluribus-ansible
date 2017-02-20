@@ -639,7 +639,7 @@ def main():
             CHANGED_FLAG.append(False)
 
     # Assign in-band ips.
-    message = assign_inband_ip(module, module.params['pn_inband_ip'])
+    message += assign_inband_ip(module, module.params['pn_inband_ip'])
 
     # Enable STP if flag is True
     if module.params['pn_stp']:
