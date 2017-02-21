@@ -3,4 +3,4 @@
 ### Variables for L3 VRRP setup. ###
 
 # These are mandatory variables since default values exists for them.
-csv_file: gui_vrrp_l3.csv  # VRRP Layer3 data csv file.
+csv_file: vrrp_l3.csv  # VRRP Layer3 data csv file.
