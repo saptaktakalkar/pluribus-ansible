@@ -28,7 +28,7 @@
         pn_fabric_network: "{{ pn_fabric_network }}"                  # Choices: in-band or mgmt.  Default: mgmt
         pn_fabric_control_network: "{{ pn_fabric_control_network }}"  # Choices: in-band or mgmt.  Default: mgmt
         pn_static_setup: "{{ pn_static_setup }}"                      # Flag to indicate if static values should be assign to following switch setup params. Default: True.
-        pn_mgmt_ip: "{{ ansible_default_ipv4.address }}"              # Specify MGMT-IP value to be assign if pn_static_setup is True.
+        pn_mgmt_ip: "{{ ansible_host }}"                              # Specify MGMT-IP value to be assign if pn_static_setup is True.
         pn_mgmt_ip_subnet: "{{ pn_mgmt_ip_subnet }}"                  # Specify subnet mask for MGMT-IP value to be assign if pn_static_setup is True.
         pn_gateway_ip: "{{ pn_gateway_ip }}"                          # Specify GATEWAY-IP value to be assign if pn_static_setup is True.
         pn_dns_ip: "{{ pn_dns_ip }}"                                  # Specify DNS-IP value to be assign if pn_static_setup is True.

@@ -466,67 +466,42 @@ def assign_inband_ip(module, inband_address):
     Method to assign in-band ips to switches.
     :param module: The Ansible module to fetch input parameters.
     :param inband_address: The network ip for the in-band ips.
-    :return: String describing if in-band ip got assigned or not.
+    :return: Assigned inband ip or None.
     """
-    global CHANGED_FLAG
-    output = ''
     address = inband_address.split('.')
     static_part = str(address[0]) + '.' + str(address[1]) + '.'
     static_part += str(address[2]) + '.'
     last_octet = str(address[3]).split('/')
     subnet = last_octet[1]
 
-    # Get the list of all switches present in fabric.
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' fabric-node-show format name no-show-headers '
-    switch_names = run_cli(module, cli).split()
-    switch_names.sort()
+    ip_count = 1
+    ip = static_part + str(ip_count) + '/' + subnet
 
-    if len(switch_names) > 0:
-        ip_count = 0
-        for switch in switch_names:
-            if ip_count <= 255:
-                ip_count += 1
-                ip = static_part + str(ip_count) + '/' + subnet
-                # Get existing in-band ip.
-                cli = clicopy
-                cli += ' fabric-node-show name %s format in-band-ip ' % switch
-                cli += ' no-show-headers '
-                existing_inband_ip = run_cli(module, cli).split()[0]
-                # If existing in-band ip is not the same then assign new ip.
-                if ip != existing_inband_ip:
-                    cli = clicopy
-                    cli += ' fabric-node-show format in-band-ip '
-                    cli += ' no-show-headers '
-                    assigned_ips = run_cli(module, cli).split()
-                    # Make sure ip has not been assigned to any of the switches.
-                    while ip in assigned_ips:
-                        # If ip is not unique, increase the ip count by 1.
-                        ip_count += 1
-                        ip = static_part + str(ip_count) + '/' + subnet
+    # Get existing in-band ip.
+    cli += ' switch-local switch-setup-show format in-band-ip '
+    existing_inband_ip = run_cli(module, cli)
+    # If existing in-band ip is not the same then assign new ip.
+    if ip not in existing_inband_ip:
+        cli = clicopy
+        cli += ' fabric-node-show format in-band-ip '
+        cli += ' no-show-headers '
+        assigned_ips = run_cli(module, cli).split()
+        # Make sure ip has not been assigned to any of the switches.
+        while ip in assigned_ips:
+            # If ip is not unique, increase the ip count by 1.
+            ip_count += 1
+            ip = static_part + str(ip_count) + '/' + subnet
 
-                    # Assign unique in-band ip to the switch.
-                    cli = clicopy
-                    cli += ' switch %s switch-setup-modify ' % switch
-                    cli += ' in-band-ip ' + ip
-                    if 'Setup completed successfully' in run_cli(module, cli):
-                        output += ' Assigned in-band ip %s to %s! ' % (ip,
-                                                                       switch)
-                        CHANGED_FLAG.append(True)
+        # Assign unique in-band ip to the switch.
+        cli = clicopy
+        cli += ' switch-local switch-setup-modify '
+        cli += ' in-band-ip ' + ip
+        if 'Setup completed successfully' in run_cli(module, cli):
+            return ip
 
-                else:
-                    output += ' %s has been already assigned to %s! ' % (ip,
-                                                                         switch)
-                    CHANGED_FLAG.append(False)
-            else:
-                output += ' Not enough in-band ips available for all switches! '
-                CHANGED_FLAG.append(False)
-    else:
-        output += ' No switches present in fabric for in-band ips assignment! '
-        CHANGED_FLAG.append(False)
-
-    return output
+    return None
 
 
 def main():
@@ -639,7 +614,12 @@ def main():
             CHANGED_FLAG.append(False)
 
     # Assign in-band ips.
-    message += assign_inband_ip(module, module.params['pn_inband_ip'])
+    ip = assign_inband_ip(module, module.params['pn_inband_ip'])
+    if ip is not None:
+        message += ' Assigned in-band ip %s to %s! ' % (ip, current_switch)
+    else:
+        message += ' In-band ip %s has already been assigned to %s! ' % (
+            ip, current_switch)
 
     # Enable STP if flag is True
     if module.params['pn_stp']:
