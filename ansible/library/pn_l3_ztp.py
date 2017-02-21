@@ -202,9 +202,12 @@ def modify_stp(module, modify_flag):
             cli = clicopy
             cli += ' switch ' + switch
             cli += ' stp-modify ' + modify_flag
-            output += run_cli(module, cli)
+            if 'Success' in run_cli(module, cli):
+                output += ' %s: STP enabled! ' % switch
+                CHANGED_FLAG.append(True)
         else:
-            output += ' STP is already enabled! '
+            output += ' %s: STP is already enabled! ' % switch
+            CHANGED_FLAG.append(False)
 
     return output
 
@@ -228,9 +231,12 @@ def update_fabric_network_to_inband(module):
             cli = clicopy
             cli += ' switch ' + switch
             cli += ' fabric-local-modify fabric-network in-band '
-            output += run_cli(module, cli)
+            if 'Success' in run_cli(module, cli):
+                output += ' %s: Updated fabric network to in-band! ' % switch
+                CHANGED_FLAG.append(True)
         else:
-            output += ' Fabric network is already in-band! '
+            output += ' %s: Fabric network is already in-band! ' % switch
+            CHANGED_FLAG.append(False)
 
     return output
 
@@ -332,11 +338,11 @@ def create_vrouter(module, switch):
         cli = clicopy
         cli += ' vrouter-create name %s vnet %s ' % (vrouter_name, vnet_name)
         run_cli(module, cli)
-        output = ' Created vrouter %s on switch %s ' % (vrouter_name, switch)
+        output = ' %s: Created vrouter with name %s! ' % (switch, vrouter_name)
         CHANGED_FLAG.append(True)
     else:
-        output = ' Vrouter name %s on switch %s already exists! ' % (
-            vrouter_name, switch)
+        output = ' %s: Vrouter with name %s already exists! ' % (switch,
+                                                                 vrouter_name)
         CHANGED_FLAG.append(False)
 
     return output
@@ -357,7 +363,7 @@ def create_interface(module, switch, ip, port):
     cli = pn_cli(module)
     clicopy = cli
     cli += ' vrouter-show location %s format name no-show-headers ' % switch
-    vrouter_name = run_cli(module, cli).split()
+    vrouter_name = run_cli(module, cli).split()[0]
 
     cli = clicopy
     cli += ' vrouter-interface-show l3-port %s ip %s ' % (port, ip)
@@ -365,33 +371,37 @@ def create_interface(module, switch, ip, port):
     existing_vrouter = run_cli(module, cli).split()
     existing_vrouter = list(set(existing_vrouter))
 
-    if vrouter_name[0] not in existing_vrouter:
+    if vrouter_name not in existing_vrouter:
         # Add vrouter interface.
         cli = clicopy
-        cli += ' vrouter-interface-add vrouter-name ' + vrouter_name[0]
+        cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
         cli += ' ip ' + ip
         cli += ' l3-port ' + port
         run_cli(module, cli)
-        output += ' Added vrouter interface with ip %s on %s! ' % (ip, switch)
+        output += ' %s: Added vrouter interface with ip %s on %s! ' % (
+            switch, ip, vrouter_name
+        )
 
         # Add BFD config to vrouter interface.
         if module.params['pn_bfd']:
             cli = clicopy
-            cli += ' vrouter-interface-show vrouter-name ' + vrouter_name[0]
+            cli += ' vrouter-interface-show vrouter-name ' + vrouter_name
             cli += ' l3-port %s format nic no-show-headers ' % port
             nic = run_cli(module, cli).split()[1]
 
             cli = clicopy
             cli += ' vrouter-interface-config-add '
-            cli += ' vrouter-name %s nic %s ' % (vrouter_name[0], nic)
+            cli += ' vrouter-name %s nic %s ' % (vrouter_name, nic)
             cli += ' bfd-min-rx ' + module.params['pn_bfd_min_rx']
             cli += ' bfd-multiplier ' + module.params['pn_bfd_multiplier']
             run_cli(module, cli)
-            output += ' Added BFD config to ' + vrouter_name[0]
+            output += ' %s: Added BFD config to %s! ' % (switch, vrouter_name)
 
         CHANGED_FLAG.append(True)
     else:
-        output += ' Interface already exists on %s! ' % vrouter_name[0]
+        output += ' %s: Vrouter interface %s already exists on %s! ' % (
+            switch, ip, vrouter_name
+        )
         CHANGED_FLAG.append(False)
 
     return output + ' '
@@ -435,7 +445,7 @@ def delete_trunk(module, switch, switch_port, peer_switch):
         cli += ' switch %s trunk-delete name %s ' % (switch, trunk[0])
         if 'Success' in run_cli(module, cli):
             CHANGED_FLAG.append(True)
-            return ' Deleted %s trunk successfully! ' % trunk[0]
+            return ' %s: Deleted %s trunk successfully! ' % (switch, trunk[0])
     else:
         CHANGED_FLAG.append(False)
         return ''
@@ -464,6 +474,7 @@ def assign_loopback_ip(module, loopback_address):
         for vrouter in vrouter_names:
             if vrouter_count <= 255:
                 ip = static_part + str(vrouter_count)
+                switch = vrouter.split('-vrouter')[0]
                 cli = clicopy
                 cli += ' vrouter-loopback-interface-show ip ' + ip
                 cli += ' format switch no-show-headers '
@@ -475,11 +486,14 @@ def assign_loopback_ip(module, loopback_address):
                     cli += vrouter
                     cli += ' ip ' + ip
                     run_cli(module, cli)
-                    output += ' Added loopback ip %s to %s! ' % (ip, vrouter)
+                    output += ' %s: Added loopback ip %s to %s! ' % (
+                        switch, ip, vrouter
+                    )
                     CHANGED_FLAG.append(True)
                 else:
-                    output += ' Loopback ip %s for %s already exists! ' % (
-                        ip, vrouter)
+                    output += ' %s: Loopback ip %s for %s already exists! ' % (
+                        switch, ip, vrouter
+                    )
                     CHANGED_FLAG.append(False)
 
                 vrouter_count += 1
@@ -592,29 +606,17 @@ def main():
     )
 
     global CHANGED_FLAG
-    CHANGED_FLAG = []
 
     # L3 setup (link ips)
     message = auto_configure_link_ips(module)
 
     # Update fabric network to in-band if flag is True
     if module.params['pn_update_fabric_to_inband']:
-        if 'Success' in update_fabric_network_to_inband(module):
-            message += ' Updated fabric network to in-band! '
-            CHANGED_FLAG.append(True)
-        else:
-            message += ' Fabric network is already in-band! '
-            CHANGED_FLAG.append(False)
+        message += update_fabric_network_to_inband(module)
 
     # Enable STP if flag is True
     if module.params['pn_stp']:
-        stp_out_msg = modify_stp(module, 'enable')
-        if 'Success' in stp_out_msg:
-            message += ' STP enabled! '
-            CHANGED_FLAG.append(True)
-        else:
-            message += ' STP is already enabled! '
-            CHANGED_FLAG.append(False)
+        message += modify_stp(module, 'enable')
 
     # Exit the module and return the required JSON
     module.exit_json(
@@ -623,7 +625,6 @@ def main():
         failed=False,
         changed=True if True in CHANGED_FLAG else False
     )
-
 
 if __name__ == '__main__':
     main()

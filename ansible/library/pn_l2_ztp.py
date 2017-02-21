@@ -141,6 +141,7 @@ def modify_stp(module, modify_flag):
     :param modify_flag: Enable/disable flag to set.
     :return: The output of run_cli() method.
     """
+    global CHANGED_FLAG
     output = ''
     cli = pn_cli(module)
     clicopy = cli
@@ -154,9 +155,12 @@ def modify_stp(module, modify_flag):
             cli = clicopy
             cli += ' switch ' + switch
             cli += ' stp-modify ' + modify_flag
-            output += run_cli(module, cli)
+            if 'Success' in run_cli(module, cli):
+                output += ' %s: STP enabled! ' % switch
+                CHANGED_FLAG.append(True)
         else:
-            output += ' STP is already enabled! '
+            output += ' %s: STP is already enabled! ' % switch
+            CHANGED_FLAG.append(False)
 
     return output
 
@@ -182,10 +186,10 @@ def create_cluster(module, switch, name, node1, node2):
         cli += ' cluster-node-1 %s cluster-node-2 %s ' % (node1, node2)
         if 'Success' in run_cli(module, cli):
             CHANGED_FLAG.append(True)
-            return ' %s created successfully! ' % name
+            return ' %s: %s created successfully! ' % (switch, name)
     else:
         CHANGED_FLAG.append(False)
-        return ' %s already exists! ' % name
+        return ' %s: %s already exists! ' % (switch, name)
 
 
 def get_ports(module, switch, peer_switch):
@@ -223,10 +227,10 @@ def create_trunk(module, switch, name, ports):
         cli += ' ports %s ' % ports_string
         if 'Success' in run_cli(module, cli):
             CHANGED_FLAG.append(True)
-            return ' %s trunk created successfully! ' % name
+            return ' %s: %s trunk created successfully! ' % (switch, name)
     else:
         CHANGED_FLAG.append(False)
-        return ' %s trunk already exists! ' % name
+        return ' %s: %s trunk already exists! ' % (switch, name)
 
 
 def find_non_clustered_leafs(module, leaf_list):
@@ -276,15 +280,15 @@ def create_vlag(module, switch, name, peer_switch, port, peer_port):
                                                                     peer_port)
         if 'Success' in run_cli(module, cli):
             CHANGED_FLAG.append(True)
-            return ' %s vlag configured successfully! ' % name
+            return ' %s: %s vlag configured successfully! ' % (switch, name)
     else:
         CHANGED_FLAG.append(False)
-        return ' %s vlag is already configured! ' % name
+        return ' %s: %s vlag is already configured! ' % (switch, name)
 
 
 def configure_trunk(module, cluster_node, switch_list):
     """
-    Method to configure trubk vlags.
+    Method to configure trunk vlags.
     :param module: The Ansible module to fetch input parameters.
     :param cluster_node: The node from which lag needs to be created.
     :param switch_list: The list of connected switches to find
@@ -370,7 +374,7 @@ def configure_trunk_vlag_for_clustered_leafs(module, non_clustered_leafs,
                     trunk_name2 = configure_trunk(module, spine2, leafs_list)
 
                     # Vlag creation (spine to leafs)
-                    name = spine1 + '-' + spine2 + '-to-' + node1 + node2
+                    name = spine1 + '-' + spine2 + '-to-' + node1 + '-' + node2
                     output += create_vlag(module, spine1, name, spine2,
                                           trunk_name1, trunk_name2)
 
@@ -392,7 +396,7 @@ def configure_trunk_non_clustered_leafs(module, non_clustered_leafs,
     output = ''
     for leaf in non_clustered_leafs:
         # Trunk creation (leaf to spines)
-        output += configure_trunk(module, leaf, spine_list)
+        configure_trunk(module, leaf, spine_list)
 
         spine1 = str(spine_list[0])
         spine2 = str(spine_list[1])
@@ -442,6 +446,7 @@ def update_fabric_network_to_inband(module):
     :param module: The Ansible module to fetch input parameters.
     :return: The output of run_cli() method.
     """
+    global CHANGED_FLAG
     output = ''
     cli = pn_cli(module)
     clicopy = cli
@@ -455,9 +460,12 @@ def update_fabric_network_to_inband(module):
             cli = clicopy
             cli += ' switch ' + switch
             cli += ' fabric-local-modify fabric-network in-band '
-            output += run_cli(module, cli)
+            if 'Success' in run_cli(module, cli):
+                output += ' %s: Updated fabric network to in-band! ' % switch
+                CHANGED_FLAG.append(True)
         else:
-            output += ' Fabric network is already in-band! '
+            output += ' %s: Fabric network is already in-band! ' % switch
+            CHANGED_FLAG.append(False)
 
     return output
 
@@ -477,29 +485,17 @@ def main():
     )
 
     global CHANGED_FLAG
-    CHANGED_FLAG = []
 
     # L2 setup (auto-vlag).
     message = configure_auto_vlag(module)
 
     # Update fabric network to in-band if flag is True.
     if module.params['pn_update_fabric_to_inband']:
-        if 'Success' in update_fabric_network_to_inband(module):
-            message += ' Updated fabric network to in-band! '
-            CHANGED_FLAG.append(True)
-        else:
-            message += ' Fabric network is already in-band! '
-            CHANGED_FLAG.append(False)
+        message += update_fabric_network_to_inband(module)
 
     # Enable STP if flag is True.
     if module.params['pn_stp']:
-        stp_out_msg = modify_stp(module, 'enable')
-        if 'Success' in stp_out_msg:
-            message += ' STP enabled! '
-            CHANGED_FLAG.append(True)
-        else:
-            message += ' STP is already enabled! '
-            CHANGED_FLAG.append(False)
+        message += modify_stp(module, 'enable')
 
     # Exit the module and return the required JSON.
     module.exit_json(
