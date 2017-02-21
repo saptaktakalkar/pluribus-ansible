@@ -706,7 +706,7 @@ def configure_ospf_bfd(module, vrouter, ip):
     nic_interface.remove(vrouter)    
 
     cli = clicopy
-    cli += ' vrouter-interface-config-modify vrouter-name %s' % (
+    cli += ' vrouter-interface-config-add vrouter-name %s' % (
          vrouter)
     cli += ' nic %s ospf-bfd enable' % nic_interface[0]
     if 'Success' in run_cli(module, cli):
@@ -735,7 +735,7 @@ def configure_ospf_bfd(module, vrouter, ip):
     nic_interface.remove(vrouter)    
 
     cli = clicopy
-    cli += ' vrouter-interface-config-modify vrouter-name %s' % (
+    cli += ' vrouter-interface-config-add vrouter-name %s' % (
          vrouter)
     cli += ' nic %s ospf-bfd enable' % nic_interface[0]
     if 'Success' in run_cli(module, cli):
