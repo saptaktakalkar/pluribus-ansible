@@ -894,20 +894,21 @@ def main():
     CHANGED_FLAG = []
     routing_protocol = module.params['pn_routing_protocol']
 
+    message = assign_router_id(module)
+    message += create_leaf_clusters(module)
+
     if routing_protocol == 'ebgp':
-        message = create_leaf_clusters(module)
         message += assign_bgp_as(module, module.params['pn_bgp_as_range'])
         message += add_bgp_redistribute(module,
                                         module.params['pn_bgp_redistribute'])
         message += add_bgp_maxpath(module, module.params['pn_bgp_maxpath'])
         message += add_bgp_neighbor(module)
-        message += assign_router_id(module)
         message += assign_ibgp_interface(module)
     elif routing_protocol == 'ospf':
-        message = add_ospf_neighbor(module)
+        message += add_ospf_neighbor(module)
         message += add_ospf_redistribute(module)
     else:
-        message = ' Please use the correct routing protocol! '
+        message += ' Please use the correct routing protocol! '
 
     module.exit_json(
         stdout=message,
