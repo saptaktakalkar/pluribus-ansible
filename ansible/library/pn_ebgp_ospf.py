@@ -866,6 +866,133 @@ def add_ospf_redistribute(module):
     return output
 
 
+def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip, ospf_network):
+    """
+    Method to create interfaces and add ibgp neighbors.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch_name: The name of the switch to run interface.
+    :param interface_ip: Interface ip to create a vrouter interface.
+    :param ospf_network: Ospf network for the ospf neighbor.
+    :return: The output of all cli commands.
+    """
+    global CHANGED_FLAG
+    output = ''
+    vlan_id = module.params['pn_iospf_vlan']
+    ospf_area_id = module.params['pn_ospf_area_id']
+    cli = pn_cli(module)
+    clicopy = cli
+
+    cli = clicopy
+    cli += ' switch %s vlan-show format id no-show-headers ' % switch_name
+    existing_vlans = run_cli(module, cli).split()
+
+    if vlan_id not in existing_vlans:
+        cli = clicopy
+        cli += ' switch %s vlan-create id %s scope local ' % (switch_name,
+                                                              vlan_id)
+        run_cli(module, cli)
+        output = ' vlan with id %s created! ' % vlan_id
+        CHANGED_FLAG.append(True)
+    else:
+        CHANGED_FLAG.append(False)
+
+    cli = clicopy
+    cli += ' vrouter-show location %s format name' % switch_name
+    cli += ' no-show-headers'
+    vrouter = run_cli(module, cli).split()[0]
+
+    cli = clicopy
+    cli += ' vrouter-interface-show ip %s vlan %s' % (interface_ip, vlan_id)
+    cli += ' format switch no-show-headers'
+    existing_vrouter_interface = run_cli(module, cli).split()
+
+    if vrouter not in existing_vrouter_interface:
+        cli = clicopy
+        cli += ' vrouter-interface-add vrouter-name %s ip %s vlan %s ' % (
+            vrouter, interface_ip, vlan_id)
+        run_cli(module, cli)
+        output += ' Added vrouter interface with ip %s on %s! ' % (interface_ip,
+                                                                   vrouter)
+        CHANGED_FLAG.append(True)
+    else:
+        output += ' Interface already exists on %s! ' % vrouter
+        CHANGED_FLAG.append(False)
+
+    cli = clicopy
+    cli += ' vrouter-ospf-show'
+    cli += ' network %s format switch no-show-headers ' % (
+               ospf_network)
+    already_added = run_cli(module, cli).split()
+
+    if vrouter in already_added:
+        output += ' OSPF Neighbour already added for %s! ' % (
+                vrouter)
+        CHANGED_FLAG.append(False)
+    else:
+        cli = clicopy
+        cli += ' vrouter-ospf-add vrouter-name ' + vrouter
+        cli += ' network %s ospf-area %s' % (ospf_network,
+                                                        ospf_area_id)
+
+        if 'Success' in run_cli(module, cli):
+            output += ' Added ospf neighbor for %s! ' % vrouter
+            CHANGED_FLAG.append(True)
+
+    return output
+
+
+def assign_leafcluster_ospf_interface(module):
+    """
+    Method to create interfaces and add ospf neighbor for leaf cluster.
+    :param module: The Ansible module to fetch input parameters.
+    :return: The output of vrouter_interface_ibgp_add() method.
+    """
+    output = ''
+    iospf_ip_range = module.params['pn_iospf_ip_range']
+    spine_list = module.params['pn_spine_list']
+    leaf_list = module.params['pn_leaf_list']
+    subnet_count = 0
+
+    cli = pn_cli(module)
+    clicopy = cli
+
+    address = iospf_ip_range.split('.')
+    static_part = str(address[0]) + '.' + str(address[1]) + '.'
+    static_part += str(address[2]) + '.'
+
+    cli += ' cluster-show format name no-show-headers '
+    cluster_list = run_cli(module, cli).split()
+
+    if len(cluster_list) > 0 and cluster_list[0] != 'Success':
+        for cluster in cluster_list:
+            cli = clicopy
+            cli += ' cluster-show name %s format cluster-node-1' % cluster
+            cli += ' no-show-headers'
+            cluster_node_1 = run_cli(module, cli).split()[0]
+
+            if cluster_node_1 not in spine_list and cluster_node_1 in leaf_list:
+                ip_count = subnet_count * 4
+                ip1 = static_part + str(ip_count + 1) + '/' + str(30)
+                ip2 = static_part + str(ip_count + 2) + '/' + str(30)
+                ospf_network = static_part + str(ip_count) + '/' + str(30)
+
+                cli = clicopy
+                cli += ' cluster-show name %s format cluster-node-2' % cluster
+                cli += ' no-show-headers'
+                cluster_node_2 = run_cli(module, cli).split()[0]
+
+                output += vrouter_leafcluster_ospf_add(module, cluster_node_1,
+                                                     ip1, ospf_network)
+                output += vrouter_leafcluster_ospf_add(module, cluster_node_2,
+                                                     ip2, ospf_network)
+
+                subnet_count += 1
+    else:
+        output += 'No leaf clusters present to add iOSPF! '
+
+    return output
+
+
 def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
@@ -884,6 +1011,9 @@ def main():
             pn_ibgp_ip_range=dict(required=False, type='str',
                                   default='75.75.75.0/30'),
             pn_ibgp_vlan=dict(required=False, type='str', default='4040'),
+            pn_iospf_vlan=dict(required=False, type='str', default='4040'),
+            pn_iospf_ip_range=dict(required=False, type='str',
+                                  default='75.75.75.0/30'),
             pn_ospf_area_id=dict(required=False, type='str', default='0'),
             pn_routing_protocol=dict(required=False, type='str',
                                      choices=['ebgp', 'ospf']),
@@ -907,6 +1037,7 @@ def main():
     elif routing_protocol == 'ospf':
         message += add_ospf_neighbor(module)
         message += add_ospf_redistribute(module)
+        message += assign_leafcluster_ospf_interface(module)
     else:
         message += ' Please use the correct routing protocol! '
 
