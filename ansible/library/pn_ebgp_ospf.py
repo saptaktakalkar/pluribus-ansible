@@ -704,7 +704,7 @@ def configure_ospf_bfd(module, vrouter, ip):
     nic_interface = run_cli(module, cli).split()
     nic_interface = list(set(nic_interface))
     nic_interface.remove(vrouter)
- 
+
     cli = clicopy
     cli += ' vrouter-interface-config-show vrouter-name %s' % vrouter
     cli += ' nic %s format ospf-bfd no-show-headers ' % nic_interface[0]
