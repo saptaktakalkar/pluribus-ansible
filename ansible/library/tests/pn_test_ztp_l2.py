@@ -18,13 +18,13 @@
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+from ansible.module_utils.basic import AnsibleModule
 import shlex
 
 DOCUMENTATION = """
 ---
 module: pn_test_ztp_l2
-author: "Pluribus Networks (@saptaktakalkar)"
-version: 1
+author: "Pluribus Networks (devops@pluribusnetworks.com)"
 short_description: Tests for ZTP L2.
 options:
     pn_cliusername:
@@ -37,10 +37,29 @@ options:
         - Provide login password if user is not root.
       required: False
       type: str
+    pn_spine_count:
+      description:
+        - Number of spine switches.
+      required: False
+      type: int
+    pn_leaf_count:
+      description:
+        - Number of leaf switches.
+      required: False
+      type: int
+"""
+
+EXAMPLES = """
+- name: Test Layer2 Zero Touch Provisioning
+  pn_test_ztp_l2:
+  pn_cliusername: "{{ USERNAME }}"
+  pn_clipassword: "{{ PASSWORD }}"
+  pn_spine_count: "{{ spine_count }}"
+  pn_leaf_count: "{{ leaf_count }}"
 """
 
 RETURN = """
-msg:
+stdout:
   description: The set of responses for each command.
   returned: always
   type: str
@@ -48,12 +67,16 @@ changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
   type: bool
+failed:
+  description: Indicates whether or not the execution failed on the target.
+  returned: always
+  type: bool
 """
 
 
 def pn_cli(module):
     """
-    This method is to generate the cli portion to launch the Netvisor cli.
+    Method to generate the cli portion to launch the Netvisor cli.
     It parses the username, password, switch parameters from module.
     :param module: The Ansible module to fetch username, password and switch.
     :return: The cli string for further processing.
@@ -71,27 +94,22 @@ def pn_cli(module):
 
 def run_cli(module, cli, find_str, out_msg):
     """
-    This method executes the cli command on the target node(s) and returns the
+    Method to execute the cli command on the target node(s) and returns the
     output.
     :param module: The Ansible module to fetch input parameters.
     :param cli: the complete cli string to be executed on the target node(s).
     :param find_str: String to search/find in output string.
     :param out_msg: Output string describing command output.
-    :return: Output/Error message depending upon the response from cli.
+    :return: Success/Fail message depending upon the response from cli.
     """
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
 
     if out:
         if out.find(find_str) > -1:
-            return '%s: Successful! ' % out_msg
-    else:
-        module.exit_json(
-            failed=True,
-            changed=False,
-            stderr=err.strip(),
-            msg='%s: Failed!' % out_msg
-        )
+            return ' %s: Successful! ' % out_msg
+
+    return ' %s: Failed! ' % out_msg
 
 
 def test_fabric_creation(module):
@@ -100,8 +118,9 @@ def test_fabric_creation(module):
     :param module: The Ansible module to fetch input parameters.
     :return: Output of run_cli() method.
     """
-    switch_count = module.params['pn_switch_count']
-    find_str = 'Count: ' + switch_count
+    switch_count = module.params['pn_spine_count'] + module.params[
+        'pn_leaf_count']
+    find_str = 'Count: ' + str(switch_count)
     cli = pn_cli(module)
     cli += ' fabric-node-show count-output '
     return run_cli(module, cli, find_str, 'Fabric create/join')
@@ -157,7 +176,8 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_switch_count=dict(required=False, type='str'),
+            pn_spine_count=dict(required=False, type='int'),
+            pn_leaf_count=dict(required=False, type='int'),
         )
     )
 
@@ -171,10 +191,6 @@ def main():
         stdout=msg,
         changed=False,
     )
-
-
-# AnsibleModule boilerplate
-from ansible.module_utils.basic import AnsibleModule
 
 if __name__ == '__main__':
     main()

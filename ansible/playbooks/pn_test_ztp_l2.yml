@@ -9,12 +9,17 @@
   vars_files:
   - cli_vault.yml
 
+  vars:
+    spine_count: "{{ groups['spine'] | length }}"
+    leaf_count: "{{ groups['leaf'] | length }}"
+
   tasks:
     - name: Test Layer2 Zero Touch Provisioning
       pn_test_ztp_l2:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_switch_count: '6'
+        pn_spine_count: "{{ spine_count }}"
+        pn_leaf_count: "{{ leaf_count }}"
       register: ztp_out
 
     - debug:
