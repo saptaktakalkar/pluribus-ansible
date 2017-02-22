@@ -703,14 +703,25 @@ def configure_ospf_bfd(module, vrouter, ip):
     cli += ' ip %s format nic no-show-headers ' % ip
     nic_interface = run_cli(module, cli).split()
     nic_interface = list(set(nic_interface))
-    nic_interface.remove(vrouter)    
+    nic_interface.remove(vrouter)
 
     cli = clicopy
-    cli += ' vrouter-interface-config-add vrouter-name %s' % (
-         vrouter)
-    cli += ' nic %s ospf-bfd enable' % nic_interface[0]
-    if 'Success' in run_cli(module, cli):
-        output += ' Added ospf bfd for %s! ' % vrouter
+    cli += ' vrouter-interface-config-show vrouter-name %s' % vrouter
+    cli += ' nic %s format ospf-bfd no-show-headers ' % nic_interface[0]
+    ospf_status = run_cli(module, cli).split()
+    ospf_status = list(set(ospf_status))
+    if ospf_status[0] != 'Success':
+        ospf_status.remove(vrouter)
+
+    if ospf_status[0] != 'enable': 
+        cli = clicopy
+        cli += ' vrouter-interface-config-add vrouter-name %s' % (
+             vrouter)
+        cli += ' nic %s ospf-bfd enable' % nic_interface[0]
+        if 'Success' in run_cli(module, cli):
+            output += ' Added ospf bfd for %s! ' % vrouter
+    else:
+        output += ' Ospf bfd already present for %s! ' % vrouter
 
     return output
 
@@ -803,7 +814,7 @@ def add_ospf_neighbor(module):
                                                                ospf_area_id)
 
                     if 'Success' in run_cli(module, cli):
-                        output += ' Added ospf for %s! ' % vrouter_spine
+                        output += ' Added ospf neighbor for %s! ' % vrouter_spine
                         CHANGED_FLAG.append(True)
 
                 if vrouter_hostname in already_added:
@@ -811,15 +822,16 @@ def add_ospf_neighbor(module):
                         vrouter_hostname)
                     CHANGED_FLAG.append(False)
                 else:
+                    if module.params['pn_bfd']:
+                        output += configure_ospf_bfd(module, vrouter_hostname, ip_leaf)
+
                     cli = clicopy
                     cli += ' vrouter-ospf-add vrouter-name ' + vrouter_hostname
                     cli += ' network %s ospf-area %s' % (ospf_network,
                                                            ospf_area_id)
-                    if module.params['pn_bfd']:
-                        output += configure_ospf_bfd(module, vrouter_hostname, ip_leaf)
 
                     if 'Success' in run_cli(module, cli):
-                        output += ' Added ospf for %s! ' % vrouter_hostname
+                        output += ' Added ospf neighbor for %s! ' % vrouter_hostname
                         CHANGED_FLAG.append(True)
 
     else:
