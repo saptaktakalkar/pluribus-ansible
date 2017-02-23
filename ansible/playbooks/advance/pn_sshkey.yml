@@ -1,26 +1,37 @@
 ---
-
-# Playbook to generate and set up SSH key based authentication 
-# First play is to generate keys on localhost and second play 
+# Playbook to generate and set up SSH key based authentication
+# First play is to generate keys on localhost and second play
 # is to authorize on the remote switches
+# 
+# ansible-playbook pn_sshkeys.yml -u pluribus -K --ask-pass
+
 - name: Test playbook
   hosts: localhost
-  user: vcfc-dhcp
+
+  vars_files:
+  - vars_sshkeys.yml
+
   tasks:
     - name: Create ssh keys
-      command: ssh-keygen -t rsa -f /home/vcfc-dhcp/.ssh/id_rsa -q -N ""
+      command: ssh-keygen -t rsa -f "{{ lookup('env','HOME') + '/.ssh/id_rsa' }}" -q -N ""
       args:
-        creates: /home/vcfc-dhcp/.ssh/id_rsa
+        creates: "{{ lookup('env','HOME') + '/.ssh/id_rsa' }}" #/home/vcfc-dhcp/.ssh/id_rsa
     - pause:
-        seconds: 5
+        seconds: 3 # Optional
+
+
 - name: Authorize on remote switches
   hosts: all
   become: true
   become_method: su
   become_user: root
+
+  vars_files:
+  - vars_sshkeys.yml
+
   tasks:
-  - name: Set authorized key took from file
-    authorized_key:
-      user: pluribus
-      state: present
-      key: "{{ lookup('file', '/home/vcfc-dhcp/.ssh/id_rsa.pub') }}"
+    - name: Set authorized key took from file
+      authorized_key:
+        user: "{{ remote_user }}"
+        state: present
+        key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_rsa.pub') }}"
