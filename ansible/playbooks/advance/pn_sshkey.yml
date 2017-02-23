@@ -1,0 +1,26 @@
+---
+
+# Playbook to generate and set up SSH key based authentication 
+# First play is to generate keys on localhost and second play 
+# is to authorize on the remote switches
+- name: Test playbook
+  hosts: localhost
+  user: vcfc-dhcp
+  tasks:
+    - name: Create ssh keys
+      command: ssh-keygen -t rsa -f /home/vcfc-dhcp/.ssh/id_rsa -q -N ""
+      args:
+        creates: /home/vcfc-dhcp/.ssh/id_rsa
+    - pause:
+        seconds: 5
+- name: Authorize on remote switches
+  hosts: all
+  become: true
+  become_method: su
+  become_user: root
+  tasks:
+  - name: Set authorized key took from file
+    authorized_key:
+      user: pluribus
+      state: present
+      key: "{{ lookup('file', '/home/vcfc-dhcp/.ssh/id_rsa.pub') }}"
