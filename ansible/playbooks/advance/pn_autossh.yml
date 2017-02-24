@@ -21,4 +21,5 @@
         pn_overwrite: False
         pn_filepath: "{{ lookup('env','HOME') + '/.ssh/id_rsa' }}"
       register: output
+      
     - debug: var=output.stdout_lines
