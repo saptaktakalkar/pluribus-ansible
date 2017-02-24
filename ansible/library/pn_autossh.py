@@ -108,7 +108,13 @@ def generate_key(path):
     if out:
         return out
     if err:
-        return err
+        module.exit_json(
+          error = '1'
+          failed=True,
+          stderr=err.strip(),
+          msg='Operation Failed: Could not generate keys!',
+          changed=False
+        )
     else:
         return 'SSH Keys generated on localhost \n'
 
@@ -132,7 +138,7 @@ def main():
     overwrite = module.params['pn_overwrite']
 
     if not os.path.exists(filepath):
-        generate_key(filepath)
+        message += generate_key(filepath)
     
     filepath_pub = str(filepath) + '.pub'
     key = open(filepath_pub).read()
