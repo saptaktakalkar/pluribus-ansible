@@ -5,8 +5,7 @@
 # The variables are located in vars_sshkeys.yml file.
 
 - name: Auto SSH setup
-  hosts: controlmachine
-  connection: local
+  hosts: localhost
 
   vars_files:
     - cli_vault.yml
