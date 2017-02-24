@@ -156,11 +156,10 @@ def modify_stp(module, modify_flag):
             cli += ' switch ' + switch
             cli += ' stp-modify ' + modify_flag
             if 'Success' in run_cli(module, cli):
-                output += ' %s: STP enabled! ' % switch
+                output += ' %s: STP enabled \n' % switch
                 CHANGED_FLAG.append(True)
         else:
-            output += ' %s: STP is already enabled! ' % switch
-            CHANGED_FLAG.append(False)
+            output += ' %s: STP is already enabled \n' % switch
 
     return output
 
@@ -186,10 +185,9 @@ def create_cluster(module, switch, name, node1, node2):
         cli += ' cluster-node-1 %s cluster-node-2 %s ' % (node1, node2)
         if 'Success' in run_cli(module, cli):
             CHANGED_FLAG.append(True)
-            return ' %s: %s created successfully! ' % (switch, name)
+            return ' %s: %s created successfully \n' % (switch, name)
     else:
-        CHANGED_FLAG.append(False)
-        return ' %s: %s already exists! ' % (switch, name)
+        return ' %s: %s already exists \n' % (switch, name)
 
 
 def get_ports(module, switch, peer_switch):
@@ -227,10 +225,9 @@ def create_trunk(module, switch, name, ports):
         cli += ' ports %s ' % ports_string
         if 'Success' in run_cli(module, cli):
             CHANGED_FLAG.append(True)
-            return ' %s: %s trunk created successfully! ' % (switch, name)
+            return ' %s: %s trunk created successfully \n' % (switch, name)
     else:
-        CHANGED_FLAG.append(False)
-        return ' %s: %s trunk already exists! ' % (switch, name)
+        return ' %s: %s trunk already exists \n' % (switch, name)
 
 
 def find_non_clustered_leafs(module, leaf_list):
@@ -280,10 +277,9 @@ def create_vlag(module, switch, name, peer_switch, port, peer_port):
                                                                     peer_port)
         if 'Success' in run_cli(module, cli):
             CHANGED_FLAG.append(True)
-            return ' %s: %s vlag configured successfully! ' % (switch, name)
+            return ' %s: %s vlag configured successfully \n' % (switch, name)
     else:
-        CHANGED_FLAG.append(False)
-        return ' %s: %s vlag is already configured! ' % (switch, name)
+        return ' %s: %s vlag is already configured \n' % (switch, name)
 
 
 def configure_trunk(module, cluster_node, switch_list):
@@ -461,11 +457,10 @@ def update_fabric_network_to_inband(module):
             cli += ' switch ' + switch
             cli += ' fabric-local-modify fabric-network in-band '
             if 'Success' in run_cli(module, cli):
-                output += ' %s: Updated fabric network to in-band! ' % switch
+                output += ' %s: Updated fabric network to in-band \n' % switch
                 CHANGED_FLAG.append(True)
         else:
-            output += ' %s: Fabric network is already in-band! ' % switch
-            CHANGED_FLAG.append(False)
+            output += ' %s: Fabric network is already in-band \n' % switch
 
     return output
 
