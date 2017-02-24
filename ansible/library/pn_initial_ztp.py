@@ -226,7 +226,7 @@ def auto_accept_eula(module):
         cli += ' eula-accepted true '
         return run_cli(module, cli)
     elif out:
-        return ' EULA has been accepted already! '
+        return ' EULA has been accepted already '
 
 
 def update_switch_names(module, switch_name):
@@ -307,8 +307,6 @@ def modify_stp_local(module, modify_flag):
         cli = pn_cli(module)
         cli += ' switch-local stp-modify ' + modify_flag
         return run_cli(module, cli)
-    else:
-        return ' STP is already disabled! '
 
 
 def configure_control_network(module, network):
@@ -322,9 +320,7 @@ def configure_control_network(module, network):
     cli += ' fabric-info format control-network '
     current_control_network = run_cli(module, cli).split()[1]
 
-    if current_control_network == network:
-        return ' Fabric is already in %s control network ' % network
-    else:
+    if current_control_network != network:
         cli = pn_cli(module)
         cli += ' fabric-local-modify control-network ' + network
         return run_cli(module, cli)
@@ -544,19 +540,15 @@ def main():
     CHANGED_FLAG = []
 
     # Auto accept EULA
-    eula_out_msg = auto_accept_eula(module)
-    if 'Setup completed successfully' in eula_out_msg:
-        message += ' EULA accepted on %s! ' % current_switch
+    if 'Setup completed successfully' in auto_accept_eula(module):
+        message += ' %s: EULA accepted \n' % current_switch
         CHANGED_FLAG.append(True)
     else:
-        message += eula_out_msg
-        CHANGED_FLAG.append(False)
+        message += ' %s: EULA has already been accepted \n' % current_switch
 
     # Update switch names to match host names from hosts file
     if 'Updated' in update_switch_names(module, current_switch):
         CHANGED_FLAG.append(True)
-    else:
-        CHANGED_FLAG.append(False)
 
     # Make switch setup static
     if module.params['pn_static_setup']:
@@ -565,71 +557,61 @@ def main():
     # Create/join fabric
     if 'already in the fabric' in create_or_join_fabric(module, fabric_name,
                                                         fabric_network):
-        message += ' %s is already in fabric %s! ' % (current_switch,
-                                                      fabric_name)
-        CHANGED_FLAG.append(False)
+        message += ' %s: Already a part of fabric %s \n' % (current_switch,
+                                                            fabric_name)
     else:
-        message += ' %s has joined fabric %s! ' % (current_switch,
-                                                   fabric_name)
+        message += ' %s: Joined fabric %s \n' % (current_switch,
+                                                 fabric_name)
         CHANGED_FLAG.append(True)
 
     # Configure fabric control network to either mgmt or in-band
-    net_out_msg = configure_control_network(module, control_network)
-    if 'Success' in net_out_msg:
-        message += ' Configured fabric control network to %s on %s! ' % (
-            control_network, current_switch)
+    if 'Success' in configure_control_network(module, control_network):
+        message += ' %s: Configured fabric control network to %s \n' % (
+            current_switch, control_network)
         CHANGED_FLAG.append(True)
     else:
-        message += net_out_msg
-        CHANGED_FLAG.append(False)
+        message += ' %s: Fabric is already in %s control network \n' % (
+            current_switch, control_network)
 
     # Enable web api if flag is True
     if module.params['pn_web_api']:
         enable_web_api(module)
 
     # Disable STP
-    stp_out_msg = modify_stp_local(module, 'disable')
-    if 'Success' in stp_out_msg:
-        message += ' STP disabled on %s! ' % current_switch
+    if 'Success' in modify_stp_local(module, 'disable'):
+        message += ' %s: STP disabled \n' % current_switch
         CHANGED_FLAG.append(True)
     else:
-        message += stp_out_msg
-        CHANGED_FLAG.append(False)
+        message += ' %s: STP is already disabled \n' % current_switch
 
     # Enable ports
-    ports_out_msg = enable_ports(module)
-    if 'Success' in ports_out_msg:
-        message += ' Ports enabled on %s! ' % current_switch
+    if 'Success' in enable_ports(module):
+        message += ' %s: Ports enabled \n' % current_switch
         CHANGED_FLAG.append(True)
     else:
-        message += ports_out_msg
-        CHANGED_FLAG.append(False)
+        message += ' %s: Ports are already enabled \n' % current_switch
 
     # Toggle 40g ports to 10g
     if toggle_40g_flag:
         if toggle_40g_local(module):
-            message += ' Toggled 40G ports to 10G on %s! ' % current_switch
+            message += ' %s: Toggled 40G ports to 10G \n' % current_switch
             CHANGED_FLAG.append(True)
-        else:
-            CHANGED_FLAG.append(False)
 
     # Assign in-band ips.
     ip = assign_inband_ip(module, module.params['pn_inband_ip'])
     if ip is not None:
-        message += ' Assigned in-band ip %s to %s! ' % (ip, current_switch)
+        message += ' %s: Assigned in-band ip %s \n' % (current_switch, ip)
     else:
-        message += ' In-band ip %s has already been assigned to %s! ' % (
-            ip, current_switch)
+        message += ' %s: In-band ip %s has already been assigned \n' % (
+            current_switch, ip)
 
     # Enable STP if flag is True
     if module.params['pn_stp']:
-        stp_out_msg = modify_stp_local(module, 'enable')
-        if 'Success' in stp_out_msg:
-            message += ' STP enabled on %s! ' % current_switch
+        if 'Success' in modify_stp_local(module, 'enable'):
+            message += ' %s: STP enabled \n' % current_switch
             CHANGED_FLAG.append(True)
         else:
-            message += stp_out_msg
-            CHANGED_FLAG.append(False)
+            message += ' %s: STP is already enabled \n' % current_switch
 
     # Exit the module and return the required JSON
     module.exit_json(

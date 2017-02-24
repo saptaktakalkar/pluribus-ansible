@@ -213,17 +213,20 @@ def assign_bgp_as(module, bgp_spine):
                                                                bgp_spine)
 
                 if 'Success' in run_cli(module, cli):
-                    output += ' Added %s BGP_AS to %s! ' % (bgp_spine, vrouter)
+                    output += ' %s: Added %s BGP_AS to %s \n' % (switch_name,
+                                                                 bgp_spine,
+                                                                 vrouter)
                     CHANGED_FLAG.append(True)
 
             if switch_name in leaf_list and vrouter not in modified_vrouters:
                 cli = clicopy
-                cli += ' vrouter-modify name %s bgp-as %s ' % (
-                    vrouter, str(bgp_leaf))
+                cli += ' vrouter-modify name %s bgp-as %s ' % (vrouter,
+                                                               str(bgp_leaf))
 
                 if 'Success' in run_cli(module, cli):
-                    output += ' Added %s BGP_AS to %s! ' % (str(bgp_leaf),
-                                                            vrouter)
+                    output += ' %s: Added %s BGP_AS to %s \n' % (switch_name,
+                                                                 str(bgp_leaf),
+                                                                 vrouter)
                     CHANGED_FLAG.append(True)
                     modified_vrouters.append(vrouter)
 
@@ -244,24 +247,26 @@ def assign_bgp_as(module, bgp_spine):
 
                         if 'Success' in cluster_node_2:
                             vrouter_name = str(cluster_node_1) + '-vrouter'
+                            switch = cluster_node_1
                         else:
                             vrouter_name = str(cluster_node_2) + '-vrouter'
+                            switch = cluster_node_2
 
                         cli = clicopy
                         cli += ' vrouter-modify name %s bgp-as %s ' % (
                             vrouter_name, str(bgp_leaf))
 
                         if 'Success' in run_cli(module, cli):
-                            output += ' Added %s BGP_AS to %s! ' % (
-                                str(bgp_leaf), vrouter_name)
+                            output += ' %s: Added %s BGP_AS to %s \n' % (
+                                switch, str(bgp_leaf), vrouter_name
+                            )
                             CHANGED_FLAG.append(True)
                             modified_vrouters.append(vrouter_name)
 
                 bgp_leaf += 1
 
     else:
-        output += ' No vrouters present/created! '
-        CHANGED_FLAG.append(False)
+        output += ' No vrouters present/created \n'
 
     return output
 
@@ -273,7 +278,7 @@ def vrouter_interface_ibgp_add(module, switch_name, interface_ip, neighbor_ip):
     :param switch_name: The name of the switch to run interface.
     :param interface_ip: Interface ip to create a vrouter interface.
     :param neighbor_ip: Neighbor_ip for the ibgp neighbor.
-    :return: The output of all cli commands.
+    :return: String describing if ibgp neighbours got added or already exists.
     """
     global CHANGED_FLAG
     output = ''
@@ -281,8 +286,6 @@ def vrouter_interface_ibgp_add(module, switch_name, interface_ip, neighbor_ip):
 
     cli = pn_cli(module)
     clicopy = cli
-
-    cli = clicopy
     cli += ' switch %s vlan-show format id no-show-headers ' % switch_name
     existing_vlans = run_cli(module, cli).split()
 
@@ -291,10 +294,9 @@ def vrouter_interface_ibgp_add(module, switch_name, interface_ip, neighbor_ip):
         cli += ' switch %s vlan-create id %s scope local ' % (switch_name,
                                                               vlan_id)
         run_cli(module, cli)
-        output = ' vlan with id %s created! ' % vlan_id
+
+        output += ' %s: Vlan with id %s created \n' % (switch_name, vlan_id)
         CHANGED_FLAG.append(True)
-    else:
-        CHANGED_FLAG.append(False)
 
     cli = clicopy
     cli += ' vrouter-show location %s format name' % switch_name
@@ -313,17 +315,20 @@ def vrouter_interface_ibgp_add(module, switch_name, interface_ip, neighbor_ip):
     if vrouter not in existing_vrouter_interface:
         cli = clicopy
         cli += ' vrouter-interface-add vrouter-name %s ip %s vlan %s ' % (
-            vrouter, interface_ip, vlan_id)
+            vrouter, interface_ip, vlan_id
+        )
         run_cli(module, cli)
-        output += ' Added vrouter interface with ip %s on %s! ' % (interface_ip,
-                                                                   vrouter)
+
+        output += ' %s: Added vrouter interface with ip %s on %s \n' % (
+            switch_name, interface_ip, vrouter
+        )
         CHANGED_FLAG.append(True)
     else:
-        output += ' Interface already exists on %s! ' % vrouter
-        CHANGED_FLAG.append(False)
+        output += ' %s: Vrouter interface %s already exists for %s \n' % (
+            switch_name, interface_ip, vrouter
+        )
 
     neighbor_ip = neighbor_ip.split('/')[0]
-
     cli = clicopy
     cli += ' vrouter-bgp-show remote-as ' + remote_as
     cli += ' neighbor %s format switch no-show-headers' % neighbor_ip
@@ -335,12 +340,15 @@ def vrouter_interface_ibgp_add(module, switch_name, interface_ip, neighbor_ip):
         cli += ' neighbor %s remote-as %s next-hop-self' % (neighbor_ip,
                                                             remote_as)
         run_cli(module, cli)
-        output += ' Added iBGP neighbor for %s! ' % vrouter
+
+        output += ' %s: Added iBGP neighbor %s for %s \n' % (switch_name,
+                                                             neighbor_ip,
+                                                             vrouter)
         CHANGED_FLAG.append(True)
     else:
-        output += 'vrouter iBGP neighbour already exists for vrouter %s! ' % (
-            vrouter)
-        CHANGED_FLAG.append(False)
+        output += ' %s: iBGP neighbour %s already exists for %s \n' % (
+            switch_name, neighbor_ip, vrouter
+        )
 
     return output
 
@@ -391,7 +399,7 @@ def assign_ibgp_interface(module):
 
                 subnet_count += 1
     else:
-        output += 'No leaf clusters present to add iBGP! '
+        output += ' No leaf clusters present to add iBGP \n'
 
     return output
 
@@ -461,8 +469,10 @@ def add_bgp_neighbor(module):
                 already_added = run_cli(module, cli).split()
 
                 if vrouter in already_added:
-                    output += ' BGP Neighbour already added for %s! ' % vrouter
-                    CHANGED_FLAG.append(False)
+                    output += ' %s: ' % switch
+                    output += 'BGP Neighbor %s already exists for %s \n' % (
+                        ip_hostname, vrouter
+                    )
                 else:
                     cli = clicopy
                     cli += ' vrouter-bgp-add vrouter-name ' + vrouter
@@ -482,12 +492,10 @@ def add_bgp_neighbor(module):
                                 break
 
                     if 'Success' in run_cli(module, cli):
-                        output += ' Added BGP Neighbour for %s! ' % vrouter
+                        output += ' %s: Added BGP Neighbor %s for %s \n' % (
+                            switch, ip_hostname, vrouter
+                        )
                         CHANGED_FLAG.append(True)
-
-    else:
-        print ' No vrouters present/created! '
-        CHANGED_FLAG.append(False)
 
     return output
 
@@ -517,14 +525,15 @@ def assign_router_id(module):
             cli += ' vrouter-modify name %s router-id %s ' % (vrouter,
                                                               loopback_ip[0])
             if 'Success' in run_cli(module, cli):
-                output += ' Added router id %s to %s! ' % (loopback_ip[0],
-                                                           vrouter)
+                cli = clicopy
+                cli += ' vrouter-show name ' + vrouter
+                cli += ' format location no-show-headers '
+                switch = run_cli(module, cli).split()[0]
+
+                output += ' %s: Added router id %s to %s \n' % (switch,
+                                                                loopback_ip[0],
+                                                                vrouter)
                 CHANGED_FLAG.append(True)
-            else:
-                CHANGED_FLAG.append(False)
-    else:
-        print ' No vrouters present/created! '
-        CHANGED_FLAG.append(False)
 
     return output
 
@@ -548,11 +557,15 @@ def add_bgp_redistribute(module, bgp_redis):
         cli += ' vrouter-modify name %s bgp-redistribute %s ' % (vrouter,
                                                                  bgp_redis)
         if 'Success' in run_cli(module, cli):
-            output += ' Added %s BGP_REDISTRIBUTE to %s! ' % (bgp_redis,
-                                                              vrouter)
+            cli = clicopy
+            cli += ' vrouter-show name ' + vrouter
+            cli += ' format location no-show-headers '
+            switch = run_cli(module, cli).split()[0]
+
+            output += ' %s: Added %s BGP_REDISTRIBUTE to %s \n' % (switch,
+                                                                   bgp_redis,
+                                                                   vrouter)
             CHANGED_FLAG.append(True)
-        else:
-            CHANGED_FLAG.append(False)
 
     return output
 
@@ -576,10 +589,14 @@ def add_bgp_maxpath(module, bgp_max):
         cli += ' vrouter-modify name %s bgp-max-paths %s ' % (vrouter,
                                                               bgp_max)
         if 'Success' in run_cli(module, cli):
-            output += ' Added %s BGP_MAXPATH to %s! ' % (bgp_max, vrouter)
+            cli = clicopy
+            cli += ' vrouter-show name ' + vrouter
+            cli += ' format location no-show-headers '
+            switch = run_cli(module, cli).split()[0]
+
+            output += ' %s: Added %s BGP_MAXPATH to %s \n' % (switch,
+                                                              bgp_max, vrouter)
             CHANGED_FLAG.append(True)
-        else:
-            CHANGED_FLAG.append(False)
 
     return output
 
@@ -615,7 +632,7 @@ def create_cluster(module, switch, name, node1, node2):
     :param name: The name of the cluster to create.
     :param node1: First node of the cluster.
     :param node2: Second node of the cluster.
-    :return: The output of run_cli() method.
+    :return: String describing if cluster got created or if it's already exists.
     """
     global CHANGED_FLAG
     cli = pn_cli(module)
@@ -628,10 +645,9 @@ def create_cluster(module, switch, name, node1, node2):
         cli += ' cluster-node-1 %s cluster-node-2 %s ' % (node1, node2)
         if 'Success' in run_cli(module, cli):
             CHANGED_FLAG.append(True)
-            return ' %s created successfully! ' % name
+            return ' %s: %s created successfully \n' % (switch, name)
     else:
-        CHANGED_FLAG.append(False)
-        return ' %s already exists! ' % name
+        return ' %s: %s already exists \n' % (switch, name)
 
 
 def create_leaf_clusters(module):
@@ -683,22 +699,21 @@ def create_leaf_clusters(module):
                     terminate_flag += 1
 
                 node_count += 1
+
         return output
 
 
 def configure_ospf_bfd(module, vrouter, ip):
     """
-    This method add ospf_bfd to the vrouter.
+    Method to add ospf_bfd to the vrouter.
     :param module: The Ansible module to fetch input parameters.
     :param vrouter: The vrouter name to add ospf bfd.
-    :ip: The interface ip to associate the ospf bfd.
-    :return: The output of the adding ospf-neighbor.
+    :param ip: The interface ip to associate the ospf bfd.
+    :return: String describing if OSPF BFD got added or if it already exists.
     """
-    output = ''
+    global CHANGED_FLAG
     cli = pn_cli(module)
     clicopy = cli
-
-    cli = clicopy
     cli += ' vrouter-interface-show vrouter-name %s' % vrouter
     cli += ' ip %s format nic no-show-headers ' % ip
     nic_interface = run_cli(module, cli).split()
@@ -710,20 +725,24 @@ def configure_ospf_bfd(module, vrouter, ip):
     cli += ' nic %s format ospf-bfd no-show-headers ' % nic_interface[0]
     ospf_status = run_cli(module, cli).split()
     ospf_status = list(set(ospf_status))
+
+    cli = clicopy
+    cli += ' vrouter-show name ' + vrouter
+    cli += ' format location no-show-headers '
+    switch = run_cli(module, cli).split()[0]
+
     if ospf_status[0] != 'Success':
         ospf_status.remove(vrouter)
 
-    if ospf_status[0] != 'enable': 
+    if ospf_status[0] != 'enable':
         cli = clicopy
-        cli += ' vrouter-interface-config-add vrouter-name %s' % (
-             vrouter)
+        cli += ' vrouter-interface-config-add vrouter-name %s' % vrouter
         cli += ' nic %s ospf-bfd enable' % nic_interface[0]
         if 'Success' in run_cli(module, cli):
-            output += ' Added ospf bfd for %s! ' % vrouter
+            CHANGED_FLAG.append(True)
+            return ' %s: Added OSPF BFD to %s \n' % (switch, vrouter)
     else:
-        output += ' Ospf bfd already present for %s! ' % vrouter
-
-    return output
+        return ' %s: OSPF BFD already exists for %s \n' % (switch, vrouter)
 
 
 def add_ospf_neighbor(module):
@@ -737,105 +756,99 @@ def add_ospf_neighbor(module):
     cli = pn_cli(module)
     clicopy = cli
     ospf_area_id = module.params['pn_ospf_area_id']
-    spine_list = module.params['pn_spine_list']
 
-    if len(spine_list) > 0:
-        for spine in spine_list:
+    for spine in module.params['pn_spine_list']:
+        cli = clicopy
+        cli += ' vrouter-show location %s' % spine
+        cli += ' format name no-show-headers'
+        vrouter_spine = run_cli(module, cli).split()[0]
+
+        cli = clicopy
+        cli += ' vrouter-interface-show vrouter-name %s ' % vrouter_spine
+        cli += ' format l3-port no-show-headers '
+        port_list = run_cli(module, cli).split()
+        port_list = list(set(port_list))
+        port_list.remove(vrouter_spine)
+
+        for port in port_list:
             cli = clicopy
-            cli += '  vrouter-show location %s' % spine
+            cli += ' switch %s port-show port %s' % (spine, port)
+            cli += ' format hostname no-show-headers'
+            hostname = run_cli(module, cli).split()[0]
+
+            cli = clicopy
+            cli += ' vrouter-show location %s' % hostname
             cli += ' format name no-show-headers'
-            vrouter_spine = run_cli(module, cli).split()[0]
+            vrouter_hostname = run_cli(module, cli).split()[0]
 
             cli = clicopy
-            cli += ' vrouter-interface-show vrouter-name %s ' % vrouter_spine
-            cli += ' format l3-port no-show-headers '
-            port_list = run_cli(module, cli).split()
-            port_list = list(set(port_list))
-            port_list.remove(vrouter_spine)
+            cli += ' vrouter-interface-show vrouter-name %s l3-port %s' % (
+                vrouter_spine, port
+            )
+            cli += ' format ip no-show-headers'
+            ip = run_cli(module, cli).split()
+            ip = list(set(ip))
+            ip.remove(vrouter_spine)
+            ip = ip[0]
 
-            for port in port_list:
-                cli = clicopy
-                cli += ' switch %s port-show port %s' % (spine, port)
-                cli += ' format hostname no-show-headers'
-                hostname = run_cli(module, cli).split()[0]
+            ip = ip.split('.')
+            static_part = str(ip[0]) + '.' + str(ip[1]) + '.'
+            static_part += str(ip[2]) + '.'
+            last_octet = str(ip[3]).split('/')
+            netmask = last_octet[1]
 
-                cli = clicopy
-                cli += ' vrouter-show location %s' % hostname
-                cli += ' format name no-show-headers'
-                vrouter_hostname = run_cli(module, cli).split()[0]
+            last_octet_ip_mod = int(last_octet[0]) % 4
+            ospf_last_octet = int(last_octet[0]) - last_octet_ip_mod
+            ospf_network = static_part + str(ospf_last_octet) + '/' + netmask
 
-                cli = clicopy
-                cli += ' vrouter-interface-show vrouter-name %s l3-port %s' % (
-                    vrouter_spine, port)
-                cli += ' format ip no-show-headers'
-                ip = run_cli(module, cli).split()
-                ip = list(set(ip))
-                ip.remove(vrouter_spine)
-                ip = ip[0]
+            leaf_last_octet = int(last_octet[0]) - 1
+            ip_leaf = static_part + str(leaf_last_octet)
+            ip_spine = static_part + last_octet[0]
 
-                ip = ip.split('.')
-                static_part = str(ip[0]) + '.' + str(ip[1]) + '.'
-                static_part += str(ip[2]) + '.'
-                last_octet = str(ip[3]).split('/')
-                netmask = last_octet[1]
+            cli = clicopy
+            cli += ' vrouter-ospf-show'
+            cli += ' network %s format switch no-show-headers ' % ospf_network
+            already_added = run_cli(module, cli).split()
 
-                last_octet_ip_mod = int(last_octet[0]) % 4
-                ospf_last_octet = int(last_octet[0]) - last_octet_ip_mod
-                ospf_network = static_part + str(
-                    ospf_last_octet) + '/' + netmask
-
-                leaf_last_octet = int(last_octet[0]) - 1
-                ip_leaf = static_part + str(leaf_last_octet)
-
-                ip_spine = static_part + last_octet[0]
-
-                leaf_last_octet = int(last_octet[0]) - 1
-                ip_leaf = static_part + str(leaf_last_octet)
-
-                ip_spine = static_part + last_octet[0]
+            if vrouter_spine in already_added:
+                output += ' %s: OSPF Neighbor already exists for %s \n' % (
+                    spine, vrouter_spine
+                )
+            else:
+                if module.params['pn_bfd']:
+                    output += configure_ospf_bfd(module, vrouter_spine,
+                                                 ip_spine)
 
                 cli = clicopy
-                cli += ' vrouter-ospf-show'
-                cli += ' network %s format switch no-show-headers ' % (
-                    ospf_network)
-                already_added = run_cli(module, cli).split()
+                cli += ' vrouter-ospf-add vrouter-name ' + vrouter_spine
+                cli += ' network %s ospf-area %s' % (ospf_network,
+                                                     ospf_area_id)
 
-                if vrouter_spine in already_added:
-                    output += ' OSPF Neighbour already added for %s! ' % (
-                        vrouter_spine)
-                    CHANGED_FLAG.append(False)
-                else:
-                    if module.params['pn_bfd']:
-                        output += configure_ospf_bfd(module, vrouter_spine, ip_spine)
+                if 'Success' in run_cli(module, cli):
+                    output += ' %s: Added OSPF neighbor to %s \n' % (
+                        spine, vrouter_spine
+                    )
+                    CHANGED_FLAG.append(True)
 
-                    cli = clicopy
-                    cli += ' vrouter-ospf-add vrouter-name ' + vrouter_spine
-                    cli += ' network %s ospf-area %s' % (ospf_network,
-                                                               ospf_area_id)
+            if vrouter_hostname in already_added:
+                output += ' %s: OSPF Neighbor already exists for %s \n' % (
+                    hostname, vrouter_hostname
+                )
+            else:
+                if module.params['pn_bfd']:
+                    output += configure_ospf_bfd(module, vrouter_hostname,
+                                                 ip_leaf)
 
-                    if 'Success' in run_cli(module, cli):
-                        output += ' Added ospf neighbor for %s! ' % vrouter_spine
-                        CHANGED_FLAG.append(True)
+                cli = clicopy
+                cli += ' vrouter-ospf-add vrouter-name ' + vrouter_hostname
+                cli += ' network %s ospf-area %s' % (ospf_network,
+                                                     ospf_area_id)
 
-                if vrouter_hostname in already_added:
-                    output += ' OSPF Neighbour already added for %s! ' % (
-                        vrouter_hostname)
-                    CHANGED_FLAG.append(False)
-                else:
-                    if module.params['pn_bfd']:
-                        output += configure_ospf_bfd(module, vrouter_hostname, ip_leaf)
-
-                    cli = clicopy
-                    cli += ' vrouter-ospf-add vrouter-name ' + vrouter_hostname
-                    cli += ' network %s ospf-area %s' % (ospf_network,
-                                                           ospf_area_id)
-
-                    if 'Success' in run_cli(module, cli):
-                        output += ' Added ospf neighbor for %s! ' % vrouter_hostname
-                        CHANGED_FLAG.append(True)
-
-    else:
-        CHANGED_FLAG.append(False)
+                if 'Success' in run_cli(module, cli):
+                    output += ' %s: Added OSPF neighbor to %s \n' % (
+                        hostname, vrouter_hostname
+                    )
+                    CHANGED_FLAG.append(True)
 
     return output
 
@@ -858,31 +871,35 @@ def add_ospf_redistribute(module):
         cli += ' vrouter-modify name %s' % vrouter
         cli += ' ospf-redistribute static,connected'
         if 'Success' in run_cli(module, cli):
-            output += ' Added OSPF_REDISTRIBUTE to %s! ' % vrouter
+            cli = clicopy
+            cli += ' vrouter-show name ' + vrouter
+            cli += ' format location no-show-headers '
+            switch = run_cli(module, cli).split()[0]
+
+            output += ' %s: Added OSPF_REDISTRIBUTE to %s \n' % (switch,
+                                                                 vrouter)
             CHANGED_FLAG.append(True)
-        else:
-            CHANGED_FLAG.append(False)
 
     return output
 
 
-def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip, ospf_network):
+def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
+                                 ospf_network):
     """
-    Method to create interfaces and add ibgp neighbors.
+    Method to create interfaces and add ospf neighbors.
     :param module: The Ansible module to fetch input parameters.
     :param switch_name: The name of the switch to run interface.
     :param interface_ip: Interface ip to create a vrouter interface.
     :param ospf_network: Ospf network for the ospf neighbor.
-    :return: The output of all cli commands.
+    :return: String describing if ospf neighbors got added or not.
     """
     global CHANGED_FLAG
     output = ''
     vlan_id = module.params['pn_iospf_vlan']
     ospf_area_id = module.params['pn_ospf_area_id']
+
     cli = pn_cli(module)
     clicopy = cli
-
-    cli = clicopy
     cli += ' switch %s vlan-show format id no-show-headers ' % switch_name
     existing_vlans = run_cli(module, cli).split()
 
@@ -891,10 +908,9 @@ def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip, ospf_network
         cli += ' switch %s vlan-create id %s scope local ' % (switch_name,
                                                               vlan_id)
         run_cli(module, cli)
-        output = ' vlan with id %s created! ' % vlan_id
+        output = ' %s: Vlan with id %s created successfully \n' % (switch_name,
+                                                                   vlan_id)
         CHANGED_FLAG.append(True)
-    else:
-        CHANGED_FLAG.append(False)
 
     cli = clicopy
     cli += ' vrouter-show location %s format name' % switch_name
@@ -909,33 +925,34 @@ def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip, ospf_network
     if vrouter not in existing_vrouter_interface:
         cli = clicopy
         cli += ' vrouter-interface-add vrouter-name %s ip %s vlan %s ' % (
-            vrouter, interface_ip, vlan_id)
+            vrouter, interface_ip, vlan_id
+        )
         run_cli(module, cli)
-        output += ' Added vrouter interface with ip %s on %s! ' % (interface_ip,
-                                                                   vrouter)
+        output += ' %s: Added vrouter interface with ip %s on %s \n' % (
+            switch_name, interface_ip, vrouter
+        )
         CHANGED_FLAG.append(True)
     else:
-        output += ' Interface already exists on %s! ' % vrouter
-        CHANGED_FLAG.append(False)
+        output += ' %s: Vrouter interface %s already exists for %s \n' % (
+            switch_name, interface_ip, vrouter
+        )
 
     cli = clicopy
     cli += ' vrouter-ospf-show'
-    cli += ' network %s format switch no-show-headers ' % (
-               ospf_network)
+    cli += ' network %s format switch no-show-headers ' % ospf_network
     already_added = run_cli(module, cli).split()
 
     if vrouter in already_added:
-        output += ' OSPF Neighbour already added for %s! ' % (
-                vrouter)
-        CHANGED_FLAG.append(False)
+        output += ' %s: OSPF Neighbor already exists for %s \n' % (switch_name,
+                                                                   vrouter)
     else:
         cli = clicopy
         cli += ' vrouter-ospf-add vrouter-name ' + vrouter
-        cli += ' network %s ospf-area %s' % (ospf_network,
-                                                        ospf_area_id)
+        cli += ' network %s ospf-area %s' % (ospf_network, ospf_area_id)
 
         if 'Success' in run_cli(module, cli):
-            output += ' Added ospf neighbor for %s! ' % vrouter
+            output += ' %s: Added OSPF neighbor to %s \n' % (switch_name,
+                                                             vrouter)
             CHANGED_FLAG.append(True)
 
     return output
@@ -982,13 +999,13 @@ def assign_leafcluster_ospf_interface(module):
                 cluster_node_2 = run_cli(module, cli).split()[0]
 
                 output += vrouter_leafcluster_ospf_add(module, cluster_node_1,
-                                                     ip1, ospf_network)
+                                                       ip1, ospf_network)
                 output += vrouter_leafcluster_ospf_add(module, cluster_node_2,
-                                                     ip2, ospf_network)
+                                                       ip2, ospf_network)
 
                 subnet_count += 1
     else:
-        output += 'No leaf clusters present to add iOSPF! '
+        output += ' No leaf clusters present to add iOSPF \n'
 
     return output
 
@@ -1013,15 +1030,14 @@ def main():
             pn_ibgp_vlan=dict(required=False, type='str', default='4040'),
             pn_iospf_vlan=dict(required=False, type='str', default='4040'),
             pn_iospf_ip_range=dict(required=False, type='str',
-                                  default='75.75.75.0/30'),
+                                   default='75.75.75.0/30'),
             pn_ospf_area_id=dict(required=False, type='str', default='0'),
             pn_routing_protocol=dict(required=False, type='str',
-                                     choices=['ebgp', 'ospf']),
+                                     choices=['ebgp', 'ospf'], default='ebgp'),
         )
     )
 
     global CHANGED_FLAG
-    CHANGED_FLAG = []
     routing_protocol = module.params['pn_routing_protocol']
 
     message = assign_router_id(module)
@@ -1038,8 +1054,6 @@ def main():
         message += add_ospf_neighbor(module)
         message += add_ospf_redistribute(module)
         message += assign_leafcluster_ospf_interface(module)
-    else:
-        message += ' Please use the correct routing protocol! '
 
     module.exit_json(
         stdout=message,
