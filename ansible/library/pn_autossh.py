@@ -100,7 +100,7 @@ def deploy_key(sshkey, address, username, password, overwrite):
     return "Keys Pushed to host: %s \n" % address
 
 
-def generate_key(path):
+def generate_key(path, module):
     cmd = 'ssh-keygen -t rsa -f %s -q -N %s' % (path, '""')
     cmd = shlex.split(cmd)
     rc, out, err = module.run_command(cmd)
@@ -109,7 +109,7 @@ def generate_key(path):
         return out
     if err:
         module.exit_json(
-          error = '1'
+          error='1',
           failed=True,
           stderr=err.strip(),
           msg='Operation Failed: Could not generate keys!',
@@ -138,7 +138,7 @@ def main():
     overwrite = module.params['pn_overwrite']
 
     if not os.path.exists(filepath):
-        message += generate_key(filepath)
+        message += generate_key(filepath, module)
     
     filepath_pub = str(filepath) + '.pub'
     key = open(filepath_pub).read()
