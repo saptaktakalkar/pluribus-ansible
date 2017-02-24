@@ -73,15 +73,9 @@ EXAMPLES = """
 """
 
 RETURN = """
-command:
-  description: the CLI command run on the target node(s).
 stdout:
   description: the set of responses from the vlan command.
   returned: always
-  type: list
-stderr:
-  description: the set of error responses from the vlan command.
-  returned: on error
   type: list
 changed:
   description: Indicates whether the CLI caused changes on the target.
