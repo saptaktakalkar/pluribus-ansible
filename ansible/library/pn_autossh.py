@@ -1,28 +1,32 @@
 #!/usr/bin/python
 """ PN module for auto SSH key setup """
 
-# Copyright 2016 Pluribus Networks
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# This file is part of Ansible
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# Ansible is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Ansible is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+from ansible.module_utils.basic import AnsibleModule
 import os
-import subprocess
 import paramiko
 import shlex
 
 DOCUMENTATION = """
 ---
 module: pn_autossh
-author: "Pluribus Networks"
+author: "Pluribus Networks (devops@pluribusnetworks.com)"
 version: 1.0
 short_description: Module to auto setup SSH keys between localhost and remote nodes.
 description:
@@ -59,7 +63,13 @@ options:
 """
 
 EXAMPLES = """
-
+- name: Auto setup SSH keys
+  pn_autossh:
+    pn_user: "{{ remote_user }}"
+    pn_ssh_password: "{{ PASSWORD }}"
+    pn_hosts.csv: "{{ lookup('file', '{{ csv_file }}') }}"
+    pn_overwrite: False
+    pn_filepath: "{{ lookup('env','HOME') + '/.ssh/id_rsa' }}"
 """
 
 RETURN = """
@@ -80,16 +90,17 @@ changed:
 """
 
 
-
 def deploy_key(sshkey, address, username, password, overwrite):
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     client.connect(address, username=username, password=password)
     client.exec_command('mkdir -p ~/.ssh/')
+    
     if overwrite is True:
         client.exec_command('echo "%s" > ~/.ssh/authorized_keys' % sshkey)
     else:
         client.exec_command('echo "%s" >> ~/.ssh/authorized_keys' % sshkey)
+
     client.exec_command('chmod 644 ~/.ssh/authorized_keys')
     client.exec_command('chmod 700 ~/.ssh/')
     return "Keys Pushed to host: %s \n" % address
@@ -98,8 +109,8 @@ def deploy_key(sshkey, address, username, password, overwrite):
 def generate_key(path):
     cmd = 'ssh-keygen -t rsa -f %s -q -N %s' % (path, '""')
     cmd = shlex.split(cmd)
-    response = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
-    out, err = response.communicate()
+    rc, out, err = module.run_command(cmd)
+    
     if out:
         return out
     if err:
@@ -112,8 +123,8 @@ def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
-            pn_user=dict(required=False, type='str'),
-            pn_ssh_password=dict(required=False, type='str'),
+            pn_user=dict(required=True, type='str'),
+            pn_ssh_password=dict(required=True, type='str'),
             pn_hosts_csv=dict(required=True, type='str'),
             pn_overwrite=dict(required=False, type='bool', default=False),
             pn_filepath=dict(required=True, type='str')
@@ -125,9 +136,10 @@ def main():
     csv_data = module.params['pn_hosts_csv']
     filepath = module.params['pn_filepath']
     overwrite = module.params['pn_overwrite']
-    # filepath += '/.ssh/id_rsa'
+
     if not os.path.exists(filepath):
         generate_key(filepath)
+    
     filepath_pub = str(filepath) + '.pub'
     key = open(filepath_pub).read()
 
@@ -144,10 +156,6 @@ def main():
         changed=True
     )
 
-
-# AnsibleModule boilerplate
-from ansible.module_utils.basic import AnsibleModule
-
+    
 if __name__ == '__main__':
     main()
-
