@@ -9,7 +9,6 @@
 
   vars_files:
   - cli_vault.yml
-  - vars_l2_ztp.yml
   - vars_l2_vrrp.yml
 
   vars:
