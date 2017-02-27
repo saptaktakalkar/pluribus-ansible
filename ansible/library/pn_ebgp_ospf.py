@@ -182,11 +182,12 @@ def run_cli(module, cli):
         return 'Success'
 
 
-def assign_bgp_as(module, bgp_spine):
+def assign_bgp_as(module, bgp_spine, vrouter_names):
     """
     Method to assign bgp_as to vrouters.
     :param module: The Ansible module to fetch input parameters.
     :param bgp_spine: The user_input for the bgp_as to be assigned.
+    :param vrouter_names: List of vrouter names.
     :return: String describing if bgp_as got added to vrouters or not.
     """
     global CHANGED_FLAG
@@ -198,8 +199,6 @@ def assign_bgp_as(module, bgp_spine):
 
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' vrouter-show format name no-show-headers '
-    vrouter_names = run_cli(module, cli).split()
 
     if len(vrouter_names) > 0:
         for vrouter in vrouter_names:
@@ -404,18 +403,17 @@ def assign_ibgp_interface(module):
     return output
 
 
-def add_bgp_neighbor(module):
+def add_bgp_neighbor(module, vrouter_names):
     """
     Method to add bgp_neighbor to the vrouters.
     :param module: The Ansible module to fetch input parameters.
+    :param vrouter_names: List of vrouter names.
     :return: String describing if bgp neighbors got added or not.
     """
     global CHANGED_FLAG
     output = ''
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' vrouter-show format name no-show-headers '
-    vrouter_names = run_cli(module, cli).split()
 
     if len(vrouter_names) > 0:
         for vrouter in vrouter_names:
@@ -500,18 +498,17 @@ def add_bgp_neighbor(module):
     return output
 
 
-def assign_router_id(module):
+def assign_router_id(module, vrouter_names):
     """
     Method to assign router-id to vrouters which is same as loopback ip.
     :param module: The Ansible module to fetch input parameters.
+    :param vrouter_names: List of vrouter names.
     :return: String describing if router id got assigned or not.
     """
     global CHANGED_FLAG
     output = ''
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' vrouter-show format name no-show-headers '
-    vrouter_names = run_cli(module, cli).split()
 
     if len(vrouter_names) > 0:
         for vrouter in vrouter_names:
@@ -538,19 +535,18 @@ def assign_router_id(module):
     return output
 
 
-def add_bgp_redistribute(module, bgp_redis):
+def add_bgp_redistribute(module, bgp_redis, vrouter_names):
     """
     Method to add bgp_redistribute to the vrouter.
     :param module: The Ansible module to fetch input parameters.
     :param bgp_redis: bgp-redistribute value to add.
+    :param vrouter_names: List of vrouter names.
     :return: String describing if bgp-redistribute got added or not.
     """
     global CHANGED_FLAG
     output = ''
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' vrouter-show format name no-show-headers '
-    vrouter_names = run_cli(module, cli).split()
 
     for vrouter in vrouter_names:
         cli = clicopy
@@ -570,19 +566,18 @@ def add_bgp_redistribute(module, bgp_redis):
     return output
 
 
-def add_bgp_maxpath(module, bgp_max):
+def add_bgp_maxpath(module, bgp_max, vrouter_names):
     """
     Method to add bgp_maxpath to the vrouter.
     :param module: The Ansible module to fetch input parameters.
     :param bgp_max: bgp-max-paths value to add.
+    :param vrouter_names: List of vrouter names.
     :return: String describing if bgp-max-paths got added or not.
     """
     global CHANGED_FLAG
     output = ''
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' vrouter-show format name no-show-headers '
-    vrouter_names = run_cli(module, cli).split()
 
     for vrouter in vrouter_names:
         cli = clicopy
@@ -609,16 +604,11 @@ def find_non_clustered_leafs(module):
     """
     non_clustered_leafs = []
     cli = pn_cli(module)
-    clicopy = cli
-    cli += ' cluster-show format cluster-node-1 no-show-headers '
-    cluster1 = run_cli(module, cli).split()
-
-    cli = clicopy
-    cli += ' cluster-show format cluster-node-2 no-show-headers '
-    cluster2 = run_cli(module, cli).split()
+    cli += ' cluster-show format cluster-node-1 cluster-node-2 no-show-headers '
+    clustered_nodes = run_cli(module, cli).split()
 
     for leaf in module.params['pn_leaf_list']:
-        if (leaf not in cluster1) and (leaf not in cluster2):
+        if leaf not in clustered_nodes:
             non_clustered_leafs.append(leaf)
 
     return non_clustered_leafs
@@ -853,18 +843,17 @@ def add_ospf_neighbor(module):
     return output
 
 
-def add_ospf_redistribute(module):
+def add_ospf_redistribute(module, vrouter_names):
     """
     Method to add ospf_redistribute to the vrouters.
     :param module: The Ansible module to fetch input parameters.
+    :param vrouter_names: List of vrouter names.
     :return: String describing if ospf-redistribute got added or not.
     """
     global CHANGED_FLAG
     output = ''
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' vrouter-show format name no-show-headers '
-    vrouter_names = run_cli(module, cli).split()
 
     for vrouter in vrouter_names:
         cli = clicopy
@@ -1040,19 +1029,27 @@ def main():
     global CHANGED_FLAG
     routing_protocol = module.params['pn_routing_protocol']
 
-    message = assign_router_id(module)
+    # Get the list of vrouter names.
+    cli = pn_cli(module)
+    cli += ' vrouter-show format name no-show-headers '
+    vrouter_names = run_cli(module, cli).split()
+
+    message = assign_router_id(module, vrouter_names)
     message += create_leaf_clusters(module)
 
     if routing_protocol == 'ebgp':
-        message += assign_bgp_as(module, module.params['pn_bgp_as_range'])
+        message += assign_bgp_as(module, module.params['pn_bgp_as_range'],
+                                 vrouter_names)
         message += add_bgp_redistribute(module,
-                                        module.params['pn_bgp_redistribute'])
-        message += add_bgp_maxpath(module, module.params['pn_bgp_maxpath'])
-        message += add_bgp_neighbor(module)
+                                        module.params['pn_bgp_redistribute'],
+                                        vrouter_names)
+        message += add_bgp_maxpath(module, module.params['pn_bgp_maxpath'],
+                                   vrouter_names)
+        message += add_bgp_neighbor(module, vrouter_names)
         message += assign_ibgp_interface(module)
     elif routing_protocol == 'ospf':
         message += add_ospf_neighbor(module)
-        message += add_ospf_redistribute(module)
+        message += add_ospf_redistribute(module, vrouter_names)
         message += assign_leafcluster_ospf_interface(module)
 
     module.exit_json(

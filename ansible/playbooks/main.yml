@@ -1,7 +1,0 @@
----
-- name: Main playbook... Calling different roles
-  hosts: spine[0]
-  user: root
-
-  roles:
-    - vlan

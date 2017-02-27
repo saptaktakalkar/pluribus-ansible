@@ -259,36 +259,30 @@ def make_switch_setup_static(module):
     dns_secondary_ip = module.params['pn_dns_secondary_ip']
     domain_name = module.params['pn_domain_name']
     ntp_server = module.params['pn_ntp_server']
+    cli = pn_cli(module)
+    cli += ' switch-setup-modify '
 
     if mgmt_ip:
-        cli = pn_cli(module)
         ip = mgmt_ip + '/' + mgmt_ip_subnet
-        cli += ' switch-setup-modify mgmt-ip ' + ip
-        run_cli(module, cli)
+        cli += ' mgmt-ip ' + ip
 
     if gateway_ip:
-        cli = pn_cli(module)
-        cli += ' switch-setup-modify gateway-ip ' + gateway_ip
-        run_cli(module, cli)
+        cli += ' gateway-ip ' + gateway_ip
 
     if dns_ip:
-        cli = pn_cli(module)
-        cli += ' switch-setup-modify dns-ip ' + dns_ip
-        run_cli(module, cli)
+        cli += ' dns-ip ' + dns_ip
 
     if dns_secondary_ip:
-        cli = pn_cli(module)
-        cli += ' switch-setup-modify dns-secondary-ip ' + dns_secondary_ip
-        run_cli(module, cli)
+        cli += ' dns-secondary-ip ' + dns_secondary_ip
 
     if domain_name:
-        cli = pn_cli(module)
-        cli += ' switch-setup-modify domain-name ' + domain_name
-        run_cli(module, cli)
+        cli += ' domain-name ' + domain_name
 
     if ntp_server:
-        cli = pn_cli(module)
-        cli += ' switch-setup-modify ntp-server ' + ntp_server
+        cli += ' ntp-server ' + ntp_server
+
+    clicopy = cli
+    if clicopy.split('switch-setup-modify')[1] != ' ':
         run_cli(module, cli)
 
 
@@ -307,6 +301,8 @@ def modify_stp_local(module, modify_flag):
         cli = pn_cli(module)
         cli += ' switch-local stp-modify ' + modify_flag
         return run_cli(module, cli)
+    else:
+        return ' Already modified '
 
 
 def configure_control_network(module, network):
@@ -324,6 +320,8 @@ def configure_control_network(module, network):
         cli = pn_cli(module)
         cli += ' fabric-local-modify control-network ' + network
         return run_cli(module, cli)
+    else:
+        return ' Already configured '
 
 
 def enable_ports(module):
@@ -333,10 +331,11 @@ def enable_ports(module):
     :return: The output of run_cli() method.
     """
     cli = pn_cli(module)
+    clicopy = cli
     cli += ' port-config-show format port no-show-headers '
     out = run_cli(module, cli)
 
-    cli = pn_cli(module)
+    cli = clicopy
     cli += ' port-config-show format port speed 40g no-show-headers '
     out_40g = run_cli(module, cli)
     out_remove10g = []
@@ -356,7 +355,7 @@ def enable_ports(module):
         out = list(out)
         if out:
             ports = ','.join(out)
-            cli = pn_cli(module)
+            cli = clicopy
             cli += ' port-config-modify port %s enable ' % ports
             return run_cli(module, cli)
     else:
@@ -376,9 +375,9 @@ def create_or_join_fabric(module, fabric_name, fabric_network):
     clicopy = cli
 
     cli += ' fabric-show format name no-show-headers '
-    fabrics_names = run_cli(module, cli).split()
+    existing_fabrics = run_cli(module, cli).split()
 
-    if fabric_name not in fabrics_names:
+    if fabric_name not in existing_fabrics:
         cli = clicopy
         cli += ' fabric-create name ' + fabric_name
         cli += ' fabric-network ' + fabric_network
@@ -393,7 +392,7 @@ def create_or_join_fabric(module, fabric_name, fabric_network):
             cli += ' fabric-join name ' + fabric_name
         elif out:
             present_fabric_name = out.split()
-            if present_fabric_name[1] not in fabrics_names:
+            if present_fabric_name[1] not in existing_fabrics:
                 cli = clicopy
                 cli += ' fabric-join name ' + fabric_name
             else:

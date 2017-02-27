@@ -145,9 +145,9 @@ def modify_stp(module, modify_flag):
     output = ''
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' fabric-node-show format name no-show-headers '
-    switch_names = run_cli(module, cli).split()
-    for switch in switch_names:
+
+    for switch in (module.params['pn_spine_list'] +
+                   module.params['pn_leaf_list']):
         cli = clicopy
         cli += ' switch %s stp-show format enable ' % switch
         current_state = run_cli(module, cli).split()[1]
@@ -239,16 +239,11 @@ def find_non_clustered_leafs(module, leaf_list):
     """
     non_clustered_leafs = []
     cli = pn_cli(module)
-    clicopy = cli
-    cli += ' cluster-show format cluster-node-1 no-show-headers '
-    cluster1 = run_cli(module, cli).split()
-
-    cli = clicopy
-    cli += ' cluster-show format cluster-node-2 no-show-headers '
-    cluster2 = run_cli(module, cli).split()
+    cli += ' cluster-show format cluster-node-1 cluster-node-2 no-show-headers '
+    clustered_nodes = run_cli(module, cli).split()
 
     for leaf in leaf_list:
-        if (leaf not in cluster1) and (leaf not in cluster2):
+        if leaf not in clustered_nodes:
             non_clustered_leafs.append(leaf)
 
     return non_clustered_leafs
@@ -446,9 +441,9 @@ def update_fabric_network_to_inband(module):
     output = ''
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' fabric-node-show format name no-show-headers '
-    switch_names = run_cli(module, cli).split()
-    for switch in switch_names:
+
+    for switch in (module.params['pn_spine_list'] +
+                   module.params['pn_leaf_list']):
         cli = clicopy
         cli += ' fabric-info format fabric-network '
         fabric_network = run_cli(module, cli).split()[1]
