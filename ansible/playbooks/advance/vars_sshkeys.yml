@@ -1,3 +1,4 @@
 ---
-#file_path: /home/vcfc-dhcp/.ssh/id_rsa
+csv_file: nodesetup.csv
 remote_user: pluribus
+# ssh_keys: "{{ lookup('file', '/home/vcfc-dhcp/.ssh/id_rsa') }}"
