@@ -192,9 +192,9 @@ def modify_stp(module, modify_flag):
     output = ''
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' fabric-node-show format name no-show-headers '
-    switch_names = run_cli(module, cli).split()
-    for switch in switch_names:
+
+    for switch in (module.params['pn_spine_list'] +
+                   module.params['pn_leaf_list']):
         cli = clicopy
         cli += ' switch %s stp-show format enable ' % switch
         current_state = run_cli(module, cli).split()[1]
@@ -220,9 +220,9 @@ def update_fabric_network_to_inband(module):
     output = ''
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' fabric-node-show format name no-show-headers '
-    switch_names = run_cli(module, cli).split()
-    for switch in switch_names:
+
+    for switch in (module.params['pn_spine_list'] +
+                   module.params['pn_leaf_list']):
         cli = clicopy
         cli += ' fabric-info format fabric-network '
         fabric_network = run_cli(module, cli).split()[1]
@@ -308,22 +308,17 @@ def calculate_link_ip_addresses(address_str, cidr_str, supernet_str):
     return available_ips
 
 
-def create_vrouter(module, switch):
+def create_vrouter(module, switch, vnet_name):
     """
     Method to create vrouter on a switch.
     :param module: The Ansible module to fetch input parameters.
     :param switch: The switch name on which vrouter will be created.
+    :param vnet_name: The name of the vnet for vrouter creation.
     :return: String describing if vrouter got created or if it already exists.
     """
     global CHANGED_FLAG
-    cli = pn_cli(module)
-    clicopy = cli
-    cli += ' fabric-node-show format fab-name no-show-headers '
-    fabric_name = list(set(run_cli(module, cli).split()))[0]
-    vnet_name = str(fabric_name) + '-global'
     vrouter_name = switch + '-vrouter'
-
-    cli = clicopy
+    cli = pn_cli(module)
     cli += ' switch ' + switch
     clicopy = cli
 
@@ -525,14 +520,20 @@ def auto_configure_link_ips(module):
                                                 module.params['pn_cidr'],
                                                 supernet)
 
+    # Get the fabric name and create vnet name required for vrouter creation.
+    cli = clicopy
+    cli += ' fabric-node-show format fab-name no-show-headers '
+    fabric_name = list(set(run_cli(module, cli).split()))[0]
+    vnet_name = str(fabric_name) + '-global'
+
     # Create vrouter on all switches.
     for switch in switch_names:
-        output += create_vrouter(module, switch)
+        output += create_vrouter(module, switch, vnet_name)
 
     for spine in spine_list:
         for leaf in leaf_list:
             cli = clicopy
-            cli += ' switch %s port-show hostname %s' % (leaf, spine)
+            cli += ' switch %s port-show hostname %s ' % (leaf, spine)
             cli += ' format port no-show-headers '
             leaf_port = run_cli(module, cli).split()
 

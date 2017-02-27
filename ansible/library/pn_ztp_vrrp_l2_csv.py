@@ -178,7 +178,7 @@ def get_vrouter_name(module, switch_name):
     return run_cli(module, cli).split()[0]
 
 
-def create_vrouter(module, switch, vrrp_id):
+def create_vrouter(module, switch, vrrp_id, vnet_name):
     """
     Method to create vrouter and assign vrrp_id to the switches.
     :param module: The Ansible module to fetch input parameters.
@@ -188,14 +188,8 @@ def create_vrouter(module, switch, vrrp_id):
     interface added or if vrouter already exists.
     """
     global CHANGED_FLAG
-    cli = pn_cli(module)
-    clicopy = cli
-    cli += ' fabric-node-show format fab-name no-show-headers '
-    fabric_name = list(set(run_cli(module, cli).split()))[0]
-    vnet_name = str(fabric_name) + '-global'
     vrouter_name = switch + '-vrouter'
-
-    cli = clicopy
+    cli = pn_cli(module)
     cli += ' switch ' + switch
     clicopy = cli
 
@@ -330,8 +324,13 @@ def configure_vrrp_l2(module, csv_data, vrrp_id):
     :return: Output of created vrrp configuration.
     """
     output = ''
+    cli = pn_cli(module)
+    cli += ' fabric-node-show format fab-name no-show-headers '
+    fabric_name = list(set(run_cli(module, cli).split()))[0]
+    vnet_name = str(fabric_name) + '-global'
+
     for switch in module.params['pn_spine_list']:
-        output += create_vrouter(module, switch, vrrp_id)
+        output += create_vrouter(module, switch, vrrp_id, vnet_name)
 
     csv_data = csv_data.replace(" ", "")
     csv_data_list = csv_data.split('\n')
