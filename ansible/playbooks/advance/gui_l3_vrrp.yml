@@ -10,8 +10,6 @@
   vars_files:
   - cli_vault.yml
   - vars_l3_vrrp.yml
-  - vars_l3_ztp.yml
-  - vars_ebgp.yml
 
   vars:
     spine_count: "{{ groups['spine'] | length }}"
@@ -25,6 +23,7 @@
         msg: "Only 1 spine or no leaf switches present. Please check hosts file."
       when: "{{ spine_count }} <= 1 or {{ leaf_count }} == 0"
 
+    
     # This task is to configure VRRP for Layer 3 using csv lookup.
     # It takes required VRRP config data from csv file.
     # It uses pn_ztp_vrrp_l3.py module from library/ directory.
