@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" Tests for ZTP L3 """
+""" Tests for L2 VRRP """
 
 #
 # This file is part of Ansible
@@ -23,9 +23,9 @@ import shlex
 
 DOCUMENTATION = """
 ---
-module: pn_test_ztp_l3
+module: pn_test_l2_vrrp
 author: "Pluribus Networks (devops@pluribusnetworks.com)"
-short_description: Tests for ZTP L3.
+short_description: Tests for L2 VRRP.
 options:
     pn_cliusername:
         description:
@@ -50,8 +50,8 @@ options:
 """
 
 EXAMPLES = """
-- name: Test Layer3 Zero Touch Provisioning
-  pn_test_ztp_l3:
+- name: Test Layer2 VRRP
+  pn_test_l2_vrrp:
   pn_cliusername: "{{ USERNAME }}"
   pn_clipassword: "{{ PASSWORD }}"
   pn_spine_count: "{{ spine_count }}"
@@ -112,29 +112,27 @@ def run_cli(module, cli, find_str, out_msg):
     return '%s: Failed\n' % out_msg
 
 
-def test_fabric_creation(module):
+def test_vlan_creation(module, vlan_list):
     """
-    Test whether fabric got created or switch is a part of the fabric.
+    Test vlan creation.
     :param module: The Ansible module to fetch input parameters.
+    :param vlan_list: List of vlan ids to test.
     :return: Output of run_cli() method.
     """
-    switch_count = module.params['pn_spine_count'] + module.params[
-        'pn_leaf_count']
-    find_str = 'Count: ' + str(switch_count)
-    cli = pn_cli(module)
-    cli += ' fabric-node-show count-output '
-    return run_cli(module, cli, find_str, 'Fabric create/join')
+    if vlan_list:
+        output = ''
+        switch_count = module.params['pn_spine_count'] + module.params[
+            'pn_leaf_count']
+        find_str = 'Count: ' + str(switch_count)
+        for vlan_id in vlan_list:
+            cli = pn_cli(module)
+            cli += ' vlan-show id %s count-output ' % vlan_id
+            out_msg = 'Vlan %s creation' % vlan_id
+            output += run_cli(module, cli, find_str, out_msg)
 
-
-def test_fabric_control_network(module):
-    """
-    Test if fabric control network is management.
-    :param module: The Ansible module to fetch input parameters.
-    :return: Output of run_cli() method.
-    """
-    cli = pn_cli(module)
-    cli += ' fabric-info format control-network '
-    return run_cli(module, cli, 'mgmt', 'Configure fabric control network')
+        return output
+    else:
+        return 'Vlan creation: Failed\n'
 
 
 def test_vrouter_creation(module):
@@ -143,37 +141,23 @@ def test_vrouter_creation(module):
     :param module: The Ansible module to fetch input parameters.
     :return: Output of run_cli() method.
     """
-    switch_count = module.params['pn_spine_count'] + module.params[
-        'pn_leaf_count']
-    find_str = 'Count: ' + str(switch_count)
+    find_str = 'Count: ' + str(module.params['pn_spine_count'])
     cli = pn_cli(module)
     cli += ' vrouter-show count-output '
-    return run_cli(module, cli, find_str, 'Vrouters creation')
+    return run_cli(module, cli, find_str, 'Spine vrouters creation')
 
 
-def test_vrouter_interface_creation(module):
+def test_vrouter_interface_creation(module, interfaces_count):
     """
     Test vrouters interface creation.
     :param module: The Ansible module to fetch input parameters.
+    :param interfaces_count: Count of vrouter interfaces fetched from csv file.
     :return: Output of run_cli() method.
     """
+    find_str = 'Count: ' + str(interfaces_count * 4)
     cli = pn_cli(module)
     cli += ' vrouter-interface-show count-output '
-    return run_cli(module, cli, 'Count:', 'Vrouter interfaces creation')
-
-
-def test_loopback_interface_addition(module):
-    """
-    Test loopback interface addition to vrouters.
-    :param module: The Ansible module to fetch input parameters.
-    :return: Output of run_cli() method.
-    """
-    switch_count = module.params['pn_spine_count'] + module.params[
-        'pn_leaf_count']
-    find_str = 'Count: ' + str(switch_count)
-    cli = pn_cli(module)
-    cli += ' vrouter-loopback-interface-show count-output '
-    return run_cli(module, cli, find_str, 'Loopback interface addition')
+    return run_cli(module, cli, find_str, 'Vrouter interfaces creation')
 
 
 def main():
@@ -184,14 +168,22 @@ def main():
             pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_spine_count=dict(required=False, type='int'),
             pn_leaf_count=dict(required=False, type='int'),
+            pn_csv_data=dict(required=True, type='str'),
         )
     )
 
-    msg = test_fabric_creation(module)
-    msg += test_fabric_control_network(module)
+    vlan_list = []
+    csv_data_row_count = 0
+    csv_data = module.params['pn_csv_data'].replace(" ", "")
+    csv_data_list = csv_data.split('\n')
+    for row in csv_data_list:
+        elements = row.split(',')
+        vlan_list.append(elements[1])
+        csv_data_row_count += 1
+
+    msg = test_vlan_creation(module, vlan_list)
     msg += test_vrouter_creation(module)
-    msg += test_vrouter_interface_creation(module)
-    msg += test_loopback_interface_addition(module)
+    msg += test_vrouter_interface_creation(module, csv_data_row_count)
 
     module.exit_json(
         stdout=msg,
