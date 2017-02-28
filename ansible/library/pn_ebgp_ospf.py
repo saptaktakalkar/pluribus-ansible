@@ -403,7 +403,7 @@ def assign_ibgp_interface(module):
     return output
 
 
-def add_bgp_neighbor(module, vrouter_names):
+def add_bgp_neighbor(module):
     """
     Method to add bgp_neighbor to the vrouters.
     :param module: The Ansible module to fetch input parameters.
@@ -415,85 +415,115 @@ def add_bgp_neighbor(module, vrouter_names):
     cli = pn_cli(module)
     clicopy = cli
 
-    if len(vrouter_names) > 0:
-        for vrouter in vrouter_names:
+    for spine in module.params['pn_spine_list']:
+        cli = clicopy
+        cli += ' vrouter-show location %s' % spine
+        cli += ' format name no-show-headers'
+        vrouter_spine = run_cli(module, cli).split()[0]
+
+        cli = clicopy
+        cli += ' vrouter-interface-show vrouter-name %s ' % vrouter_spine
+        cli += ' format l3-port no-show-headers '
+        port_list = run_cli(module, cli).split()
+        port_list = list(set(port_list))
+        port_list.remove(vrouter_spine)
+
+        for port in port_list:
             cli = clicopy
-            cli += ' vrouter-show name %s ' % vrouter
-            cli += ' format location no-show-headers '
-            switch = run_cli(module, cli).split()[0]
+            cli += ' switch %s port-show port %s ' % (spine, port)
+            cli += ' format hostname no-show-headers '
+            leaf = run_cli(module, cli).split()[0]
 
             cli = clicopy
-            cli += ' vrouter-interface-show vrouter-name %s ' % vrouter
-            cli += ' format l3-port no-show-headers '
-            port_num = run_cli(module, cli).split()
-            port_num = list(set(port_num))
-            port_num.remove(vrouter)
+            cli += ' vrouter-show location %s' % leaf
+            cli += ' format name no-show-headers'
+            vrouter_leaf = run_cli(module, cli).split()[0]                
 
-            for port in port_num:
+            cli = clicopy
+            cli += ' vrouter-show location %s ' % leaf
+            cli += ' format bgp-as no-show-headers '
+            bgp_leaf = run_cli(module, cli).split()[0]
+
+            cli = clicopy
+            cli += ' vrouter-show location %s ' % spine
+            cli += ' format bgp-as no-show-headers '
+            bgp_spine = run_cli(module, cli).split()[0]
+
+            cli = clicopy
+            cli += ' vrouter-interface-show vrouter-name %s ' % (
+                vrouter_spine)
+            cli += ' l3-port %s format ip no-show-headers ' % port
+            ip = run_cli(module, cli).split()
+            ip = list(set(ip))
+            ip.remove(vrouter_spine)
+            ip = ip[0]
+
+            ip = ip.split('/')[0]
+            ip_spine = ip
+
+            ip = ip.split('.')
+            static_part = str(ip[0]) + '.' + str(ip[1]) + '.'
+            static_part += str(ip[2]) + '.'
+            leaf_last_octet = int(ip[3]) - 1
+            ip_leaf = static_part + str(leaf_last_octet)
+
+            cli = clicopy
+            cli += ' vrouter-bgp-show remote-as ' + bgp_leaf
+            cli += ' neighbor %s format switch no-show-headers ' % (
+                ip_leaf)
+            already_added = run_cli(module, cli).split()
+
+            if vrouter_spine in already_added:
+                output += ' %s: ' % spine
+                output += 'BGP Neighbor %s already exists for %s \n' % (
+                    ip_leaf, vrouter_spine
+                )
+            else:
                 cli = clicopy
-                cli += ' switch %s port-show port %s ' % (switch, port)
-                cli += ' format hostname no-show-headers '
-                hostname = run_cli(module, cli).split()[0]
+                cli += ' vrouter-bgp-add vrouter-name ' + vrouter_spine
+                cli += ' neighbor %s remote-as %s ' % (ip_leaf,
+                                                       bgp_leaf)
+                if module.params['pn_bfd']:
+                    cli += ' bfd '
 
-                cli = clicopy
-                cli += ' vrouter-show location %s ' % hostname
-                cli += ' format bgp-as no-show-headers '
-                bgp_hostname = run_cli(module, cli).split()[0]
-
-                cli = clicopy
-                cli += ' switch %s port-show port %s ' % (switch, port)
-                cli += ' format rport no-show-headers '
-                port_hostname = run_cli(module, cli)
-
-                cli = clicopy
-                cli += ' vrouter-show location %s ' % hostname
-                cli += ' format name no-show-headers '
-                vrouter_hostname = run_cli(module, cli).split()[0]
-
-                cli = clicopy
-                cli += ' vrouter-interface-show vrouter-name %s ' % (
-                    vrouter_hostname)
-                cli += ' l3-port %s format ip no-show-headers ' % port_hostname
-                ip_hostname_subnet = run_cli(module, cli).split()
-                ip_hostname_subnet.remove(vrouter_hostname)
-
-                ip_hostname_subnet = ip_hostname_subnet[0].split('/')
-                ip_hostname = ip_hostname_subnet[0]
-
-                cli = clicopy
-                cli += ' vrouter-bgp-show remote-as ' + bgp_hostname
-                cli += ' neighbor %s format switch no-show-headers ' % (
-                    ip_hostname)
-                already_added = run_cli(module, cli).split()
-
-                if vrouter in already_added:
-                    output += ' %s: ' % switch
-                    output += 'BGP Neighbor %s already exists for %s \n' % (
-                        ip_hostname, vrouter
+                if 'Success' in run_cli(module, cli):
+                    output += ' %s: Added BGP Neighbor %s for %s \n' % (
+                        spine, ip_leaf, vrouter_spine
                     )
-                else:
-                    cli = clicopy
-                    cli += ' vrouter-bgp-add vrouter-name ' + vrouter
-                    cli += ' neighbor %s remote-as %s ' % (ip_hostname,
-                                                           bgp_hostname)
-                    if module.params['pn_bfd']:
-                        cli += ' bfd '
+                    CHANGED_FLAG.append(True)
 
-                    leaf_switches = module.params['pn_leaf_list']
-                    if switch in leaf_switches:
-                        temp_cli = clicopy
-                        temp_cli += ' cluster-show format name no-show-headers'
-                        cluster_list = run_cli(module, temp_cli).split()
-                        for cluster in cluster_list:
-                            if switch in cluster:
-                                cli += ' weight 100 allowas-in '
-                                break
+            cli = clicopy
+            cli += ' vrouter-bgp-show remote-as ' + bgp_spine
+            cli += ' neighbor %s format switch no-show-headers ' % (
+                ip_spine)
+            already_added = run_cli(module, cli).split()
 
-                    if 'Success' in run_cli(module, cli):
-                        output += ' %s: Added BGP Neighbor %s for %s \n' % (
-                            switch, ip_hostname, vrouter
-                        )
-                        CHANGED_FLAG.append(True)
+            if vrouter_leaf in already_added:
+                output += ' %s: ' % leaf
+                output += 'BGP Neighbor %s already exists for %s \n' % (
+                    ip_spine, vrouter_leaf
+                )
+            else:
+                cli = clicopy
+                cli += ' vrouter-bgp-add vrouter-name ' + vrouter_leaf
+                cli += ' neighbor %s remote-as %s ' % (ip_spine,
+                                                       bgp_spine)
+                if module.params['pn_bfd']:
+                    cli += ' bfd '
+
+                temp_cli = clicopy
+                temp_cli += ' cluster-show format name no-show-headers'
+                cluster_list = run_cli(module, temp_cli).split()
+                for cluster in cluster_list:
+                    if leaf in cluster:
+                        cli += ' weight 100 allowas-in '
+                        break
+
+                if 'Success' in run_cli(module, cli):
+                    output += ' %s: Added BGP Neighbor %s for %s \n' % (
+                        leaf, ip_spine, vrouter_leaf
+                    )
+                    CHANGED_FLAG.append(True)
 
     return output
 
@@ -1046,7 +1076,7 @@ def main():
                                         vrouter_names)
         message += add_bgp_maxpath(module, module.params['pn_bgp_maxpath'],
                                    vrouter_names)
-        message += add_bgp_neighbor(module, vrouter_names)
+        message += add_bgp_neighbor(module)
         message += assign_ibgp_interface(module)
     elif routing_protocol == 'ospf':
         message += add_ospf_neighbor(module)
