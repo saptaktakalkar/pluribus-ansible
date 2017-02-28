@@ -20,6 +20,7 @@
 
 from ansible.module_utils.basic import AnsibleModule
 import shlex
+import time
 
 DOCUMENTATION = """
 ---
@@ -432,26 +433,36 @@ def toggle_40g_local(module):
         ports_to_modify = list(set(ports_40g) - set(local_ports))
 
         for port in ports_to_modify:
-            end_port = int(port) + 4
-            range_port = port + '-' + str(end_port)
-
+            next_port = str(int(port) + 1)
             cli = clicopy
-            cli += ' switch-local port-config-modify port %s ' % range_port
-            cli += ' speed disable '
-            output += 'port range_port ' + range_port + ' disabled'
-            output += run_cli(module, cli)
+            cli += ' switch-local'
+            cli += ' port-show port %s format bezel-port' % next_port
+            cli += ' no-show-headers'
+            bezel_port = run_cli(module, cli).split()[0]
 
-            cli = clicopy
-            cli += ' switch-local port-config-modify port %s ' % range_port
-            cli += ' speed 10g '
-            output += 'port range_port ' + range_port + ' 10g converted'
-            output += run_cli(module, cli)
+            if '.2' in bezel_port:
+                end_port = int(port) + 3
+                range_port = port + '-' + str(end_port)
+    
+                cli = clicopy
+                cli += ' switch-local port-config-modify port %s ' % port
+                cli += ' disable '
+                output += 'port ' + port + ' disabled'
+                output += run_cli(module, cli)
+    
+                cli = clicopy
+                cli += ' switch-local port-config-modify port %s ' % port
+                cli += ' speed 10g '
+                output += 'port ' + port + ' converted to 10g'
+                output += run_cli(module, cli)
+    
+                cli = clicopy
+                cli += ' switch-local port-config-modify port %s ' % range_port
+                cli += ' enable '
+                output += 'port range_port ' + range_port + '  enabled'
+                output += run_cli(module, cli)
 
-            cli = clicopy
-            cli += ' switch-local port-config-modify port %s ' % range_port
-            cli += ' enable '
-            output += 'port range_port ' + range_port + '  enabled'
-            output += run_cli(module, cli)
+        time.sleep(10)
 
     return output
 
