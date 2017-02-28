@@ -90,6 +90,7 @@
   vars:
     spine_count: "{{ groups['spine'] | length }}"
     leaf_count: "{{ groups['leaf'] | length }}"
+    csv_file: /etc/ansible/pluribus-ansible/ansible/l3csv.csv  # CSV file path
 
   tasks:
     # L3 VRRP setup
