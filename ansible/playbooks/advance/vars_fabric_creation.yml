@@ -11,7 +11,6 @@ pn_inband_ip: '172.16.1.0/24'                     # Inband ips to be assigned to
 pn_fabric_network: 'mgmt'                         # Choices: in-band or mgmt.  Default: mgmt
 pn_fabric_control_network: 'mgmt'                 # Choices: in-band or mgmt.  Default: mgmt
 pn_static_setup: False                            # Flag to indicate if static values should be assign to following switch setup params. Default: True.
-pn_mgmt_ip: "{{ ansible_host }}"                  # Specify mgmt-ip value to be assigned to the switch if pn_static_setup is True.
 pn_mgmt_ip_subnet: '16'                           # Specify subnet mask for mgmt-ip.
 pn_gateway_ip: '10.9.9.0'                         # Specify gateway-ip value to be assigned to the switch if pn_static_setup is True.
 pn_dns_ip: '10.20.41.1'                           # Specify dns-ip value to be assigned to the switch if pn_static_setup is True.
