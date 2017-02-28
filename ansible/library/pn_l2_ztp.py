@@ -239,7 +239,8 @@ def find_non_clustered_leafs(module, leaf_list):
     """
     non_clustered_leafs = []
     cli = pn_cli(module)
-    cli += ' cluster-show format cluster-node-1 cluster-node-2 no-show-headers '
+    cli += ' cluster-show format cluster-node-1, cluster-node-2 '
+    cli += '  no-show-headers '
     clustered_nodes = run_cli(module, cli).split()
 
     for leaf in leaf_list:
