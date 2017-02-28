@@ -488,6 +488,8 @@ def assign_inband_ip(module, inband_address):
             # If ip is not unique, increase the ip count by 1.
             ip_count += 1
             ip = static_part + str(ip_count) + '/' + subnet
+            if ip in existing_inband_ip:
+                return None
 
         # Assign unique in-band ip to the switch.
         cli = clicopy
@@ -601,8 +603,8 @@ def main():
     if ip is not None:
         message += ' %s: Assigned in-band ip %s \n' % (current_switch, ip)
     else:
-        message += ' %s: In-band ip %s has already been assigned \n' % (
-            current_switch, ip)
+        message += ' %s: In-band ip has already been assigned \n' % (
+            current_switch)
 
     # Enable STP if flag is True
     if module.params['pn_stp']:
