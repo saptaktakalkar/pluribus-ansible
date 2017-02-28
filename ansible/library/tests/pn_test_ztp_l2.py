@@ -107,9 +107,9 @@ def run_cli(module, cli, find_str, out_msg):
 
     if out:
         if out.find(find_str) > -1:
-            return ' %s: Successful! ' % out_msg
+            return '%s: Successful\n' % out_msg
 
-    return ' %s: Failed! ' % out_msg
+    return '%s: Failed\n' % out_msg
 
 
 def test_fabric_creation(module):
