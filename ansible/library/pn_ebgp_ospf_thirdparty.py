@@ -592,7 +592,6 @@ def find_non_clustered_leafs(module):
     """
     non_clustered_leafs = []
     cli = pn_cli(module)
-    clicopy = cli
     cli += ' cluster-show format cluster-node-1,cluster-node-2 no-show-headers '
     clustered_nodes = run_cli(module, cli).split()
 
@@ -785,7 +784,8 @@ def add_ospf_neighbor(module):
                     )
                 else:
                     if module.params['pn_bfd']:
-                        output += configure_ospf_bfd(module, vrouter_leaf, ip_leaf)
+                        output += configure_ospf_bfd(module, vrouter_leaf,
+                                                     ip_leaf)
 
                     cli = clicopy
                     cli += ' vrouter-ospf-add vrouter-name ' + vrouter_leaf

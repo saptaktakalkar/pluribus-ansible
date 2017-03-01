@@ -407,7 +407,6 @@ def add_bgp_neighbor(module):
     """
     Method to add bgp_neighbor to the vrouters.
     :param module: The Ansible module to fetch input parameters.
-    :param vrouter_names: List of vrouter names.
     :return: String describing if bgp neighbors got added or not.
     """
     global CHANGED_FLAG
