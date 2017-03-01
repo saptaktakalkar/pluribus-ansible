@@ -43,6 +43,7 @@ description:
         OSPF:
           - Assign ospf_neighbor
           - Assign ospf_redistribute
+          - Assign ospf_neighbor for leaf clusters
 options:
     pn_cliusername:
         description:
@@ -405,75 +406,75 @@ def add_bgp_neighbor(module):
     output = ''
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' vrouter-show format name no-show-headers '
-    vrouter_names = run_cli(module, cli).split()
     remote_as = module.params['pn_bgp_as_range']
 
-    if len(vrouter_names) > 0:
-        for vrouter in vrouter_names:
+    for leaf in module.params['pn_leaf_list']:
+        weight_allowas_flag = 0
+
+        cli = clicopy
+        cli += ' vrouter-show location %s ' % leaf
+        cli += ' format name no-show-headers '
+        vrouter = run_cli(module, cli).split()[0]
+
+        cli = clicopy
+        cli += ' cluster-show format name no-show-headers'
+        cluster_list = run_cli(module, cli).split()
+        for cluster in cluster_list:
+            if leaf in cluster:
+                weight_allowas_flag = 1
+                break
+
+        cli = clicopy
+        cli += ' vrouter-interface-show vrouter-name %s ' % vrouter
+        cli += ' format l3-port no-show-headers '
+        port_list = run_cli(module, cli).split()
+        port_list = list(set(port_list))
+        port_list.remove(vrouter)
+
+        for port in port_list:
             cli = clicopy
-            cli += ' vrouter-show name %s ' % vrouter
-            cli += ' format location no-show-headers '
-            switch = run_cli(module, cli).split()[0]
+            cli += ' vrouter-interface-show vrouter-name %s l3-port %s ' % (
+                 vrouter, port)
+            cli += 'format ip no-show-headers'
+            ip = run_cli(module, cli).split()
+            ip = list(set(ip))
+            ip.remove(vrouter)
+            ip = ip[0]
+
+            ip = ip.split('.')
+            static_part = str(ip[0]) + '.' + str(ip[1]) + '.'
+            static_part += str(ip[2]) + '.'
+            last_octet = str(ip[3]).split('/')
+            remote_ip_lastoctet = int(last_octet[0]) + 1
+            remote_ip = static_part + str(remote_ip_lastoctet)
 
             cli = clicopy
-            cli += ' vrouter-interface-show vrouter-name %s ' % vrouter
-            cli += ' format l3-port no-show-headers '
-            port_list = run_cli(module, cli).split()
-            port_list = list(set(port_list))
-            port_list.remove(vrouter)
+            cli += ' vrouter-bgp-show'
+            cli += ' neighbor %s format switch no-show-headers ' % (
+                remote_ip)
+            already_added = run_cli(module, cli).split()
 
-            for port in port_list:
+            if vrouter in already_added:
+                output += ' %s: ' % leaf
+                output += 'BGP Neighbor %s already exists for %s \n' % (
+                    remote_ip, vrouter
+                )
+            else:
                 cli = clicopy
-                cli += ' vrouter-interface-show vrouter-name %s l3-port %s ' % (
-                     vrouter, port)
-                cli += 'format ip no-show-headers' 
-                ip = run_cli(module, cli).split()
-                ip = list(set(ip))
-                ip.remove(vrouter)
-                ip = ip[0]
+                cli += ' vrouter-bgp-add vrouter-name ' + vrouter
+                cli += ' neighbor %s remote-as %s ' % (remote_ip,
+                                                       remote_as)
+                if module.params['pn_bfd']:
+                    cli += ' bfd '
 
-                ip = ip.split('.')
-                static_part = str(ip[0]) + '.' + str(ip[1]) + '.'
-                static_part += str(ip[2]) + '.'
-                last_octet = str(ip[3]).split('/')
-                remote_ip_lastoctet = int(last_octet[0]) + 1
-                remote_ip = static_part + str(remote_ip_lastoctet)
-                
-                cli = clicopy
-                cli += ' vrouter-bgp-show'
-                cli += ' neighbor %s format switch no-show-headers ' % (
-                    remote_ip)
-                already_added = run_cli(module, cli).split()
+                if weight_allowas_flag == 1:
+                    cli += ' weight 100 allowas-in '
 
-                if vrouter in already_added:
-                    output += ' %s: ' % switch
-                    output += 'BGP Neighbor %s already exists for %s \n' % (
-                        remote_ip, vrouter
+                if 'Success' in run_cli(module, cli):
+                    output += ' %s: Added BGP Neighbour %s for %s \n' % (
+                        leaf, remote_ip, vrouter
                     )
-                else:
-                    cli = clicopy
-                    cli += ' vrouter-bgp-add vrouter-name ' + vrouter
-                    cli += ' neighbor %s remote-as %s ' % (remote_ip,
-                                                           remote_as)
-                    if module.params['pn_bfd']:
-                        cli += ' bfd '
-
-                    leaf_switches = module.params['pn_leaf_list']
-                    if switch in leaf_switches:
-                        temp_cli = clicopy
-                        temp_cli += ' cluster-show format name no-show-headers'
-                        cluster_list = run_cli(module, temp_cli).split()
-                        for cluster in cluster_list:
-                            if switch in cluster:
-                                cli += ' weight 100 allowas-in '
-                                break
-
-                    if 'Success' in run_cli(module, cli):
-                        output += ' %s: Added BGP Neighbour %s for %s \n' % (
-                            switch, remote_ip, vrouter
-                        )
-                        CHANGED_FLAG.append(True)
+                    CHANGED_FLAG.append(True)
 
     else:
         print ' No vrouters present/created \n '
@@ -592,15 +593,11 @@ def find_non_clustered_leafs(module):
     non_clustered_leafs = []
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' cluster-show format cluster-node-1 no-show-headers '
-    cluster1 = run_cli(module, cli).split()
-
-    cli = clicopy
-    cli += ' cluster-show format cluster-node-2 no-show-headers '
-    cluster2 = run_cli(module, cli).split()
+    cli += ' cluster-show format cluster-node-1,cluster-node-2 no-show-headers '
+    clustered_nodes = run_cli(module, cli).split()
 
     for leaf in module.params['pn_leaf_list']:
-        if (leaf not in cluster1) and (leaf not in cluster2):
+        if leaf not in clustered_nodes:
             non_clustered_leafs.append(leaf)
 
     return non_clustered_leafs

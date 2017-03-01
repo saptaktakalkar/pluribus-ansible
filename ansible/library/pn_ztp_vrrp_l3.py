@@ -234,7 +234,7 @@ def create_vrouter_interface(module, switch, ip, vlan_id, vrrp_id,
     subnet = fourth_octet[1]
 
     static_ip = ip_addr[0] + '.' + ip_addr[1] + '.' + ip_addr[2] + '.'
-    ip1 = static_ip + '1' + '/' + subnet
+    ip_vip = static_ip + '1' + '/' + subnet
     ip2 = static_ip + ip_count + '/' + subnet
 
     cli = pn_cli(module)
@@ -270,7 +270,7 @@ def create_vrouter_interface(module, switch, ip, vlan_id, vrrp_id,
 
     cli = clicopy
     cli += ' vrouter-interface-show vlan %s ip %s vrrp-primary %s ' % (
-        vlan_id, ip1, eth_port[0]
+        vlan_id, ip_vip, eth_port[0]
     )
     cli += ' format switch no-show-headers '
     existing_vrouter = run_cli(module, cli).split()
@@ -280,19 +280,19 @@ def create_vrouter_interface(module, switch, ip, vlan_id, vrrp_id,
         cli = clicopy
         cli += ' switch ' + switch
         cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
-        cli += ' ip ' + ip1
+        cli += ' ip ' + ip_vip
         cli += ' vlan %s if data vrrp-id %s ' % (vlan_id, vrrp_id)
         cli += ' vrrp-primary %s vrrp-priority %s ' % (eth_port[0],
                                                        vrrp_priority)
         run_cli(module, cli)
         output += ' %s: Added vrouter interface with ip %s to %s \n' % (
-            switch, ip1, vrouter_name
+            switch, ip_vip, vrouter_name
         )
         CHANGED_FLAG.append(True)
 
     else:
         output += ' %s: Vrouter interface %s already exists for %s \n' % (
-            switch, ip1, vrouter_name
+            switch, ip_vip, vrouter_name
         )
 
     return output
@@ -373,11 +373,11 @@ def configure_vrrp_for_non_cluster_leafs(module, ip, non_cluster_leaf, vlan_id):
     subnet = fourth_octet[1]
 
     static_ip = ip_addr[0] + '.' + ip_addr[1] + '.' + ip_addr[2] + '.'
-    ip1 = static_ip + '1' + '/' + subnet
+    ip_gateway = static_ip + '1' + '/' + subnet
 
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' vrouter-interface-show ip %s vlan %s ' % (ip1, vlan_id)
+    cli += ' vrouter-interface-show ip %s vlan %s ' % (ip_gateway, vlan_id)
     cli += ' format switch no-show-headers '
     existing_vrouter = run_cli(module, cli).split()
     existing_vrouter = list(set(existing_vrouter))
@@ -386,16 +386,16 @@ def configure_vrrp_for_non_cluster_leafs(module, ip, non_cluster_leaf, vlan_id):
         cli = clicopy
         cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
         cli += ' vlan ' + vlan_id
-        cli += ' ip ' + ip1
+        cli += ' ip ' + ip_gateway
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
         return ' %s: Added vrouter interface with ip %s on %s \n' % (
-            non_cluster_leaf, ip1, vrouter_name
+            non_cluster_leaf, ip_gateway, vrouter_name
         )
 
     else:
         return ' %s: Vrouter interface %s already exists on %s \n' % (
-            non_cluster_leaf, ip1, vrouter_name
+            non_cluster_leaf, ip_gateway, vrouter_name
         )
 
 
