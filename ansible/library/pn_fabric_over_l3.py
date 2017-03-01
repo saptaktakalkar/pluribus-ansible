@@ -357,7 +357,7 @@ def join_fabric(module, switch_ip):
     return output
 
 
-def fabric_conn(module, bgp_nic_ip, neighbor_ip, remote_switch, cluster_list,
+def fabric_comm(module, bgp_nic_ip, neighbor_ip, remote_switch, cluster_list,
                 non_cluster_leaf):
     """
     Method to run fabric-comm command.
@@ -402,8 +402,6 @@ def fabric_conn(module, bgp_nic_ip, neighbor_ip, remote_switch, cluster_list,
         gateway_ip = int(last_octet[0]) + 1
         ip = static_part + str(gateway_ip)
 
-        # spine_count = len(spine_list)
-
         # remote-as for leaf is always spine1 and for spine is always leaf1
         if current_switch in spine_list:
             bgp_as = bgp_spine
@@ -423,13 +421,13 @@ def fabric_conn(module, bgp_nic_ip, neighbor_ip, remote_switch, cluster_list,
             remote_as = str(remote_as)
 
             cli = clicopy
-            cli += 'port-show hostname %s format port, no-show-headers' % \
-                   leaf_list[0]
+            cli += 'port-show hostname %s format port, no-show-headers' % (
+                                                                      leaf_list[0])
             ports = run_cli(module, cli).split()
 
             cli = clicopy
-            cli += 'trunk-show ports %s format trunk-id, no-show-headers ' % \
-                   ports[0]
+            cli += 'trunk-show ports %s format trunk-id, no-show-headers ' % (
+                                                                            ports[0])
             trunk_id = run_cli(module, cli)
 
             if len(trunk_id) == 0 or trunk_id == 'Success':
@@ -476,7 +474,12 @@ def fabric_conn(module, bgp_nic_ip, neighbor_ip, remote_switch, cluster_list,
         cli += ' bgp-redistribute %s bgp-max-paths %s' % (bgp_redistribute, bgp_max_path)
         cli += ' bgp-nic-ip %s bgp-nic-l3-port %s' % (bgp_nic_ip, l3_port)
         cli += ' neighbor %s remote-as %s' % (neighbor_ip, remote_as)
-        cli += ' fabric-network %s' % fabric_network_addr
+
+        if current_switch in spine_list and spine_list.index(current_switch) == 0:
+            pass
+        else:
+            cli += ' fabric-network %s' % fabric_network_addr
+
         cli += ' in-band-nic-ip %s in-band-nic-netmask %s bfd' % (ip, netmask)
         cli += ' allowas-in'
         output += run_cli(module, cli)
@@ -607,11 +610,6 @@ def configure_fabric_over_l3(module):
         for leaf in leaf_list:
             spine_pos = spine_list.index(current_switch)
             if leaf_list.index(leaf) == 0:
-                bgp_nic_ip_count = (spine_pos * leaf_count * supernet) + 1
-                neighbor_ip_count = bgp_nic_ip_count + 1
-                bgp_nic_ip = static_part + str(bgp_nic_ip_count) + '/' + str(30)
-                neighbor_ip = static_part + str(neighbor_ip_count)
-                output += fabric_conn(module, bgp_nic_ip, neighbor_ip, leaf, cluster_list, non_cluster_leaf)
 
                 if spine_pos == 0:
                     cli = clicopy
@@ -625,6 +623,13 @@ def configure_fabric_over_l3(module):
                     else:
                         output += "Fabric already created"
 
+                bgp_nic_ip_count = (spine_pos * leaf_count * supernet) + 1
+                neighbor_ip_count = bgp_nic_ip_count + 1
+                bgp_nic_ip = static_part + str(bgp_nic_ip_count) + '/' + str(30)
+                neighbor_ip = static_part + str(neighbor_ip_count)
+                output += fabric_comm(module, bgp_nic_ip, neighbor_ip, leaf, cluster_list, non_cluster_leaf)
+
+                if spine_pos == 0:
                     output += fabric_inband_net_create(module, inband_static_part)
                 else:
                     output += join_fabric(module, switch_ip)
@@ -649,7 +654,7 @@ def configure_fabric_over_l3(module):
                 neighbor_ip_count = bgp_nic_ip_count - 1
                 bgp_nic_ip = static_part + str(bgp_nic_ip_count) + '/' + str(30)
                 neighbor_ip = static_part + str(neighbor_ip_count)
-                output += fabric_conn(module, bgp_nic_ip, neighbor_ip, spine,
+                output += fabric_comm(module, bgp_nic_ip, neighbor_ip, spine,
                                       cluster_list, non_cluster_leaf)
 
                 output += join_fabric(module, switch_ip)
@@ -666,6 +671,59 @@ def configure_fabric_over_l3(module):
 
     return output
 
+
+def toggle_40g_local(module):
+    """
+    Method to toggle 40g ports to 10g ports.
+    :param module: The Ansible module to fetch input parameters.
+    :return: The output messages for assignment.
+    """
+    output = ''
+    cli = pn_cli(module)
+    clicopy = cli
+    cli += ' lldp-show format local-port no-show-headers '
+    local_ports = run_cli(module, cli).split()
+
+    cli = clicopy
+    cli += ' port-config-show speed 40g '
+    cli += ' format port no-show-headers '
+    ports_40g = run_cli(module, cli)
+    if len(ports_40g) > 0 and ports_40g != 'Success':
+        ports_40g = ports_40g.split()
+        ports_to_modify = list(set(ports_40g) - set(local_ports))
+
+        for port in ports_to_modify:
+            next_port = str(int(port) + 1)
+            cli = clicopy
+            cli += ' port-show port %s format bezel-port' % next_port
+            cli += ' no-show-headers'
+            bezel_port = run_cli(module, cli).split()[0]
+
+            if '.2' in bezel_port:
+                end_port = int(port) + 3
+                range_port = port + '-' + str(end_port)
+    
+                cli = clicopy
+                cli += ' port-config-modify port %s ' % port
+                cli += ' disable '
+                output += 'port ' + port + ' disabled'
+                output += run_cli(module, cli)
+    
+                cli = clicopy
+                cli += ' port-config-modify port %s ' % port
+                cli += ' speed 10g '
+                output += 'port ' + port + ' converted to 10g'
+                output += run_cli(module, cli)
+    
+                cli = clicopy
+                cli += ' port-config-modify port %s ' % range_port
+                cli += ' enable '
+                output += 'port range_port ' + range_port + '  enabled'
+                output += run_cli(module, cli)
+
+        time.sleep(10)
+
+    return output
 
 def main():
     """ This section is for arguments parsing """
@@ -695,6 +753,7 @@ def main():
     if eula_flag:
         message += auto_accept_eula(module)
         message += update_switch_names(module, current_switch)
+        message += toggle_40g_local(module)
     else:
         message += configure_fabric_over_l3(module)
 
