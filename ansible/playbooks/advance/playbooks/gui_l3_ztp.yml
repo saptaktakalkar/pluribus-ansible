@@ -12,8 +12,8 @@
   become_user: root
 
   vars_files:
-  - cli_vault.yml
-  - vars_l3_ztp.yml
+  - ../playbookvariables/cli_vault.yml
+  - ../playbookvariables/vars_l3_ztp.yml
 
   tasks:
     - name: Auto configure link IPs

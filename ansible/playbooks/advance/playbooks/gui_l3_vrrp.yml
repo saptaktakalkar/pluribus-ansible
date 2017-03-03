@@ -8,8 +8,8 @@
   become_user: root
 
   vars_files:
-  - cli_vault.yml
-  - vars_l3_vrrp.yml
+  - ../playbookvariables/cli_vault.yml
+  - ../playbookvariables/vars_l3_vrrp.yml
 
   vars:
     spine_count: "{{ groups['spine'] | length }}"
