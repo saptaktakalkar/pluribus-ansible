@@ -193,3 +193,15 @@
 
     - debug:
         var: test_l3_out.stdout_lines          # Print stdout_lines of register variable.
+
+    # Test eBGP configuration
+    - name: Test eBGP
+      pn_test_ebgp:
+        pn_cliusername: "{{ USERNAME }}"       # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ PASSWORD }}"       # Cli password (value comes from cli_vault.yml).
+        pn_spine_count: "{{ spine_count }}"    # Count of Spine switches.
+        pn_leaf_count: "{{ leaf_count }}"      # Count of Leaf switches.
+      register: test_ebgp_out
+
+    - debug:
+        var: test_ebgp_out.stdout_lines             # Print stdout_lines of register variable.
