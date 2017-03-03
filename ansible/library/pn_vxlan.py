@@ -25,7 +25,7 @@ import shlex
 DOCUMENTATION = """
 ---
 module: pn_vxlan
-author: 'Pluribus Networks (@saptaktakalkar)'
+author: 'Pluribus Networks (devops@pluribusnetworks.com)'
 version: 1
 short_description: CLI command to configure/add vxlan.
 description: VXLAN is network virtualization technology that attempts to
