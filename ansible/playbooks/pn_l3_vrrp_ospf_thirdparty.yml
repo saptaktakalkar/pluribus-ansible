@@ -155,6 +155,8 @@
         pn_bfd: True                                       # Flag to indicate if BFD config should be added to eBGP/ospf. Default: False.
         pn_routing_protocol: 'ospf'                        # Routing protocol to configure. Choices are ['ebgp', 'ospf']
         pn_ospf_area_id: '0'                               # Area id to configure for ospf. Default: 0
+        # pn_iospf_ip_range: '75.75.75.0/30'               # Ip range for creating the interface between leaf clusters. Default:'75.75.75.0/30'
+        # pn_iospf_vlan: '4040'                            # Vlan for creating the interface between leaf clusters. Default:'4040'
       register: ospf_out                         # Variable to hold/register output of the above tasks.
       until: ospf_out.failed != true             # If the above code fails it will retry the code
       retries: 3                                # This is the retries count
