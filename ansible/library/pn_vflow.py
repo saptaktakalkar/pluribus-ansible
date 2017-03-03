@@ -23,7 +23,7 @@ import shlex
 DOCUMENTATION = """
 ---
 module: pn_vflow
-author: "Pluribus Networks (@saptaktakalkar)"
+author: "Pluribus Networks (devops@pluribusnetworks.com)"
 version: 1.0
 short_description: CLI command to create/delete/modify a vFlow.
 description:

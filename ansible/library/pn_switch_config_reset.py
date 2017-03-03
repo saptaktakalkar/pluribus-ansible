@@ -24,7 +24,7 @@ import shlex
 DOCUMENTATION = """
 ---
 module: pn_switch_config_reset
-author: 'Pluribus Networks (@saptaktakalkar)'
+author: 'Pluribus Networks (devops@pluribusnetworks.com)'
 version: 1
 short_description: CLI command to reset a switch.
 description:
