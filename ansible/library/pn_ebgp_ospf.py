@@ -407,7 +407,6 @@ def add_bgp_neighbor(module):
     """
     Method to add bgp_neighbor to the vrouters.
     :param module: The Ansible module to fetch input parameters.
-    :param vrouter_names: List of vrouter names.
     :return: String describing if bgp neighbors got added or not.
     """
     global CHANGED_FLAG
@@ -436,13 +435,11 @@ def add_bgp_neighbor(module):
 
             cli = clicopy
             cli += ' vrouter-show location %s' % leaf
-            cli += ' format name no-show-headers'
-            vrouter_leaf = run_cli(module, cli).split()[0]                
+            cli += ' format bgp-as,name no-show-headers'
+            leaf_vrouter_bgpas = run_cli(module, cli).split()
 
-            cli = clicopy
-            cli += ' vrouter-show location %s ' % leaf
-            cli += ' format bgp-as no-show-headers '
-            bgp_leaf = run_cli(module, cli).split()[0]
+            vrouter_leaf = leaf_vrouter_bgpas[1]
+            bgp_leaf = leaf_vrouter_bgpas[0]
 
             cli = clicopy
             cli += ' vrouter-show location %s ' % spine
