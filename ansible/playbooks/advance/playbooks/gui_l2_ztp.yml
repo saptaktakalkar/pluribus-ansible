@@ -13,8 +13,8 @@
   become_user: root
 
   vars_files:
-  - ../playbookvariables/cli_vault.yml
-  - ../playbookvariables/vars_l2_ztp.yml
+  - cli_vault.yml
+  - playbook-variable.yml
 
   tasks:
     - name: Configure auto vlag
