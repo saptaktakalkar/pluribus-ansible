@@ -52,10 +52,10 @@
 # This task is to configure VRRP for Layer 3 using csv lookup.
 # It takes required VRRP config data from csv file.
 # Specify the correct 'csv_file' path under vars section.
-# It uses pn_ztp_vrrp_l3.py module from library/ directory.
+# It uses pn_ztp_vrrp_l3_thirdparty.py module from library/ directory.
 # pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 # If the tasks fails then it will retry as specified by retries count.
-- name: Virtual Router Redundancy Protocol (VRRP) - Layer 3 Setup
+- name: Virtual Router Redundancy Protocol (VRRP) - Layer 3 Setup for thirdparty switches
   hosts: leaf[0]
   become: true
   become_method: su
@@ -88,10 +88,10 @@
 
 
 # This task is to configure ZTP layer 3 setup.
-# It uses pn_l3_ztp.py module from library/ directory.
+# It uses pn_l3_ztp_thirdparty.py module from library/ directory.
 # pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 # If the tasks fails then it will retry as specified by retries count.
-- name: Zero Touch Provisioning - Layer3 setup
+- name: Zero Touch Provisioning - Layer3 setup for thirdparty switches
   hosts: leaf[0]
   become: true
   become_method: su
@@ -134,9 +134,9 @@
 # It uses pn_ebgp_ospf.py module from library/ directory.
 # pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 # If you don't specify values for pn_ospf_area_id,
-# then it will take the default values specified in the pn_ebgp_ospf.py module.
+# then it will take the default values specified in the pn_ebgp_ospf_thirdparty.py module.
 # If the tasks fails then it will retry as specified by retries count.
-- name: Zero Touch Provisioning - OSPF setup
+- name: Zero Touch Provisioning - OSPF setup for thirdparty switches
   hosts: leaf[0]
   become: true
   become_method: su
@@ -181,7 +181,7 @@
 # This task is to disable ports using pn_run_cli_commands module from library/ directory.
 # pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml.
 # Specify the correct 'command_file' path under vars section.
-- name: Disable ports using run cli commands module
+- name: Disable ports using run cli commands module for thirdparty switches
   hosts: leaf[0]
   become: true
   become_method: su
