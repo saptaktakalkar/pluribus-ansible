@@ -71,16 +71,26 @@
  **Pluribus Ansible Modules**
    Pluribus Ansible modules support following configurations. These modules are idempotent. More information about these modules, options and their usage can be found in [Modules](module_docs). 
  
- - [pn_show](ansible/library/pn_show.py): To execute CLI show commands
- - [pn_vlan](ansible/library/pn_vlan.py): To create/delete/modify VLANs
- - [pn_vlag](ansible/library/pn_vlag.py): To create/delete/modify VLAGs
- - [pn_cluster](ansible/library/pn_cluster.py): To create/delete Clusters
- - [pn_trunk](ansible/library/pn_trunk.py): To create/delete/modify Trunks(LAGs)
- - [pn_vrouter](ansible/library/pn_vrouter.py): To create/delete/modify vRouters
- - [pn_vrouterif](ansible/library/pn_vrouterif.py): To add/remove vRouter interfaces(including VRRP)
- - [pn_vrouterlbif](ansible/library/pn_vrouterlbif.py): To add/remove vRouter Loopback interfaces
- - [pn_vrouterbgp](ansible/library/pn_vrouterbgp.py): To add/remove vRouter BGP configurations
- - [pn_ospf](ansible/library/pn_ospf.py): To add/remove vRouter OSPF configurations
+ - [pn_initial_ztp](ansible/library/pn_initial_ztp.py): To create/join fabric during zero touch provisioning.
+ - [pn_l2_ztp](ansible/library/pn_l2_ztp.py): To auto configure vlags for layer2 fabric.
+ - [pn_l3_ztp](ansible/library/pn_l3_ztp.py): To auto configure link IPs for layer3 fabric.
+ - [pn_ztp_vrrp_l2](ansible/library/pn_ztp_vrrp_l2_csv.py): To configure VRRP (Virtual Router Redundancy Protocol) for layer2 fabric.
+ - [pn_ztp_vrrp_l3](ansible/library/pn_ztp_vrrp_l3.py): To configure VRRP (Virtual Router Redundancy Protocol) for layer3 fabric.
+ - [pn_ebgp_ospf](ansible/library/pn_ebgp_ospf.py): To configure eBGP/OSPF.
+ - [pn_vflow](ansible/library/pn_flow.py): To create/delete/modify vFlows.
+ - [pn_vxlan](ansible/library/pn_vxlan.py): To configure vxlan.
+ - [pn_l1_mode](ansible/library/pn_l1_mode.py): To create link association between two switches which are not connected to each other.
+ - [pn_switch_config_reset](ansible/library/pn_switch_config_reset.py): To reset the switch configuration to factory default.
+ - [pn_show](ansible/library/pn_show.py): To execute CLI show commands.
+ - [pn_vlan](ansible/library/pn_vlan.py): To create/delete/modify VLANs.
+ - [pn_vlag](ansible/library/pn_vlag.py): To create/delete/modify VLAGs.
+ - [pn_cluster](ansible/library/pn_cluster.py): To create/delete Clusters.
+ - [pn_trunk](ansible/library/pn_trunk.py): To create/delete/modify Trunks(LAGs).
+ - [pn_vrouter](ansible/library/pn_vrouter.py): To create/delete/modify vRouters.
+ - [pn_vrouterif](ansible/library/pn_vrouterif.py): To add/remove vRouter interfaces(including VRRP).
+ - [pn_vrouterlbif](ansible/library/pn_vrouterlbif.py): To add/remove vRouter Loopback interfaces.
+ - [pn_vrouterbgp](ansible/library/pn_vrouterbgp.py): To add/remove vRouter BGP configurations.
+ - [pn_ospf](ansible/library/pn_ospf.py): To add/remove vRouter OSPF configurations.
 
  
  Pluribus ansible modules are not included in the core Ansible code base. You will have to clone this repository in your local machine to use Pluribus ansible modules. 
@@ -108,6 +118,16 @@ Checklist:
  
  Some example playbooks:
  
+ - [pn_initial_ztp.yml](ansible/playbooks/pn_initial_ztp.yml)
+ - [pn_l2_ztp.yml](ansible/playbooks/pn_l2_ztp.yml)
+ - [pn_l3_ztp.yml](ansible/playbooks/pn_l3_ztp.yml)
+ - [pn_vrrp_l2_with_csv.yml](ansible/playbooks/pn_vrrp_l2_with_csv.yml)
+ - [pn_l3_vrrp_ebgp.yml](ansible/playbooks/pn_l3_vrrp_ebgp.yml)
+ - [pn_l3_vrrp_ospf.yml](ansible/playbooks/pn_l3_vrrp_ospf.yml)
+ - [pn_vflow_create.yml](ansible/playbooks/pn_vflow_create.yml)
+ - [pn_vflow_delete.yml](ansible/playbooks/pn_vflow_delete.yml)
+ - [pn_vxlan.yml](ansible/playbooks/pn_vxlan.yml)
+ - [pn_switch_reset.yml](ansible/playbooks/pn_switch_reset.yml)
  - [pn_vlanshow.yml](ansible/roles/examples/pn_vlanshow.yml)
  - [pn_vlanstatsshow.yml](ansible/roles/examples/pn_vlanstatsshow.yml)
  - [pn_vlanstatssettingsshow.yml](ansible/roles/examples/pn_vlanstatssettingsshow.yml)
@@ -147,7 +167,7 @@ PASSWORD: admin
   The playbook will look like:
 ```
 ---
-- name: Using Vault encrypted file
+- name: vlan show using Vault encrypted file
   hosts: spine[0]
   user: pluribus
   
@@ -156,8 +176,12 @@ PASSWORD: admin
   
   tasks:
   - name: Run vlan-show command
-    pn_show: pn_cliusername:{{ USERNAME }} pn_clipassword={{ PASSWORD }} pn_command=vlan-show
+    pn_show: 
+      pn_cliusername:{{ USERNAME }} 
+      pn_clipassword={{ PASSWORD }} 
+      pn_command=vlan-show
     register: show_output
+
   - debug: var=show_output
 ```
   
