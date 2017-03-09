@@ -1,4 +1,0 @@
----
-- name: Create vrouter 
-  pn_vrouter: pn_cliusername=network-admin pn_clipassword=test123 pn_command=vrouter-create pn_name=ansible-vrouter pn_vnet=Myvnet pn_router_type=hardware pn_hw_vrrp_id=18
-  register: cmd_output 

@@ -1,4 +1,0 @@
----
-- name: Delete vrouter 
-  pn_vrouter: pn_cliusername=network-admin pn_clipassword=test123 pn_command=vrouter-delete  pn_name=ansible-vrouter pn_quiet=True
-  register: cmd_output

@@ -1,4 +1,0 @@
----
-- name: Delete trunk 
-  pn_trunk: pn_cliusername=network-admin pn_clipassword=test123 pn_command=trunk-delete pn_name=spine1-to-leaf
-  register: cmd_output 

@@ -1,4 +1,0 @@
----
-- name: Create VLAN 
-  pn_vlan: pn_cliusername=network-admin pn_clipassword=test123 pn_command=vlan-create pn_vlanid=1000 pn_scope=fabric
-  register: cmd_output

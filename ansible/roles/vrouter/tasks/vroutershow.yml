@@ -1,5 +1,0 @@
----
-- name: Test CLI vrouter-show command
-  pn_show: pn_cliusername=network-admin pn_clipassword=test123 pn_command=vrouter-show 
-  register: cmd_output
-- debug: var=cmd_output

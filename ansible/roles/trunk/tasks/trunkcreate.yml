@@ -1,4 +1,0 @@
----
-- name: Create trunk 
-  pn_trunk: pn_cliusername=network-admin pn_clipassword=test123 pn_command=trunk-create pn_name=spine1-to-leaf pn_ports=11,12,13,14
-  register: cmd_output

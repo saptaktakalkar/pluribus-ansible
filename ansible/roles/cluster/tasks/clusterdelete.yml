@@ -1,4 +1,0 @@
----
-- name: Delete cluster
-  pn_cluster: pn_cliusername=network-admin pn_clipassword=test123 pn_command=cluster-delete pn_name=spine-cluster
-  register: cmd_output

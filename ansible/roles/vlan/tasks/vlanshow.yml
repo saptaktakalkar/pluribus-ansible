@@ -1,8 +1,0 @@
---- 
-- name: "VLAN Show CLI command"
-  pn_show: pn_cliusername=network-admin pn_clipassword=test123 pn_command=vlan-show pn_quiet=True
-  register: cmd_output
-- debug: var=cmd_output  
-
-
-    
