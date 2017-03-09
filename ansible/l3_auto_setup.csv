@@ -1,4 +1,0 @@
-100, 172.168.100.0/24, ansible-leaf1, ansible-leaf2, 19, ansible-leaf1
-101, 172.168.101.0/24, ansible-leaf3
-102, 172.168.102.0/24, ansible-leaf4
-104, 172.168.104.0/24, ansible-leaf1, ansible-leaf2, 19, ansible-leaf1

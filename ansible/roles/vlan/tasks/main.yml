@@ -1,6 +1,0 @@
----
-- include: vlanshow.yml
-- include: vlancreate.yml
-- include: vlanshow.yml
-- include: vlandelete.yml
-- include: vlanshow.yml

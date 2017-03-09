@@ -1,4 +1,0 @@
----
-- name: Create VLAG 
-  pn_vlag: pn_cliusername=network-admin pn_clipassword=test123 pn_command=vlag-create pn_name=spine-to-leaf pn_port=spine1-to-leaf pn_peer_port=spine2-to-leaf pn_peer_switch=onvlspine2 pn_mode=active-active
-  register: cmd_output
