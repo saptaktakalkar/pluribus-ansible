@@ -373,7 +373,7 @@ def configure_trunk_vlag_for_clustered_leafs(module, non_clustered_leafs,
                     terminate_flag += 1
 
                 node_count += 1
-        return output
+    return output
 
 
 def configure_trunk_non_clustered_leafs(module, non_clustered_leafs,
