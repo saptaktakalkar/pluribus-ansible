@@ -407,6 +407,7 @@ def add_bgp_neighbor(module):
     """
     Method to add bgp_neighbor to the vrouters.
     :param module: The Ansible module to fetch input parameters.
+    :param vrouter_names: List of vrouter names.
     :return: String describing if bgp neighbors got added or not.
     """
     global CHANGED_FLAG
@@ -773,7 +774,8 @@ def add_ospf_neighbor(module):
     output = ''
     cli = pn_cli(module)
     clicopy = cli
-    ospf_area_id = module.params['pn_ospf_area_id']
+    area_id = module.params['pn_ospf_area_id']
+    leaf_list = module.params['pn_leaf_list']
 
     for spine in module.params['pn_spine_list']:
         cli = clicopy
@@ -793,6 +795,9 @@ def add_ospf_neighbor(module):
             cli += ' switch %s port-show port %s' % (spine, port)
             cli += ' format hostname no-show-headers'
             hostname = run_cli(module, cli).split()[0]
+
+            host_pos = leaf_list.index(hostname)
+            ospf_area_id = str(int(area_id) + int(host_pos) + 1)
 
             cli = clicopy
             cli += ' vrouter-show location %s' % hostname
