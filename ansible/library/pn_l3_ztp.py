@@ -537,6 +537,9 @@ def auto_configure_link_ips(module):
             cli += ' format port no-show-headers '
             leaf_port = run_cli(module, cli).split()
 
+            if 'Success' in leaf_port:
+                continue
+
             while len(leaf_port) > 0:
                 lport = leaf_port[0]
                 ip = available_ips[0]
