@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI Zero Touch Provisioning (ZTP) with EBGP/OSPF"""
+""" PN CLI Zero Touch Provisioning (ZTP) with EBGP(wan switches)"""
 
 #
 # This file is part of Ansible
@@ -23,7 +23,7 @@ import shlex
 
 DOCUMENTATION = """
 ---
-module: pn_ebgp_ospf
+module: pn_ebgp_wan
 author: 'Pluribus Networks (devops@pluribusnetworks.com)'
 short_description: CLI command to do zero touch provisioning with ebgp.
 description:
@@ -52,41 +52,17 @@ options:
         - Provide login password if user is not root.
       required: False
       type: str
-    pn_spine_list:
+    pn_wan_list:
       description:
-        - Specify list of Spine hosts
+        - Specify list of wan hosts
       required: False
       type: list
-    pn_leaf_list:
+    pn_wan_bgp_as:
       description:
-        - Specify list of leaf hosts
-      required: False
-      type: list
-    pn_bgp_redistribute:
-      description:
-        - Specify bgp_redistribute value to be added to vrouter.
+        - Specify bgp_as value to be added to vrouter.
       required: False
       type: str
-      choices: ['none', 'static', 'connected', 'rip', 'ospf']
-      default: 'connected'
-    pn_bgp_maxpath:
-      description:
-        - Specify bgp_maxpath value to be added to vrouter.
-      required: False
-      type: str
-      default: '16'
-    pn_bgp_as_range:
-      description:
-        - Specify bgp_as_range value to be added to vrouter.
-      required: False
-      type: str
-      default: '65000'
-    pn_routing_protocol:
-      description:
-        - Specify which routing protocol to specify.
-      required: False
-      type: str
-      choices: ['ebgp', 'ospf']
+      default: '75000'
     pn_ibgp_ip_range:
       description:
         - Specify ip range for ibgp interface.
@@ -118,8 +94,7 @@ EXAMPLES = """
       pn_ebgp_ospf:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_spine_list: "{{ groups['spine'] }}"
-        pn_leaf_list: "{{ groups['leaf'] }}"
+        pn_wan_list: "{{ groups['wan'] }}"
 """
 
 RETURN = """
@@ -201,11 +176,10 @@ def add_bgp_as(module):
         vrouter = run_cli(module, cli).split()[0]
 
         cli = clicopy
-        cli += ' vrouter-modify name %s bgp-redistribute %s ' % (vrouter,
-                                                                 bgp_as)
+        cli += ' vrouter-modify name %s bgp-as %s ' % (vrouter,
+                                                            wan_bgp_as)
         if 'Success' in run_cli(module, cli):
-            output += ' %s: Added %s BGP_REDISTRIBUTE to %s \n' % (switch,
-                                                                   bgp_as,
+            output += ' %s: Added %s BGP_AS to %s \n' % (switch, wan_bgp_as,
                                                                    vrouter)
             CHANGED_FLAG.append(True)
 
@@ -252,20 +226,62 @@ def create_interface(module, switch, ip, port, vrouter):
     return output
 
 
+def modify_auto_trunk_setting(module, switch, flag):
+    """
+    Method to enable/disable auto trunk setting of a switch.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch: Name of the local switch.
+    :param flag: Enable/disable flag for the cli command.
+    :return: The output of run_cli() method.
+    """
+    cli = pn_cli(module)
+    if flag.lower() == 'enable':
+        cli += ' switch %s system-settings-modify auto-trunk ' % switch
+        return run_cli(module, cli)
+    elif flag.lower() == 'disable':
+        cli += ' switch %s system-settings-modify no-auto-trunk ' % switch
+        return run_cli(module, cli)
+
+
+def delete_trunk(module, switch, switch_port, peer_switch):
+    """
+    Method to delete a conflicting trunk on a switch.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch: Name of the local switch.
+    :param switch_port: The l3-port which is part of conflicting trunk for l3.
+    :param peer_switch: Name of the peer switch.
+    :return: String describing if trunk got deleted or not.
+    """
+    cli = pn_cli(module)
+    clicopy = cli
+    cli += ' switch %s port-show port %s hostname %s ' % (switch, switch_port,
+                                                          peer_switch)
+    cli += ' format trunk no-show-headers '
+    trunk = run_cli(module, cli).split()
+    trunk = list(set(trunk))
+
+    if len(trunk) > 0 and 'Success' not in trunk:
+        cli = clicopy
+        cli += ' switch %s trunk-delete name %s ' % (switch, trunk[0])
+        if 'Success' in run_cli(module, cli):
+            CHANGED_FLAG.append(True)
+            return ' %s: Deleted %s trunk successfully \n' % (switch, trunk[0])
+
+
 def add_wan_ibgp_interface(module):
     """
     Method to create vrouter interface and add ebgp neighbor for wan switches.
     :param module: The Ansible module to fetch input parameters.
     :return: The output string informing details of vrouter created and
     """
+    cli = pn_cli(module)
+    clicopy = cli
+
     bgp_as = module.params['pn_wan_bgp_as']
-    switch1 = wan_switch_list[0]
-    switch2 = wan_switch_list[1]
+    wan_switch_list = module.params['pn_wan_switch_list']
+    ip = module.params['pn_wan_ip']
+
     output = ''
-    cli = clicopy
-    cli += ' switch %s port-show hostname %s ' % (switch1, switch2)
-    cli += ' format port no-show-headers '
-    port_list = run_cli(module, cli).split()
 
     ip = ip.split('/')[0]
     ip = ip.split('.')
@@ -273,392 +289,144 @@ def add_wan_ibgp_interface(module):
     network_count = 0
     subnet = 4
 
-    while len(port_list) > 0 and port_list[0] != 'Success':
-        clicopy = cli
-        cli += ' vrouter-show location %s format name no-show-headers ' % switch1
+    # Disable auto trunk on all switches.
+    for switch in wan_switch_list:
+        modify_auto_trunk_setting(module, switch, 'disable')
+
+    while len(wan_switch_list) > 1:
+        wan_switch = wan_switch_list[0]
+        wan_switch_list.remove(wan_switch)
+        host_list = wan_switch_list
+
+        cli = clicopy
+        cli += ' vrouter-show location %s format name no-show-headers ' % wan_switch
         vrouter_switch1 = run_cli(module, cli).split()[0]
 
-        clicopy = cli
-        cli += ' vrouter-show location %s format name no-show-headers ' % switch2
-        vrouter_switch2 = run_cli(module, cli).split()[0]
-
-        network = network_count * subnet
-        lport = port_list[0]
-        delete_trunk(module, switch1, lport, switch2)
-
-        network = subnet * network_count
-        ip1 = static_part + str(int(network) + 1)
-        ip2 = static_part + str(int(network) + 2)
-
-        output += create_interface(module, switch1, ip1, lport, vrouter_switch1)
-        port_list.remove(lport)
-
-        cli = clicopy
-        cli += ' switch %s port-show port %s ' % (switch1, lport)
-        cli += ' format rport no-show-headers '
-        rport = run_cli(module, cli)[0]
-
-        delete_trunk(module, switch2, rport, switch1)
-        output += create_interface(module, switch2, ip2, rport, vrouter_switch2)
+        for host_switch in host_list:
 
             cli = clicopy
-            cli += ' vrouter-bgp-show remote-as ' + bgp_as
-            cli += ' neighbor %s format switch no-show-headers ' % (
-                ip2)
-            already_added = run_cli(module, cli).split()
-
-            if vrouter_switch1 in already_added:
-                output += ' %s: ' % switch1
-                output += 'BGP Neighbor %s already exists for %s \n' % (
-                    ip2, vrouter_switch1
-                )
-            else:
-                cli = clicopy
-                cli += ' vrouter-bgp-add vrouter-name ' + vrouter_switch1
-                cli += ' neighbor %s remote-as %s ' % (ip2,
-                                                       bgp_as)
-
-                if 'Success' in run_cli(module, cli):
-                    output += ' %s: Added BGP Neighbor %s for %s \n' % (
-                        switch1, ip2, vrouter_switch1
-                    )
-                    CHANGED_FLAG.append(True)
+            cli += ' vrouter-show location %s format name no-show-headers ' % host_switch
+            vrouter_switch2 = run_cli(module, cli).split()[0]
 
             cli = clicopy
-            cli += ' vrouter-bgp-show remote-as ' + bgp_as
-            cli += ' neighbor %s format switch no-show-headers ' % (
-                ip1)
-            already_added = run_cli(module, cli).split()
+            cli += ' switch %s port-show hostname %s ' % (wan_switch, host_switch)
+            cli += ' format port no-show-headers '
+            port_list = run_cli(module, cli).split()
+        
+            while len(port_list) > 0 and 'Success' not in port_list:
+        
+                network = network_count * subnet
+                lport = port_list[0]
+        
+                ip1 = static_part + str(int(network) + 1)
+                ip2 = static_part + str(int(network) + 2)
+                ip1_interface = ip1 + '/30'
+                ip2_interface = ip2 + '/30'
 
-            if vrouter_switch2 in already_added:
-                output += ' %s: ' % switch2
-                output += 'BGP Neighbor %s already exists for %s \n' % (
-                    ip1, vrouter_switch2
-                )
-            else:
+                delete_trunk(module, wan_switch, lport, host_switch)
+                output += create_interface(module, wan_switch, ip1_interface, lport, vrouter_switch1)
+                port_list.remove(lport)
+        
                 cli = clicopy
-                cli += ' vrouter-bgp-add vrouter-name ' + vrouter_switch2
-                cli += ' neighbor %s remote-as %s ' % (ip1,
-                                                       bgp_as)
-
-                if 'Success' in run_cli(module, cli):
-                    output += ' %s: Added BGP Neighbor %s for %s \n' % (
-                        switch2, ip1, vrouter_switch2
+                cli += ' switch %s port-show port %s ' % (wan_switch, lport)
+                cli += ' format rport no-show-headers '
+                rport = run_cli(module, cli)[0]
+        
+                delete_trunk(module, host_switch, rport, wan_switch)
+                output += create_interface(module, host_switch, ip2_interface, rport, vrouter_switch2)
+        
+                cli = clicopy
+                cli += ' vrouter-bgp-show remote-as ' + bgp_as
+                cli += ' neighbor %s format switch no-show-headers ' % (
+                    ip2)
+                already_added = run_cli(module, cli).split()
+        
+                if vrouter_switch1 in already_added:
+                    output += ' %s: ' % wan_switch
+                    output += 'BGP Neighbor %s already exists for %s \n' % (
+                        ip2, vrouter_switch1
                     )
-                    CHANGED_FLAG.append(True)
-
-        network += 1
+                else:
+                    cli = clicopy
+                    cli += ' vrouter-bgp-add vrouter-name ' + vrouter_switch1
+                    cli += ' neighbor %s remote-as %s ' % (ip2,
+                                                           bgp_as)
+        
+                    if 'Success' in run_cli(module, cli):
+                        output += ' %s: Added BGP Neighbor %s for %s \n' % (
+                            wan_switch, ip2, vrouter_switch1
+                        )
+                        CHANGED_FLAG.append(True)
+        
+                cli = clicopy
+                cli += ' vrouter-bgp-show remote-as ' + bgp_as
+                cli += ' neighbor %s format switch no-show-headers ' % (
+                    ip1)
+                already_added = run_cli(module, cli).split()
+        
+                if vrouter_switch2 in already_added:
+                    output += ' %s: ' % host_switch
+                    output += 'BGP Neighbor %s already exists for %s \n' % (
+                        ip1, vrouter_switch2
+                    )
+                else:
+                    cli = clicopy
+                    cli += ' vrouter-bgp-add vrouter-name ' + vrouter_switch2
+                    cli += ' neighbor %s remote-as %s ' % (ip1,
+                                                           bgp_as)
+        
+                    if 'Success' in run_cli(module, cli):
+                        output += ' %s: Added BGP Neighbor %s for %s \n' % (
+                            host_switch, ip1, vrouter_switch2
+                        )
+                        CHANGED_FLAG.append(True)
+        
+                network_count += 1
     return output
 
 
-def configure_ospf_bfd(module, vrouter, ip):
+def create_vrouter_command(module, switch, vnet_name):
     """
-    Method to add ospf_bfd to the vrouter.
+    Method to create vrouter on a switch.
     :param module: The Ansible module to fetch input parameters.
-    :param vrouter: The vrouter name to add ospf bfd.
-    :param ip: The interface ip to associate the ospf bfd.
-    :return: String describing if OSPF BFD got added or if it already exists.
+    :param switch: The switch name on which vrouter will be created.
+    :param vnet_name: The name of the vnet for vrouter creation.
+    :return: String describing if vrouter got created or if it already exists.
     """
     global CHANGED_FLAG
+    vrouter_name = switch + '-vrouter'
     cli = pn_cli(module)
-    clicopy = cli
-    cli += ' vrouter-interface-show vrouter-name %s' % vrouter
-    cli += ' ip %s format nic no-show-headers ' % ip
-    nic_interface = run_cli(module, cli).split()
-    nic_interface = list(set(nic_interface))
-    nic_interface.remove(vrouter)
-
-    cli = clicopy
-    cli += ' vrouter-interface-config-show vrouter-name %s' % vrouter
-    cli += ' nic %s format ospf-bfd no-show-headers ' % nic_interface[0]
-    ospf_status = run_cli(module, cli).split()
-    ospf_status = list(set(ospf_status))
-
-    cli = clicopy
-    cli += ' vrouter-show name ' + vrouter
-    cli += ' format location no-show-headers '
-    switch = run_cli(module, cli).split()[0]
-
-    if ospf_status[0] != 'Success':
-        ospf_status.remove(vrouter)
-
-    if ospf_status[0] != 'enable':
-        cli = clicopy
-        cli += ' vrouter-interface-config-add vrouter-name %s' % vrouter
-        cli += ' nic %s ospf-bfd enable' % nic_interface[0]
-        if 'Success' in run_cli(module, cli):
-            CHANGED_FLAG.append(True)
-            return ' %s: Added OSPF BFD to %s \n' % (switch, vrouter)
-    else:
-        return ' %s: OSPF BFD already exists for %s \n' % (switch, vrouter)
-
-
-def add_ospf_neighbor(module):
-    """
-    Method to add ospf_neighbor to the vrouters.
-    :param module: The Ansible module to fetch input parameters.
-    :return: String describing if ospf neighbors got added or not.
-    """
-    global CHANGED_FLAG
-    output = ''
-    cli = pn_cli(module)
-    clicopy = cli
-    area_id = module.params['pn_ospf_area_id']
-    leaf_list = module.params['pn_leaf_list']
-
-    for spine in module.params['pn_spine_list']:
-        cli = clicopy
-        cli += ' vrouter-show location %s' % spine
-        cli += ' format name no-show-headers'
-        vrouter_spine = run_cli(module, cli).split()[0]
-
-        cli = clicopy
-        cli += ' vrouter-interface-show vrouter-name %s ' % vrouter_spine
-        cli += ' format l3-port no-show-headers '
-        port_list = run_cli(module, cli).split()
-        port_list = list(set(port_list))
-        port_list.remove(vrouter_spine)
-
-        for port in port_list:
-            cli = clicopy
-            cli += ' switch %s port-show port %s' % (spine, port)
-            cli += ' format hostname no-show-headers'
-            hostname = run_cli(module, cli).split()[0]
-
-            host_pos = leaf_list.index(hostname)
-            ospf_area_id = str(int(area_id) + int(host_pos) + 1)
-
-            cli = clicopy
-            cli += ' vrouter-show location %s' % hostname
-            cli += ' format name no-show-headers'
-            vrouter_hostname = run_cli(module, cli).split()[0]
-
-            cli = clicopy
-            cli += ' vrouter-interface-show vrouter-name %s l3-port %s' % (
-                vrouter_spine, port
-            )
-            cli += ' format ip no-show-headers'
-            ip = run_cli(module, cli).split()
-            ip = list(set(ip))
-            ip.remove(vrouter_spine)
-            ip = ip[0]
-
-            ip = ip.split('.')
-            static_part = str(ip[0]) + '.' + str(ip[1]) + '.'
-            static_part += str(ip[2]) + '.'
-            last_octet = str(ip[3]).split('/')
-            netmask = last_octet[1]
-
-            last_octet_ip_mod = int(last_octet[0]) % 4
-            ospf_last_octet = int(last_octet[0]) - last_octet_ip_mod
-            ospf_network = static_part + str(ospf_last_octet) + '/' + netmask
-
-            leaf_last_octet = int(last_octet[0]) - 1
-            ip_leaf = static_part + str(leaf_last_octet)
-            ip_spine = static_part + last_octet[0]
-
-            cli = clicopy
-            cli += ' vrouter-ospf-show'
-            cli += ' network %s format switch no-show-headers ' % ospf_network
-            already_added = run_cli(module, cli).split()
-
-            if vrouter_spine in already_added:
-                output += ' %s: OSPF Neighbor already exists for %s \n' % (
-                    spine, vrouter_spine
-                )
-            else:
-                if module.params['pn_bfd']:
-                    output += configure_ospf_bfd(module, vrouter_spine,
-                                                 ip_spine)
-
-                cli = clicopy
-                cli += ' vrouter-ospf-add vrouter-name ' + vrouter_spine
-                cli += ' network %s ospf-area %s' % (ospf_network,
-                                                     ospf_area_id)
-
-                if 'Success' in run_cli(module, cli):
-                    output += ' %s: Added OSPF neighbor to %s \n' % (
-                        spine, vrouter_spine
-                    )
-                    CHANGED_FLAG.append(True)
-
-            if vrouter_hostname in already_added:
-                output += ' %s: OSPF Neighbor already exists for %s \n' % (
-                    hostname, vrouter_hostname
-                )
-            else:
-                if module.params['pn_bfd']:
-                    output += configure_ospf_bfd(module, vrouter_hostname,
-                                                 ip_leaf)
-
-                cli = clicopy
-                cli += ' vrouter-ospf-add vrouter-name ' + vrouter_hostname
-                cli += ' network %s ospf-area %s' % (ospf_network,
-                                                     ospf_area_id)
-
-                if 'Success' in run_cli(module, cli):
-                    output += ' %s: Added OSPF neighbor to %s \n' % (
-                        hostname, vrouter_hostname
-                    )
-                    CHANGED_FLAG.append(True)
-
-    return output
-
-
-def add_ospf_redistribute(module, vrouter_names):
-    """
-    Method to add ospf_redistribute to the vrouters.
-    :param module: The Ansible module to fetch input parameters.
-    :param vrouter_names: List of vrouter names.
-    :return: String describing if ospf-redistribute got added or not.
-    """
-    global CHANGED_FLAG
-    output = ''
-    cli = pn_cli(module)
+    cli += ' switch ' + switch
     clicopy = cli
 
-    for vrouter in vrouter_names:
+    # Check if vrouter already exists.
+    cli += ' vrouter-show format name no-show-headers '
+    existing_vrouter_names = run_cli(module, cli).split()
+
+    # If vrouter doesn't exists then create it.
+    if vrouter_name not in existing_vrouter_names:
         cli = clicopy
-        cli += ' vrouter-modify name %s' % vrouter
-        cli += ' ospf-redistribute static,connected'
-        if 'Success' in run_cli(module, cli):
-            cli = clicopy
-            cli += ' vrouter-show name ' + vrouter
-            cli += ' format location no-show-headers '
-            switch = run_cli(module, cli).split()[0]
-
-            output += ' %s: Added OSPF_REDISTRIBUTE to %s \n' % (switch,
-                                                                 vrouter)
-            CHANGED_FLAG.append(True)
-
-    return output
-
-
-def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
-                                 ospf_network):
-    """
-    Method to create interfaces and add ospf neighbors.
-    :param module: The Ansible module to fetch input parameters.
-    :param switch_name: The name of the switch to run interface.
-    :param interface_ip: Interface ip to create a vrouter interface.
-    :param ospf_network: Ospf network for the ospf neighbor.
-    :return: String describing if ospf neighbors got added or not.
-    """
-    global CHANGED_FLAG
-    output = ''
-    vlan_id = module.params['pn_iospf_vlan']
-    ospf_area_id = module.params['pn_ospf_area_id']
-
-    cli = pn_cli(module)
-    clicopy = cli
-    cli += ' switch %s vlan-show format id no-show-headers ' % switch_name
-    existing_vlans = run_cli(module, cli).split()
-
-    if vlan_id not in existing_vlans:
-        cli = clicopy
-        cli += ' switch %s vlan-create id %s scope local ' % (switch_name,
-                                                              vlan_id)
+        cli += ' vrouter-create name %s vnet %s ' % (vrouter_name, vnet_name)
         run_cli(module, cli)
-        output = ' %s: Vlan with id %s created successfully \n' % (switch_name,
-                                                                   vlan_id)
         CHANGED_FLAG.append(True)
-
-    cli = clicopy
-    cli += ' vrouter-show location %s format name' % switch_name
-    cli += ' no-show-headers'
-    vrouter = run_cli(module, cli).split()[0]
-
-    cli = clicopy
-    cli += ' vrouter-interface-show ip %s vlan %s' % (interface_ip, vlan_id)
-    cli += ' format switch no-show-headers'
-    existing_vrouter_interface = run_cli(module, cli).split()
-
-    if vrouter not in existing_vrouter_interface:
-        cli = clicopy
-        cli += ' vrouter-interface-add vrouter-name %s ip %s vlan %s ' % (
-            vrouter, interface_ip, vlan_id
-        )
-        run_cli(module, cli)
-        output += ' %s: Added vrouter interface with ip %s on %s \n' % (
-            switch_name, interface_ip, vrouter
-        )
-        CHANGED_FLAG.append(True)
+        return ' %s: Created vrouter with name %s \n' % (switch, vrouter_name)
     else:
-        output += ' %s: Vrouter interface %s already exists for %s \n' % (
-            switch_name, interface_ip, vrouter
-        )
-
-    cli = clicopy
-    cli += ' vrouter-ospf-show'
-    cli += ' network %s format switch no-show-headers ' % ospf_network
-    already_added = run_cli(module, cli).split()
-
-    if vrouter in already_added:
-        output += ' %s: OSPF Neighbor already exists for %s \n' % (switch_name,
-                                                                   vrouter)
-    else:
-        cli = clicopy
-        cli += ' vrouter-ospf-add vrouter-name ' + vrouter
-        cli += ' network %s ospf-area %s' % (ospf_network, ospf_area_id)
-
-        if 'Success' in run_cli(module, cli):
-            output += ' %s: Added OSPF neighbor to %s \n' % (switch_name,
-                                                             vrouter)
-            CHANGED_FLAG.append(True)
-
-    return output
+        return ' %s: Vrouter with name %s already exists \n' % (switch,
+                                                                vrouter_name)
 
 
-def assign_leafcluster_ospf_interface(module):
-    """
-    Method to create interfaces and add ospf neighbor for leaf cluster.
-    :param module: The Ansible module to fetch input parameters.
-    :return: The output of vrouter_interface_ibgp_add() method.
-    """
-    output = ''
-    iospf_ip_range = module.params['pn_iospf_ip_range']
-    spine_list = module.params['pn_spine_list']
-    leaf_list = module.params['pn_leaf_list']
-    subnet_count = 0
-
+def create_vrouter(module):
+    # Get the fabric name and create vnet name required for vrouter creation.
     cli = pn_cli(module)
-    clicopy = cli
+    output = ''
 
-    address = iospf_ip_range.split('.')
-    static_part = str(address[0]) + '.' + str(address[1]) + '.'
-    static_part += str(address[2]) + '.'
+    cli += ' fabric-node-show format fab-name no-show-headers '
+    fabric_name = list(set(run_cli(module, cli).split()))[0]
+    vnet_name = str(fabric_name) + '-global'
 
-    cli += ' cluster-show format name no-show-headers '
-    cluster_list = run_cli(module, cli).split()
-
-    if len(cluster_list) > 0 and cluster_list[0] != 'Success':
-        for cluster in cluster_list:
-            cli = clicopy
-            cli += ' cluster-show name %s format cluster-node-1' % cluster
-            cli += ' no-show-headers'
-            cluster_node_1 = run_cli(module, cli).split()[0]
-
-            if cluster_node_1 not in spine_list and cluster_node_1 in leaf_list:
-                ip_count = subnet_count * 4
-                ip1 = static_part + str(ip_count + 1) + '/' + str(30)
-                ip2 = static_part + str(ip_count + 2) + '/' + str(30)
-                ospf_network = static_part + str(ip_count) + '/' + str(30)
-
-                cli = clicopy
-                cli += ' cluster-show name %s format cluster-node-2' % cluster
-                cli += ' no-show-headers'
-                cluster_node_2 = run_cli(module, cli).split()[0]
-
-                output += vrouter_leafcluster_ospf_add(module, cluster_node_1,
-                                                       ip1, ospf_network)
-                output += vrouter_leafcluster_ospf_add(module, cluster_node_2,
-                                                       ip2, ospf_network)
-
-                subnet_count += 1
-    else:
-        output += ' No leaf clusters present to add iOSPF \n'
-
-    return output
+    # Create vrouter on all switches.
+    for switch in module.params['pn_wan_switch_list']:
+        output += create_vrouter_command(module, switch, vnet_name)
 
 
 def main():
@@ -667,52 +435,18 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_spine_list=dict(required=False, type='list'),
-            pn_leaf_list=dict(required=False, type='list'),
-            pn_bgp_as_range=dict(required=False, type='str', default='65000'),
-            pn_bgp_redistribute=dict(required=False, type='str',
-                                     choices=['none', 'static', 'connected',
-                                              'rip', 'ospf'],
-                                     default='connected'),
-            pn_bgp_maxpath=dict(required=False, type='str', default='16'),
-            pn_bfd=dict(required=False, type='bool', default=False),
-            pn_ibgp_ip_range=dict(required=False, type='str',
-                                  default='75.75.75.0/30'),
-            pn_ibgp_vlan=dict(required=False, type='str', default='4040'),
-            pn_iospf_vlan=dict(required=False, type='str', default='4040'),
-            pn_iospf_ip_range=dict(required=False, type='str',
-                                   default='75.75.75.0/30'),
-            pn_ospf_area_id=dict(required=False, type='str', default='0'),
-            pn_routing_protocol=dict(required=False, type='str',
-                                     choices=['ebgp', 'ospf'], default='ebgp'),
+            pn_wan_switch_list=dict(required=False, type='list'),
+            pn_wan_bgp_as=dict(required=False, type='str', default='75000'),
+            pn_wan_ip=dict(required=False, type='str',
+                                  default='85.75.75.0/24'),
         )
     )
 
     global CHANGED_FLAG
-    routing_protocol = module.params['pn_routing_protocol']
 
-    # Get the list of vrouter names.
-    cli = pn_cli(module)
-    cli += ' vrouter-show format name no-show-headers '
-    vrouter_names = run_cli(module, cli).split()
-
-    message = assign_router_id(module, vrouter_names)
-    message += create_leaf_clusters(module)
-
-    if routing_protocol == 'ebgp':
-        message += assign_bgp_as(module, module.params['pn_bgp_as_range'],
-                                 vrouter_names)
-        message += add_bgp_redistribute(module,
-                                        module.params['pn_bgp_redistribute'],
-                                        vrouter_names)
-        message += add_bgp_maxpath(module, module.params['pn_bgp_maxpath'],
-                                   vrouter_names)
-        message += add_bgp_neighbor(module)
-        message += assign_wan_bgp_interface(module)
-    elif routing_protocol == 'ospf':
-        message += add_ospf_neighbor(module)
-        message += add_ospf_redistribute(module, vrouter_names)
-        message += assign_leafcluster_ospf_interface(module)
+    message = create_vrouter(module)
+    message = add_bgp_as(module)
+    message += add_wan_ibgp_interface(module)
 
     module.exit_json(
         stdout=message,
