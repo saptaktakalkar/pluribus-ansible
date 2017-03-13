@@ -764,6 +764,43 @@ def configure_ospf_bfd(module, vrouter, ip):
         return ' %s: OSPF BFD already exists for %s \n' % (switch, vrouter)
 
 
+def add_ospf_command(module, switch, vrouter, ospf_network, ospf_area_id):
+    """
+    Method to add ospf_neighbor for loopback network for spines.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch: The name of the ansible switch to add neighbor.
+    :param vrouter: The vrouter name to add ospf bfd.
+    :param loopback_network: The network for adding the ospf neighbor.
+    :return: String describing if OSPF Neighbor got added or if it already exists.
+    """
+    global CHANGED_FLAG
+    output = ''
+    cli = pn_cli(module)
+    clicopy = cli
+
+    cli += ' vrouter-ospf-show'
+    cli += ' network %s format switch no-show-headers ' % ospf_network
+    already_added = run_cli(module, cli).split()
+
+    if vrouter in already_added:
+        output += ' %s: OSPF Neighbor already exists for %s \n' % (
+            switch, vrouter
+        )
+    else:
+        cli = clicopy
+        cli += ' vrouter-ospf-add vrouter-name ' + vrouter
+        cli += ' network %s ospf-area %s' % (ospf_network,
+                                             ospf_area_id)
+
+        if 'Success' in run_cli(module, cli):
+            output += ' %s: Added OSPF neighbor to %s \n' % (
+                switch, vrouter
+            )
+            CHANGED_FLAG.append(True)
+
+    return output
+
+
 def add_ospf_neighbor(module):
     """
     Method to add ospf_neighbor to the vrouters.
@@ -776,12 +813,27 @@ def add_ospf_neighbor(module):
     clicopy = cli
     area_id = module.params['pn_ospf_area_id']
     leaf_list = module.params['pn_leaf_list']
+    spine_list = module.params['pn_spine_list']
 
-    for spine in module.params['pn_spine_list']:
+    for spine in spine_list:
         cli = clicopy
         cli += ' vrouter-show location %s' % spine
         cli += ' format name no-show-headers'
         vrouter_spine = run_cli(module, cli).split()[0]
+
+        if spine_list.index(spine) == 0:
+            cli = clicopy
+            cli += ' vrouter-loopback-interface-show vrouter-name ' + vrouter_spine
+            cli += ' format ip no-show-headers '
+            loopback_ip = run_cli(module, cli).split()
+            loopback_ip.remove(vrouter_spine)
+            vrouter_loopback_ip = loopback_ip[0]
+
+            loopback_ip = loopback_ip[0].split('.')
+            loopback_network = loopback_ip[0] + '.' + loopback_ip[1] + '.'
+            loopback_network += loopback_ip[2] + '.' + '0/24'
+
+        output += add_ospf_command(module, spine, vrouter_spine, loopback_network, '0')
 
         cli = clicopy
         cli += ' vrouter-interface-show vrouter-name %s ' % vrouter_spine
@@ -906,7 +958,7 @@ def add_ospf_redistribute(module, vrouter_names):
 
 
 def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
-                                 ospf_network):
+                                 ospf_network, ospf_area_id):
     """
     Method to create interfaces and add ospf neighbors.
     :param module: The Ansible module to fetch input parameters.
@@ -918,7 +970,6 @@ def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
     global CHANGED_FLAG
     output = ''
     vlan_id = module.params['pn_iospf_vlan']
-    ospf_area_id = module.params['pn_ospf_area_id']
 
     cli = pn_cli(module)
     clicopy = cli
@@ -991,6 +1042,9 @@ def assign_leafcluster_ospf_interface(module):
     spine_list = module.params['pn_spine_list']
     leaf_list = module.params['pn_leaf_list']
     subnet_count = 0
+    ospf_area_id = int(module.params['pn_ospf_area_id'])
+    no_of_leaf = int(len(leaf_list))
+    ospf_area_id +=  no_of_leaf
 
     cli = pn_cli(module)
     clicopy = cli
@@ -1020,10 +1074,11 @@ def assign_leafcluster_ospf_interface(module):
                 cli += ' no-show-headers'
                 cluster_node_2 = run_cli(module, cli).split()[0]
 
+                ospf_area_id += 1
                 output += vrouter_leafcluster_ospf_add(module, cluster_node_1,
-                                                       ip1, ospf_network)
+                                                       ip1, ospf_network, str(ospf_area_id))
                 output += vrouter_leafcluster_ospf_add(module, cluster_node_2,
-                                                       ip2, ospf_network)
+                                                       ip2, ospf_network, str(ospf_area_id))
 
                 subnet_count += 1
     else:
