@@ -39,6 +39,8 @@ description:
           - Create leaf_cluster
           - Add iBGP neighbor for clustered leaf
         OSPF:
+          - Find area_id for leafs
+          - Assign ospf_neighbor for leaf cluster
           - Assign ospf_neighbor
           - Assign ospf_redistribute
 options:
@@ -770,13 +772,14 @@ def configure_ospf_bfd(module, vrouter, ip):
         return ' %s: OSPF BFD already enabled for %s \n' % (switch, vrouter)
 
 
-def add_ospf_command(module, switch, vrouter, ospf_network, ospf_area_id):
+def add_ospf_loopback_spine(module, switch, vrouter, ospf_network, ospf_area_id):
     """
     Method to add ospf_neighbor for loopback network for spines.
     :param module: The Ansible module to fetch input parameters.
     :param switch: The name of the ansible switch to add neighbor.
     :param vrouter: The vrouter name to add ospf bfd.
-    :param loopback_network: The network for adding the ospf neighbor.
+    :param ospf_network: The network for adding the ospf neighbor.
+    :param ospf_area_id: The area_id for the spines loopback neighbor.
     :return: String describing if OSPF Neighbor got added or if it already exists.
     """
     global CHANGED_FLAG
@@ -789,8 +792,8 @@ def add_ospf_command(module, switch, vrouter, ospf_network, ospf_area_id):
     already_added = run_cli(module, cli).split()
 
     if vrouter in already_added:
-        output += ' %s: OSPF Neighbor already exists for %s \n' % (
-            switch, vrouter
+        output += ' %s: OSPF Neighbor %s already exists for %s \n' % (
+            switch, ospf_network, vrouter
         )
     else:
         cli = clicopy
@@ -799,25 +802,62 @@ def add_ospf_command(module, switch, vrouter, ospf_network, ospf_area_id):
                                              ospf_area_id)
 
         if 'Success' in run_cli(module, cli):
-            output += ' %s: Added OSPF neighbor to %s \n' % (
-                switch, vrouter
+            output += ' %s: Added OSPF neighbor %s to %s \n' % (
+                switch, ospf_network, vrouter
             )
             CHANGED_FLAG.append(True)
 
     return output
 
 
-def add_ospf_neighbor(module):
+def dict_area_id_leaf(module):
+    """
+    Method to find area_id for all leaf and store in dictionary.
+    :param module: The Ansible module to fetch input parameters.
+    :return: Dictionary containing area_id of all leaf.
+    """
+    leaf_list = module.params['pn_leaf_list']
+    ospf_area_id = int(module.params['pn_ospf_area_id'])
+    cli = pn_cli(module)
+    clicopy = cli
+    dict_area_id = {}
+
+    cli += ' cluster-show format name no-show-headers'
+    cluster_list = run_cli(module, cli).split()
+
+    if 'Success' not in cluster_list:
+        for cluster in cluster_list:
+
+            cli = clicopy
+            cli += ' cluster-show name %s' % cluster
+            cli += ' format cluster-node-1,cluster-node-2 no-show-headers'
+            cluster_nodes = run_cli(module, cli).split()
+    
+            if cluster_nodes[0] in leaf_list and cluster_nodes[1] in leaf_list:
+                ospf_area_id += 1
+                dict_area_id[cluster_nodes[0]] = str(ospf_area_id)
+                dict_area_id[cluster_nodes[1]] = str(ospf_area_id)
+                leaf_list.remove(cluster_nodes[0])
+                leaf_list.remove(cluster_nodes[1])
+
+    for leaf in leaf_list:
+        ospf_area_id += 1
+        dict_area_id[leaf] = str(ospf_area_id)
+
+    return dict_area_id
+
+
+def add_ospf_neighbor(module, dict_area_id):
     """
     Method to add ospf_neighbor to the vrouters.
     :param module: The Ansible module to fetch input parameters.
+    :param dict_area_id: Dictionary containing area_id of leafs.
     :return: String describing if ospf neighbors got added or not.
     """
     global CHANGED_FLAG
     output = ''
     cli = pn_cli(module)
     clicopy = cli
-    area_id = module.params['pn_ospf_area_id']
     leaf_list = module.params['pn_leaf_list']
     spine_list = module.params['pn_spine_list']
 
@@ -839,7 +879,7 @@ def add_ospf_neighbor(module):
             loopback_network = loopback_ip[0] + '.' + loopback_ip[1] + '.'
             loopback_network += loopback_ip[2] + '.' + '0/24'
 
-        output += add_ospf_command(module, spine, vrouter_spine, loopback_network, '0')
+        output += add_ospf_loopback_spine(module, spine, vrouter_spine, loopback_network, '0')
 
         cli = clicopy
         cli += ' vrouter-interface-show vrouter-name %s ' % vrouter_spine
@@ -854,8 +894,7 @@ def add_ospf_neighbor(module):
             cli += ' format hostname no-show-headers'
             hostname = run_cli(module, cli).split()[0]
 
-            host_pos = leaf_list.index(hostname)
-            ospf_area_id = str(int(area_id) + int(host_pos) + 1)
+            ospf_area_id = dict_area_id[hostname]
 
             cli = clicopy
             cli += ' vrouter-show location %s' % hostname
@@ -892,8 +931,8 @@ def add_ospf_neighbor(module):
             already_added = run_cli(module, cli).split()
 
             if vrouter_spine in already_added:
-                output += ' %s: OSPF Neighbor already exists for %s \n' % (
-                    spine, vrouter_spine
+                output += ' %s: OSPF Neighbor %s already exists for %s \n' % (
+                    spine, ospf_network, vrouter_spine
                 )
             else:
                 if module.params['pn_bfd']:
@@ -906,14 +945,14 @@ def add_ospf_neighbor(module):
                                                      ospf_area_id)
 
                 if 'Success' in run_cli(module, cli):
-                    output += ' %s: Added OSPF neighbor to %s \n' % (
-                        spine, vrouter_spine
+                    output += ' %s: Added OSPF neighbor %s to %s \n' % (
+                        spine, ospf_network, vrouter_spine
                     )
                     CHANGED_FLAG.append(True)
 
             if vrouter_hostname in already_added:
-                output += ' %s: OSPF Neighbor already exists for %s \n' % (
-                    hostname, vrouter_hostname
+                output += ' %s: OSPF Neighbor %s already exists for %s \n' % (
+                    hostname, ospf_network, vrouter_hostname
                 )
             else:
                 if module.params['pn_bfd']:
@@ -926,8 +965,8 @@ def add_ospf_neighbor(module):
                                                      ospf_area_id)
 
                 if 'Success' in run_cli(module, cli):
-                    output += ' %s: Added OSPF neighbor to %s \n' % (
-                        hostname, vrouter_hostname
+                    output += ' %s: Added OSPF neighbor %s to %s \n' % (
+                        hostname, ospf_network, vrouter_hostname
                     )
                     CHANGED_FLAG.append(True)
 
@@ -971,6 +1010,7 @@ def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
     :param switch_name: The name of the switch to run interface.
     :param interface_ip: Interface ip to create a vrouter interface.
     :param ospf_network: Ospf network for the ospf neighbor.
+    :ospf_area_id: The area_id for ospf neighborship.
     :return: String describing if ospf neighbors got added or not.
     """
     global CHANGED_FLAG
@@ -1022,25 +1062,26 @@ def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
     already_added = run_cli(module, cli).split()
 
     if vrouter in already_added:
-        output += ' %s: OSPF Neighbor already exists for %s \n' % (switch_name,
-                                                                   vrouter)
+        output += ' %s: OSPF Neighbor %s already exists for %s \n' % (switch_name,
+                                                                  ospf_network, vrouter)
     else:
         cli = clicopy
         cli += ' vrouter-ospf-add vrouter-name ' + vrouter
         cli += ' network %s ospf-area %s' % (ospf_network, ospf_area_id)
 
         if 'Success' in run_cli(module, cli):
-            output += ' %s: Added OSPF neighbor to %s \n' % (switch_name,
-                                                             vrouter)
+            output += ' %s: Added OSPF neighbor %s to %s \n' % (switch_name,
+                                                             ospf_network, vrouter)
             CHANGED_FLAG.append(True)
 
     return output
 
 
-def assign_leafcluster_ospf_interface(module):
+def assign_leafcluster_ospf_interface(module, dict_area_id):
     """
     Method to create interfaces and add ospf neighbor for leaf cluster.
     :param module: The Ansible module to fetch input parameters.
+    :param dict_area_id: Dictionary containing area_id of leafs.
     :return: The output of vrouter_interface_ibgp_add() method.
     """
     output = ''
@@ -1048,9 +1089,6 @@ def assign_leafcluster_ospf_interface(module):
     spine_list = module.params['pn_spine_list']
     leaf_list = module.params['pn_leaf_list']
     subnet_count = 0
-    ospf_area_id = int(module.params['pn_ospf_area_id'])
-    no_of_leaf = int(len(leaf_list))
-    ospf_area_id +=  no_of_leaf
 
     cli = pn_cli(module)
     clicopy = cli
@@ -1080,11 +1118,11 @@ def assign_leafcluster_ospf_interface(module):
                 cli += ' no-show-headers'
                 cluster_node_2 = run_cli(module, cli).split()[0]
 
-                ospf_area_id += 1
+                ospf_area_id = dict_area_id[cluster_node_1]
                 output += vrouter_leafcluster_ospf_add(module, cluster_node_1,
-                                                       ip1, ospf_network, str(ospf_area_id))
+                                                       ip1, ospf_network, ospf_area_id)
                 output += vrouter_leafcluster_ospf_add(module, cluster_node_2,
-                                                       ip2, ospf_network, str(ospf_area_id))
+                                                       ip2, ospf_network, ospf_area_id)
 
                 subnet_count += 1
     else:
@@ -1122,6 +1160,7 @@ def main():
 
     global CHANGED_FLAG
     routing_protocol = module.params['pn_routing_protocol']
+    dict_area_id = {}
 
     # Get the list of vrouter names.
     cli = pn_cli(module)
@@ -1142,9 +1181,10 @@ def main():
         message += add_bgp_neighbor(module)
         message += assign_ibgp_interface(module)
     elif routing_protocol == 'ospf':
-        message += add_ospf_neighbor(module)
+        dict_area_id = dict_area_id_leaf(module)
+        message += add_ospf_neighbor(module, dict_area_id)
         message += add_ospf_redistribute(module, vrouter_names)
-        message += assign_leafcluster_ospf_interface(module)
+        message += assign_leafcluster_ospf_interface(module, dict_area_id)
 
     module.exit_json(
         stdout=message,

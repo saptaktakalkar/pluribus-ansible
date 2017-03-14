@@ -429,7 +429,7 @@ def delete_trunk(module, switch, switch_port, peer_switch):
     cli += ' format trunk no-show-headers '
     trunk = run_cli(module, cli).split()
     trunk = list(set(trunk))
-    if 'Success' not in trunk and len(trunk) > 0:
+    if len(trunk) > 0:
         cli = clicopy
         cli += ' switch %s trunk-delete name %s ' % (switch, trunk[0])
         if 'Success' in run_cli(module, cli):
@@ -537,9 +537,6 @@ def auto_configure_link_ips(module):
             cli += ' format port no-show-headers '
             leaf_port = run_cli(module, cli).split()
 
-            if 'Success' in leaf_port:
-                continue
-
             while len(leaf_port) > 0:
                 lport = leaf_port[0]
                 ip = available_ips[0]
@@ -553,10 +550,10 @@ def auto_configure_link_ips(module):
                 cli = clicopy
                 cli += ' switch %s port-show port %s ' % (leaf, lport)
                 cli += ' format rport no-show-headers '
-                sport = run_cli(module, cli)
+                rport = run_cli(module, cli)
 
-                delete_trunk(module, spine, sport, leaf)
-                output += create_interface(module, spine, ip, sport)
+                delete_trunk(module, spine, rport, leaf)
+                output += create_interface(module, spine, ip, rport)
                 available_ips.remove(ip)
 
                 ip_count = 0

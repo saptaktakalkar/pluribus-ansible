@@ -28,19 +28,12 @@ author: 'Pluribus Networks (devops@pluribusnetworks.com)'
 short_description: CLI command to do zero touch provisioning with ebgp.
 description:
     Zero Touch Provisioning (ZTP) allows you to provision new switches in your
-    network automatically, without manual intervention.
+    network automatically, without manual intervention. This module configures 
+    BGP for wan switches.
     It performs following steps:
-        EBGP:
-          - Assigning bgp_as
-          - Configuring bgp_redistribute
-          - Configuring bgp_maxpath
-          - Assign ebgp_neighbor
-          - Assign router_id
-          - Create leaf_cluster
-          - Add iBGP neighbor for clustered leaf
-        OSPF:
-          - Assign ospf_neighbor
-          - Assign ospf_redistribute
+           - Create vrouter for wan switches
+           - Assign bgp-as for wan switches
+           - Add iBGP for wan switches
 options:
     pn_cliusername:
         description:
@@ -52,7 +45,7 @@ options:
         - Provide login password if user is not root.
       required: False
       type: str
-    pn_wan_list:
+    pn_wan_switch_list:
       description:
         - Specify list of wan hosts
       required: False
@@ -63,34 +56,16 @@ options:
       required: False
       type: str
       default: '75000'
-    pn_ibgp_ip_range:
+    pn_wan_ip:
       description:
         - Specify ip range for ibgp interface.
       required: False
       type: str
-      default: '75.75.75.0/30'
-    pn_ibgp_vlan:
-      description:
-        - Specify vlan for ibgp interface.
-      required: False
-      type: str
-      default: '4040'
-    pn_bfd:
-      description:
-        - Specify bfd flag for the ebgp neighbor.
-      required: False
-      type: bool
-      default: False
-    pn_ospf_area_id:
-      description:
-        - Specify area_id value to be added to vrouter for ospf.
-      required: False
-      type: str
-      default: '0'
+      default: '85.75.75.0/30'
 """
 
 EXAMPLES = """
-    - name: Configure eBGP/OSPF
+    - name: Configure iBGP for wan switches
       pn_ebgp_ospf:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
