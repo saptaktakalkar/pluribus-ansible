@@ -1,0 +1,111 @@
+---
+
+# This task is to configure initial ZTP setup on all switches.
+# It uses pn_ztp.py module from library/ directory.
+# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+# Mandatory parameters: pn_fabric_name, pn_run_l2_l3, pn_current_switch
+# When pn_run_l2_l3 is False, it will run initial ZTP setup.
+# If the tasks fails then it will retry as specified by retries count.
+- name: Accept Eula
+  hosts: all
+  serial: 1
+  become: true
+  become_method: su
+  become_user: root
+
+  vars_files:
+  - cli_vault.yml
+  vars:
+  - csv_file: /etc/ansible/fabric_over_l3.csv  # CSV file path
+
+  tasks:
+    - name: accept eula
+      pn_fabric_over_l3:
+        pn_eula : True
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_fabric_name: 'gauravleo'
+        pn_spine_list: "{{ groups['spine'] }}"
+        pn_leaf_list: "{{ groups['leaf'] }}"
+        pn_current_switch: "{{ inventory_hostname }}"
+        pn_inband_ip: '172.16.0.0/24'    # It is 172.16.0.0/24 by default
+        pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"  # VRRP Layer3 data specified in CSV file.
+      register: ztp_out
+    - debug:
+        var: ztp_out.stdout_lines
+
+    - pause:
+        seconds: 2
+
+       
+- name: Fabric over L3
+  hosts: spine[0], leaf,spine[1]
+  serial: 1
+  become: true
+  become_method: su
+  become_user: root
+
+  vars_files:
+  - cli_vault.yml
+  vars:
+  - csv_file: /etc/ansible/fabric_over_l3.csv  # CSV file path
+  tasks:
+    - name: pn_fabric_over_l3
+      pn_fabric_over_l3:
+        pn_eula: False
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_fabric_name: 'gauravleo'
+        pn_spine_list: "{{ groups['spine'] }}"
+        pn_leaf_list: "{{ groups['leaf'] }}"
+        pn_current_switch: "{{ inventory_hostname }}"
+        pn_inband_ip: '172.16.0.0/24'
+        pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"  
+
+      register: ztp_out
+      until: ztp_out.failed != true  # If the above code fails it will retry the code
+      retries: 7                     # This is the retries count
+      delay: 10
+      ignore_errors: yes
+
+    - debug:
+        var: ztp_out.stdout_lines
+
+    - pause:
+        seconds: 2
+
+
+
+- name: Virtual Router Redundancy Protocol (VRRP) - Layer 3 Setup
+  hosts: spine[0]
+  serial: 1
+  become: true
+  become_method: su
+  become_user: root
+
+  vars_files:
+  - cli_vault.yml
+
+  vars:
+  - csv_file: /etc/ansible/fabric_over_l3.csv  # CSV file path
+
+  tasks:
+    - name: Configure VRRP L3 setup
+      pn_ztp_vrrp_l3:
+        pn_cliusername: "{{ USERNAME }}"  # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ PASSWORD }}"  # Cli password (value comes from cli_vault.yml).
+        pn_spine_list: "{{ groups['spine'] }}"  # List of all spine switches mentioned under [spine] grp in hosts file.
+        pn_leaf_list: "{{ groups['leaf'] }}"    # List of all leaf switches mentioned under [leaf] grp in hosts file.
+        pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"  # VRRP Layer3 data specified in CSV file.
+      register: vrrp_out               # Variable to hold/register output of the above tasks.
+      until:  vrrp_out.failed != true  # If error pops up it will retry the code
+      retries: 3                       # This is the retries count
+      delay: 1
+      ignore_errors: yes               # Flag to indicate if we should ignore errors if any.
+
+    - debug:
+        var: vrrp_out.stdout_lines     # Print stdout_lines of register variable.
+
+    - pause:
+        seconds: 2                     # Pause playbook execution for specified amount of time.
+

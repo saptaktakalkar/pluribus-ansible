@@ -750,18 +750,24 @@ def configure_ospf_bfd(module, vrouter, ip):
     cli += ' format location no-show-headers '
     switch = run_cli(module, cli).split()[0]
 
-    if ospf_status[0] != 'Success':
-        ospf_status.remove(vrouter)
-
-    if ospf_status[0] != 'enable':
+    if 'Success' in ospf_status:
         cli = clicopy
         cli += ' vrouter-interface-config-add vrouter-name %s' % vrouter
         cli += ' nic %s ospf-bfd enable' % nic_interface[0]
         if 'Success' in run_cli(module, cli):
             CHANGED_FLAG.append(True)
             return ' %s: Added OSPF BFD to %s \n' % (switch, vrouter)
+
+    elif 'enable' not in ospf_status:
+        ospf_status.remove(vrouter)        
+        cli = clicopy
+        cli += ' vrouter-interface-config-modify vrouter-name %s' % vrouter
+        cli += ' nic %s ospf-bfd enable' % nic_interface[0]
+        if 'Success' in run_cli(module, cli):
+            CHANGED_FLAG.append(True)
+            return ' %s: Modified OSPF BFD to enable for %s \n' % (switch, vrouter)
     else:
-        return ' %s: OSPF BFD already exists for %s \n' % (switch, vrouter)
+        return ' %s: OSPF BFD already enabled for %s \n' % (switch, vrouter)
 
 
 def add_ospf_command(module, switch, vrouter, ospf_network, ospf_area_id):

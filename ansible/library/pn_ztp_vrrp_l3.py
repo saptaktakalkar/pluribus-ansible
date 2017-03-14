@@ -384,6 +384,7 @@ def configure_vrrp_for_non_cluster_leafs(module, ip, non_cluster_leaf, vlan_id):
 
     if vrouter_name not in existing_vrouter:
         cli = clicopy
+        cli += 'switch ' + non_cluster_leaf
         cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
         cli += ' vlan ' + vlan_id
         cli += ' ip ' + ip_gateway

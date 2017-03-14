@@ -19,6 +19,7 @@
 #
 
 import shlex
+import time
 
 DOCUMENTATION = """
 ---
@@ -371,7 +372,7 @@ def fabric_comm(module, bgp_nic_ip, neighbor_ip, remote_switch, cluster_list,
     """
     output = ''
     # supernet = 4
-    vrouter_name = module.params['pn_current_switch']
+    vrouter_name = module.params['pn_current_switch'] + '-vrouter'    
     bgp_spine = module.params['pn_bgp_as_range']
     spine_list = module.params['pn_spine_list']
     leaf_list = module.params['pn_leaf_list']
