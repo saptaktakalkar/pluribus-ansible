@@ -330,7 +330,7 @@ def add_wan_ibgp_interface(module):
                 cli = clicopy
                 cli += ' switch %s port-show port %s ' % (wan_switch, lport)
                 cli += ' format rport no-show-headers '
-                rport = run_cli(module, cli)[0]
+                rport = run_cli(module, cli).split()[0]
         
                 delete_trunk(module, host_switch, rport, wan_switch)
                 output += create_interface(module, host_switch, ip2_interface, rport, vrouter_switch2)
