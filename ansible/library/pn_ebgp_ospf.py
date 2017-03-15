@@ -513,43 +513,14 @@ def assign_router_id(module, vrouter_names):
     return output
 
 
-def add_bgp_redistribute(module, bgp_redis, vrouter_names):
+def configure_bgp(module, vrouter_names, dict_bgp_as, bgp_max, bgp_redis):
     """
     Method to add bgp_redistribute to the vrouter.
     :param module: The Ansible module to fetch input parameters.
-    :param bgp_redis: bgp-redistribute value to add.
+    :param dict_bgp_as: Dictionary containing the bgp-as for all the switches.
     :param vrouter_names: List of vrouter names.
-    :return: String describing if bgp-redistribute got added or not.
-    """
-    global CHANGED_FLAG
-    output = ''
-    cli = pn_cli(module)
-    clicopy = cli
-
-    for vrouter in vrouter_names:
-        cli = clicopy
-        cli += ' vrouter-modify name %s bgp-redistribute %s ' % (vrouter,
-                                                                 bgp_redis)
-        if 'Success' in run_cli(module, cli):
-            cli = clicopy
-            cli += ' vrouter-show name ' + vrouter
-            cli += ' format location no-show-headers '
-            switch = run_cli(module, cli).split()[0]
-
-            output += ' %s: Added %s BGP_REDISTRIBUTE to %s \n' % (switch,
-                                                                   bgp_redis,
-                                                                   vrouter)
-            CHANGED_FLAG.append(True)
-
-    return output
-
-
-def assign_bgp_as(module, vrouter_names, dict_bgp_as):
-    """
-    Method to add bgp_redistribute to the vrouter.
-    :param module: The Ansible module to fetch input parameters.
-    :param dict_bgp_as: dictionary containing the bgp-as for all the switches.
-    :param vrouter_names: List of vrouter names.
+    :param bgp_max: Maxpath for bgp.
+    :param bgp_redis: Bgp redistribute for bgp.
     :return: String describing if bgp-redistribute got added or not.
     """
     global CHANGED_FLAG
@@ -564,42 +535,12 @@ def assign_bgp_as(module, vrouter_names, dict_bgp_as):
         switch = run_cli(module, cli).split()[0]
 
         cli = clicopy
-        cli += ' vrouter-modify name %s bgp-as %s ' % (vrouter,
-                                                            dict_bgp_as[switch])
+        cli += ' vrouter-modify name %s bgp-as %s bgp-max-paths %s bgp-redistribute %s' % (vrouter,
+                                                            dict_bgp_as[switch], bgp_max, bgp_redis)
         if 'Success' in run_cli(module, cli):
-            output += ' %s: Added %s BGP_REDISTRIBUTE to %s \n' % (switch,
-                                                                   dict_bgp_as[switch],
+            output += ' %s: Added BGP_REDISTRIBUTE %s BGP_AS %s BGP_MAXPATH %s to %s\n' % (switch,
+                                                          bgp_redis, dict_bgp_as[switch], bgp_max,
                                                                    vrouter)
-            CHANGED_FLAG.append(True)
-
-    return output
-
-
-def add_bgp_maxpath(module, bgp_max, vrouter_names):
-    """
-    Method to add bgp_maxpath to the vrouter.
-    :param module: The Ansible module to fetch input parameters.
-    :param bgp_max: bgp-max-paths value to add.
-    :param vrouter_names: List of vrouter names.
-    :return: String describing if bgp-max-paths got added or not.
-    """
-    global CHANGED_FLAG
-    output = ''
-    cli = pn_cli(module)
-    clicopy = cli
-
-    for vrouter in vrouter_names:
-        cli = clicopy
-        cli += ' vrouter-modify name %s bgp-max-paths %s ' % (vrouter,
-                                                              bgp_max)
-        if 'Success' in run_cli(module, cli):
-            cli = clicopy
-            cli += ' vrouter-show name ' + vrouter
-            cli += ' format location no-show-headers '
-            switch = run_cli(module, cli).split()[0]
-
-            output += ' %s: Added %s BGP_MAXPATH to %s \n' % (switch,
-                                                              bgp_max, vrouter)
             CHANGED_FLAG.append(True)
 
     return output
@@ -1152,13 +1093,9 @@ def main():
 
     if routing_protocol == 'ebgp':
         dict_bgp_as = find_dict_bgp_as(module)
-        message += assign_bgp_as(module,
-                                 vrouter_names, dict_bgp_as)
-        message += add_bgp_redistribute(module,
-                                        module.params['pn_bgp_redistribute'],
-                                        vrouter_names)
-        message += add_bgp_maxpath(module, module.params['pn_bgp_maxpath'],
-                                   vrouter_names)
+        message += configure_bgp(module,
+                                 vrouter_names, dict_bgp_as,
+           module.params['pn_bgp_maxpath'], module.params['pn_bgp_redistribute'])
         message += add_bgp_neighbor(module, dict_bgp_as)
         message += assign_ibgp_interface(module, dict_bgp_as)
     elif routing_protocol == 'ospf':
