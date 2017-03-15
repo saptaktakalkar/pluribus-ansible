@@ -700,7 +700,7 @@ def create_leaf_clusters(module):
 
                 node_count += 1
 
-        return output
+    return output
 
 
 def configure_ospf_bfd(module, vrouter, ip):
