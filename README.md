@@ -397,7 +397,8 @@ Let's see the command with the various options/flags:
    - Specify the complete path of the hosts file if it is in a different directory.
    - If the `-i` flag is not specified, ansible will consider the hosts file located at `/etc/ansible/hosts`.
  - **`ask-vault-pass`** : ask for vault password when using vault file.
- - **`-v`** : verbose mode(-vvv for more, -vvvv to enable cnnection debugging)
+ - **`-v`** : verbose mode(-vvv for more, -vvvv to enable cnnection debugging).
+ 
  **Connection Options**:
  - **`-k or --ask-pass`** : (lowercase 'k') ask for connection password.
    - SSH password.
@@ -408,6 +409,7 @@ Let's see the command with the various options/flags:
    - You can specify the username in the hosts file in which case you dont have to provide this flag.
    - You can also set this in the ansible.cfg file(not recommended).
    - We recommend setting up SSH key based authentication to avoid using username/password for a more secured connection. 
+   
  **Privilege Escalation Options**:
  - **`-b or --become`** : run operations with become. 
    - We recommend specifying this in the playbook.
