@@ -244,15 +244,14 @@ def assign_inband_ip(module, inband_ip):
     address = inband_ip.split('.')
     static_part = str(address[0]) + '.' + str(address[1]) + '.'
     static_part += str(address[2]) + '.'
-    # last_octet = str(address[3]).split('/')
-    # subnet = last_octet[1]
 
     ip = static_part + str(ip_count) + '/' + str(30)
 
     cli = clicopy
     cli += 'switch-setup-modify in-band-ip %s ' % ip
-    output += run_cli(module, cli)
 
+    if 'Setup completed successfully' in run_cli(module, cli):
+        output += '%s: Inband ip assigned with ip %s \n' % (current_switch, ip)
     return output
 
 
@@ -307,7 +306,7 @@ def fabric_inband_net_create(module, inband_static_part):
     """
     cli = pn_cli(module)
     clicopy = cli
-
+    global CHANGED_FLAG
     supernet = 4
     output = ''
     spine_list = module.params['pn_spine_list']
@@ -326,9 +325,11 @@ def fabric_inband_net_create(module, inband_static_part):
         if inband_network_ip not in existing_networks:
             cli = clicopy
             cli += 'fabric-in-band-network-create network %s' % inband_network_ip
-            output += run_cli(module, cli)
+            if 'Success' in  run_cli(module, cli):
+                output += 'Fabric in-band network created with network %s created \n' % inband_network_ip
+                CHANGED_FLAG.append(True)
         else:
-            output += 'Inband network already added '
+            output += 'Inband network %s already exists \n' % inband_network_ip
         switch_num += 1
 
     return output
@@ -352,10 +353,9 @@ def join_fabric(module, switch_ip):
     if err:
         cli = clicopy
         cli += 'fabric-join switch-ip %s ' % switch_ip
-        output += run_cli(module, cli)
     elif out:
-        output += "Already in a fabric "
-    return output
+        return "Switch already in a fabric "
+    return run_cli(module, cli)
 
 
 def fabric_comm(module, bgp_nic_ip, neighbor_ip, remote_switch, cluster_list,
@@ -371,7 +371,7 @@ def fabric_comm(module, bgp_nic_ip, neighbor_ip, remote_switch, cluster_list,
     :return: The output of all cli commands.
     """
     output = ''
-    # supernet = 4
+    global CHANGED_FLAG
     vrouter_name = module.params['pn_current_switch'] + '-vrouter'    
     bgp_spine = module.params['pn_bgp_as_range']
     spine_list = module.params['pn_spine_list']
@@ -483,7 +483,12 @@ def fabric_comm(module, bgp_nic_ip, neighbor_ip, remote_switch, cluster_list,
 
         cli += ' in-band-nic-ip %s in-band-nic-netmask %s bfd' % (ip, netmask)
         cli += ' allowas-in'
-        output += run_cli(module, cli)
+        output += '%s: Fab-comm command executed with output- ' % current_switch
+        output += str(run_cli(module, cli))
+        CHANGED_FLAG.append(True)
+
+    else:
+        output += '%s: Vrouter already exist \n' % current_switch
 
     return output
 
@@ -501,7 +506,7 @@ def add_interface_neighbor(module, interface_ip, neighbor_ip, remote_switch, clu
     """
     output = ''
     length_non_cluster_leaf = len(non_cluster_leaf)
-
+    global CHANGED_FLAG
     cli = pn_cli(module)
     clicopy = cli
 
@@ -520,7 +525,7 @@ def add_interface_neighbor(module, interface_ip, neighbor_ip, remote_switch, clu
     cli = clicopy
     cli += 'switch %s trunk-show ports %s format trunk-id, no-show-headers ' % (current_switch, ports[0])
     trunk_id = run_cli(module, cli).split()
-    if len(trunk_id) == 0 or trunk_id[0] == 'Success':
+    if len(trunk_id) == 0 or 'Success' in trunk_id:
         l3_port = ports[0]
     else:
         l3_port = trunk_id[0]
@@ -535,7 +540,15 @@ def add_interface_neighbor(module, interface_ip, neighbor_ip, remote_switch, clu
         cli = clicopy
         cli += 'vrouter-interface-add vrouter-name %s ' % vrouter_name[0]
         cli += 'ip %s l3-port %s ' % (interface_ip, l3_port)
-        output += run_cli(module, cli)
+        if 'Added' in run_cli(module, cli):
+            output += '%s: Added vrouter interface with ip %s on %s \n' % (
+                current_switch, interface_ip, vrouter_name[0]
+                )
+            CHANGED_FLAG.append(True)
+    else:
+        output += '%s: Vrouter interface %s already exists for %s \n' % (
+            current_switch, interface_ip, vrouter_name[0]
+        )
 
     if current_switch in leaf_list:
         remote_as = bgp_spine
@@ -558,13 +571,20 @@ def add_interface_neighbor(module, interface_ip, neighbor_ip, remote_switch, clu
     already_added = run_cli(module, cli).split()
 
     if vrouter_name[0] in already_added:
-        output += ' BGP Neighbour already added for %s! ' % vrouter_name[0]
+        output += '%s: ' % current_switch
+        output += 'BGP Neighbor %s already exists for %s \n' % (
+              neighbor_ip, vrouter_name[0]
+             )
     else:
         cli = clicopy
         cli += 'vrouter-bgp-add vrouter-name %s ' % vrouter_name[0]
         cli += 'neighbor %s remote-as %s' % (neighbor_ip, remote_as)
         cli += ' allowas-in bfd'
-        output += run_cli(module, cli)
+        if 'Success' in run_cli(module, cli):
+            output += '%s: Added BGP Neighbor %s for %s \n' % (
+                    current_switch, neighbor_ip, vrouter_name[0]
+                )
+            CHANGED_FLAG.append(True)
     return output
 
 
@@ -574,6 +594,7 @@ def configure_fabric_over_l3(module):
     :param module: The Ansible module to fetch input parameters.
     :return: The output of all cli commands.
     """
+    global CHANGED_FLAG
     cli = pn_cli(module)
     clicopy = cli
     supernet = 4
@@ -590,15 +611,11 @@ def configure_fabric_over_l3(module):
     address = bgp_ip.split('.')
     static_part = str(address[0]) + '.' + str(address[1]) + '.'
     static_part += str(address[2]) + '.'
-    # last_octet = str(address[3]).split('/')
-    # subnet = last_octet[1]
     leaf_count = len(leaf_list)
-    # spine_count = len(spine_list)
 
     address = inband_ip.split('.')
     inband_static_part = str(address[0]) + '.' + str(address[1]) + '.'
     inband_static_part += str(address[2]) + '.'
-    # last_octet = str(address[3]).split('/')
     switch_ip = inband_static_part + str(1)
 
     dict_leaf_info = find_leaf_cluster(module)
@@ -620,9 +637,10 @@ def configure_fabric_over_l3(module):
                     if fabric_name not in existing_fabric:
                         cli = clicopy
                         cli += 'fabric-create name %s ' % fabric_name
-                        output += run_cli(module, cli)
+                        output += current_switch + ': ' + str(run_cli(module, cli))
+                        CHANGED_FLAG.append(True)
                     else:
-                        output += "Fabric already created"
+                        output += '%s: Fabric already created \n' % current_switch
 
                 bgp_nic_ip_count = (spine_pos * leaf_count * supernet) + 1
                 neighbor_ip_count = bgp_nic_ip_count + 1
@@ -633,7 +651,11 @@ def configure_fabric_over_l3(module):
                 if spine_pos == 0:
                     output += fabric_inband_net_create(module, inband_static_part)
                 else:
-                    output += join_fabric(module, switch_ip)
+                    if 'already in a fabric' in join_fabric(module, switch_ip):
+                        output += '%s: Already a part of fabric \n' % (current_switch)
+                    else:
+                        output += '%s: Joined fabric \n' % (current_switch)
+                        CHANGED_FLAG.append(True)                        
 
             else:
                 leaf_pos = leaf_list.index(leaf)
@@ -658,7 +680,11 @@ def configure_fabric_over_l3(module):
                 output += fabric_comm(module, bgp_nic_ip, neighbor_ip, spine,
                                       cluster_list, non_cluster_leaf)
 
-                output += join_fabric(module, switch_ip)
+                if 'already in a fabric' in join_fabric(module, switch_ip):
+                    output += '%s: Already a part of fabric \n' % (current_switch)
+                else:
+                    output += '%s: Joined fabric \n' % (current_switch)
+                    CHANGED_FLAG.append(True)
 
             else:
                 leaf_pos = leaf_list.index(current_switch)
@@ -744,17 +770,35 @@ def main():
             pn_bgp_redistribute=dict(required=False, type='str', default='connected'),
             pn_bgp_max_path=dict(required=False, type='str', default='16'),
             pn_csv_data=dict(required=True, type='str'),
+            pn_toggle_40g=dict(required=False, type='bool', default=True),
         )
     )
 
     current_switch = module.params['pn_current_switch']
     eula_flag = module.params['pn_eula']
-    message = ' '
+    toggle_40g_flag = module.params['pn_toggle_40g']
+    message = ''
+    global CHANGED_FLAG
+    CHANGED_FLAG = []
 
     if eula_flag:
-        message += auto_accept_eula(module)
-        message += update_switch_names(module, current_switch)
-        message += toggle_40g_local(module)
+        # Auto accept EULA
+        if 'Setup completed successfully' in auto_accept_eula(module):
+            message += ' %s: EULA accepted \n' % current_switch
+            CHANGED_FLAG.append(True)
+        else:
+            message += ' %s: EULA has already been accepted \n' % current_switch
+    
+        # Update switch names to match host names from hosts file
+        if 'Updated' in update_switch_names(module, current_switch):
+            message += ' %s: Updated switch name \n ' % current_switch
+            CHANGED_FLAG.append(True)
+    
+        # Toggle 40g ports to 10g
+        if toggle_40g_flag:
+            if toggle_40g_local(module):
+                message += ' %s: Toggled 40G ports to 10G \n' % current_switch
+                CHANGED_FLAG.append(True)
     else:
         message += configure_fabric_over_l3(module)
 
