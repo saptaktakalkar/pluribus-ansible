@@ -522,69 +522,75 @@ def add_interface_neighbor(module, interface_ip, neighbor_ip, remote_switch, clu
     cli += 'switch %s port-show hostname %s format port, no-show-headers' % (current_switch, remote_switch)
     ports = run_cli(module, cli).split()
 
-    cli = clicopy
-    cli += 'switch %s trunk-show ports %s format trunk-id, no-show-headers ' % (current_switch, ports[0])
-    trunk_id = run_cli(module, cli).split()
-    if len(trunk_id) == 0 or 'Success' in trunk_id:
-        l3_port = ports[0]
+    if 'Success' in ports:
+        output += 'No l3 ports between %s and %s \n' % (current_switch, remote_switch)
     else:
-        l3_port = trunk_id[0]
-
-    cli = clicopy
-    cli += ' switch %s vrouter-interface-show ip %s ' % (current_switch, interface_ip)
-    cli += ' format switch no-show-headers '
-    existing_vrouter = run_cli(module, cli).split()
-    existing_vrouter = list(set(existing_vrouter))
-
-    if vrouter_name[0] not in existing_vrouter:
         cli = clicopy
-        cli += 'vrouter-interface-add vrouter-name %s ' % vrouter_name[0]
-        cli += 'ip %s l3-port %s ' % (interface_ip, l3_port)
-        if 'Added' in run_cli(module, cli):
-            output += '%s: Added vrouter interface with ip %s on %s \n' % (
-                current_switch, interface_ip, vrouter_name[0]
-                )
-            CHANGED_FLAG.append(True)
-    else:
-        output += '%s: Vrouter interface %s already exists for %s \n' % (
-            current_switch, interface_ip, vrouter_name[0]
-        )
-
-    if current_switch in leaf_list:
-        remote_as = bgp_spine
-    else:
-        if remote_switch in non_cluster_leaf:
-            remote_as = int(bgp_spine) + 1 + non_cluster_leaf.index(remote_switch)
+        cli += 'switch %s trunk-show ports %s format trunk-id, no-show-headers ' % (current_switch, ports[0])
+        trunk_id = run_cli(module, cli).split()
+        if len(trunk_id) == 0 or 'Success' in trunk_id:
+            l3_port = ports[0]
         else:
-            cluster_count = 0
-            stop_flag = 0
-            while cluster_count < len(cluster_list) and stop_flag == 0:
-                if remote_switch in cluster_list[cluster_count]:
-                    remote_as = int(length_non_cluster_leaf) + 1 + cluster_count + int(bgp_spine)
-                    stop_flag += 1
-                    cluster_count += 1
-        remote_as = str(remote_as)
-
-    cli = clicopy
-    cli += ' vrouter-bgp-show remote-as ' + remote_as
-    cli += ' neighbor %s format switch no-show-headers ' % neighbor_ip
-    already_added = run_cli(module, cli).split()
-
-    if vrouter_name[0] in already_added:
-        output += '%s: ' % current_switch
-        output += 'BGP Neighbor %s already exists for %s \n' % (
-              neighbor_ip, vrouter_name[0]
-             )
-    else:
+            l3_port = trunk_id[0]
+    
         cli = clicopy
-        cli += 'vrouter-bgp-add vrouter-name %s ' % vrouter_name[0]
-        cli += 'neighbor %s remote-as %s' % (neighbor_ip, remote_as)
-        cli += ' allowas-in bfd'
-        if 'Success' in run_cli(module, cli):
-            output += '%s: Added BGP Neighbor %s for %s \n' % (
-                    current_switch, neighbor_ip, vrouter_name[0]
-                )
-            CHANGED_FLAG.append(True)
+        cli += ' switch %s vrouter-interface-show ip %s ' % (current_switch, interface_ip)
+        cli += ' format switch no-show-headers '
+        existing_vrouter = run_cli(module, cli).split()
+        existing_vrouter = list(set(existing_vrouter))
+    
+        if vrouter_name[0] not in existing_vrouter:
+            cli = clicopy
+            cli += 'vrouter-interface-add vrouter-name %s ' % vrouter_name[0]
+            cli += 'ip %s l3-port %s ' % (interface_ip, l3_port)
+            if 'Added' in run_cli(module, cli):
+                output += '%s: Added vrouter interface with ip %s on %s \n' % (
+                    current_switch, interface_ip, vrouter_name[0]
+                    )
+                CHANGED_FLAG.append(True)
+        else:
+            output += '%s: Vrouter interface %s already exists for %s \n' % (
+                current_switch, interface_ip, vrouter_name[0]
+            )
+    
+        if current_switch in leaf_list:
+            remote_as = bgp_spine
+        else:
+            if remote_switch in non_cluster_leaf:
+                remote_as = int(bgp_spine) + 1 + non_cluster_leaf.index(remote_switch)
+            else:
+                cluster_count = 0
+                stop_flag = 0
+                while cluster_count < len(cluster_list) and stop_flag == 0:
+                    if remote_switch in cluster_list[cluster_count]:
+                        remote_as = int(length_non_cluster_leaf) + 1 + cluster_count + int(bgp_spine)
+                        stop_flag += 1
+                    cluster_count += 1
+            remote_as = str(remote_as)
+            f = open('output.txt', 'a')
+            f.write('%s %s \n' % (remote_switch, remote_as))
+            f.close()
+    
+        cli = clicopy
+        cli += ' vrouter-bgp-show remote-as ' + remote_as
+        cli += ' neighbor %s format switch no-show-headers ' % neighbor_ip
+        already_added = run_cli(module, cli).split()
+    
+        if vrouter_name[0] in already_added:
+            output += '%s: ' % current_switch
+            output += 'BGP Neighbor %s already exists for %s \n' % (
+                  neighbor_ip, vrouter_name[0]
+                 )
+        else:
+            cli = clicopy
+            cli += 'vrouter-bgp-add vrouter-name %s ' % vrouter_name[0]
+            cli += 'neighbor %s remote-as %s' % (neighbor_ip, remote_as)
+            cli += ' allowas-in bfd'
+            if 'Success' in run_cli(module, cli):
+                output += '%s: Added BGP Neighbor %s for %s \n' % (
+                        current_switch, neighbor_ip, vrouter_name[0]
+                    )
+                CHANGED_FLAG.append(True)
     return output
 
 
@@ -624,8 +630,16 @@ def configure_fabric_over_l3(module):
     cluster_list = sorted(cluster_list)
     non_cluster_leaf = list(sorted(set(leaf_list) - set(cluster_leaf)))
 
+    f = open('output.txt', 'a')
+    f.write('%s\n ' % cluster_list)
+    f.write('%s\n' % non_cluster_leaf)
+    f.close()
+
     if current_switch in spine_list:
         for leaf in leaf_list:
+            f = open('output.txt', 'a')
+            f.write('%s \n' % (leaf))
+            f.close()
             spine_pos = spine_list.index(current_switch)
             if leaf_list.index(leaf) == 0:
 
