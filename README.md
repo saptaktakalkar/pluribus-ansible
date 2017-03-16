@@ -11,6 +11,7 @@
   + [Modules](#modules)
   + [Playbooks](#playbooks)
   + [Security](#security)
+  + [Setup Key Based Authentication](#setup-key-based-authentication)
   + [Running Playbooks](#running-playbooks)
   
 # Ansible
@@ -192,7 +193,7 @@ Now you can begin working on your branch.
   become_user: root
 
   vars_files:
-  - cli_vault.yml
+  - ../playbookvariables/cli_vault.yml
   - ../playbookvariables/vars_fabric_creation.yml
 
   tasks:
@@ -265,11 +266,12 @@ pn_stp: False                                     # optional, True:False, Flag t
    ...
    ...
   vars_files:
-  - cli_vault.yml
+  - ../playbookvariables/cli_vault.yml
   - ../playbookvariables/vars_l3_ztp.yml
   ...
   ...
-  ...  pn_spine_list: "{{ groups['spine'] }}"  # List of all spine switches mentioned under [spine] grp in hosts file.
+  ...
+       pn_spine_list: "{{ groups['spine'] }}"  # List of all spine switches mentioned under [spine] grp in hosts file.
        pn_leaf_list: "{{ groups['leaf'] }}"    # List of all leaf switches mentioned under [leaf] grp in hosts file.
        pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"
   ...
@@ -341,7 +343,42 @@ PASSWORD: admin
 
   - debug: var=show_output
 ```
+
+# Setup Key Based Authentication
+  Ansible is SSH based. It will SSH into the hosts and apply the configurations as specified in the playbook. You will need to specify the remote user flag `-u` as well as `ask-pass or -k` for password everytime you run a playbook. Instead, you can setup SSH keys between your control machine and the target hosts for a more secured connection and avoid the hassle of providing the user and password everytime you run a playbook. You can use the Pluribus module to achieve auto-setup of SSH keys. Use this module+playbook the first time to setup key based authentication.
+
+```
+---
+# This playbook is to setup SSH keys between localhost and remote switches.
+# It uses the pn_autossh module.
+# The list of switch IP addresses is passed as a csv file.
+# The variables are located in vars_sshkeys.yml file.
+
+- name: Auto SSH setup
+  hosts: localhost
+
+  vars_files:
+    - ../playbookvariables/cli_vault.yml
+    - ../playbookvariables/vars_sshkeys.yml
+
+  tasks:
+    - name: Generate SSH keys and push them onto switches
+      pn_autossh:
+        pn_user: "{{ remote_user }}"                               # Specify the remote user name(SSH user).
+        pn_ssh_password: "{{ PASSWORD }}"                          # Specify the SSH password.
+        pn_hosts_csv:  "{{ lookup('file', '{{ csv_file }}') }}"    # CSV file that contains (hostname, IP address).
+        pn_overwrite: False                                        # Flag that specifies either to overwrite or append the authorization keys file in target hosts.
+        pn_filepath: "{{ lookup('env','HOME') + '/.ssh/id_rsa' }}" # Specify the local path to save the generated rsa keys.
+      register: output
+      
+    - debug: var=output.stdout_lines
+```
+ To run the playbook, execute the following command:
  
+```
+$ ansible-playbook pn_autossh.yml --ask-vault-pass
+```
+
 # Running Playbooks
    Congratulations, You are now ready to run Pluribus-Ansible playbooks! Just kidding, not yet.
 Playbooks can be run using the command `ansible-playbook playbook.yml [options][flags]`. But what are these options and flags?
