@@ -373,7 +373,7 @@ PASSWORD: admin
       
     - debug: var=output.stdout_lines
 ```
- To run the playbook, execute the following command:
+ To setup SSH keys, run the following command:
  
 ```
 $ ansible-playbook pn_autossh.yml --ask-vault-pass
