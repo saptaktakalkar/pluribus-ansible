@@ -11,7 +11,8 @@
   + [Modules](#modules)
   + [Playbooks](#playbooks)
   + [Security](#security)
-
+  + [Running Playbooks](#running-playbooks)
+  
 # Ansible
  Ansible is an open source IT automation tool for configuration management, provisioning and application deployment. Ansible is agentless and does not require a software agent to be installed on the target nodes. It uses SSH for secured communication with the target nodes. The Pluribus Networks Ansible library provides support for using Ansible to deploy, configure and manage devices running Netvisor OS. This repository contains modules developed for Netvisor OS CLI to perform specific tasks on devices running Netvisor OS. These modules run CLI commands for installing Netvisor OS, configuring, retrieving information/device statistics, modifying configuration settings on the target nodes. 
 
@@ -86,11 +87,10 @@ gui-leaf4 ansible_host=10.9.21.65 ansible_user="{{ SSH_USER }}" ansible_ssh_pass
 
 
 # Configuration File
- Custom changes to the ansible workflow and how it behaves are made through the configuration file. If you installed ansible from a package manager, the `ansible.cfg` will be present in `/etc/ansible` directory. If it is not present, you can create one to override default settings. Although the default settings should be sufficient for most of the purposes, you may need to change some of the settings based on your requirements.
+  Custom changes to the ansible workflow and how it behaves are made through the configuration file. If you installed ansible from a package manager, the `ansible.cfg` will be present in `/etc/ansible` directory. If it is not present, you can create one to override default settings. Although the default settings should be sufficient for most of the purposes, you may need to change some of the settings based on your requirements.
   The default configuration file can be found here: [ansible.cfg](ansible.cfg.sample)
-  
-  **NOTE**: 
-Checklist:
+
+**Checklist**:
   1. Make sure you set the library path to point to your library directory in the `ansible.cfg` file.
   2. Disable host key checking in `ansible.cfg` file. If required, establish SSH keys(Use [pn_autossh](/ansible/library/pn_autossh.py) module to easily setup SSH keys!).
   3. Make other configuration changes as required.
@@ -131,7 +131,7 @@ host_key_checking = False
  Modules return information to ansible in JSON format. Modules can be placed in different places where ansible looks for modules. As a convenience, we place them under library folder in our ansible project directory.
  
  **Pluribus Ansible Modules**
-   Pluribus Ansible modules support following configurations. These modules are idempotent. More information about these modules, options and their usage can be found in [Module Docs](/docs/module_docs). 
+   Pluribus-Ansible modules support following configurations. These modules are idempotent. More information about these modules, options and their usage can be found in [Module Docs](/docs/module_docs). 
  
  - [pn_initial_ztp](ansible/library/pn_initial_ztp.py): To create/join fabric during zero touch provisioning.
  - [pn_l2_ztp](ansible/library/pn_l2_ztp.py): To auto configure vlags for layer2 fabric.
@@ -171,7 +171,113 @@ Now you can begin working on your branch.
 # Playbooks
  Playbooks are Ansible's configuration, deployment and orchestration language. Playbooks are expressed in [YAML](https://docs.ansible.com/ansible/YAMLSyntax.html) format and have a minimum of syntax. Each playbook is composed of one or more plays. The goal of a play is to map a group of hosts to some well defined tasks. A task is basically a call to an Ansible Module. 
  
- Some example playbooks:
+ **Pluribus Ansible Playbooks**
+   Pluribus-Ansible also includes playbooks that use Pluribus modules to apply network configurations. These playbooks can be used to apply configurations with little modifications. These playbooks can also be used as reference/template to create your own playbooks. These playbooks are well organised and documented, describing the modules and parameters with description, and include debug messages, error handling as well as formatted output(pretty printed in JSON format) that describe each and every configuration that is being applied.
+   The playbooks are organised in a directory structure, main playbooks in one folder(playbooks) and the playbook variables in vars folder(playbookvariables). The following is an example playbook for initial ZTP setup along with the associated vars file:
+
+```
+#Fabric creation
+---
+
+
+# This task is to configure initial ZTP setup on all switches.
+# It uses pn_initial_ztp.py module from library/ directory.
+# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+# If the tasks fails then it will retry as specified by retries count.
+- name: Zero Touch Provisioning - Initial setup
+  hosts: all
+  serial: 1
+  become: true
+  become_method: su
+  become_user: root
+
+  vars_files:
+  - cli_vault.yml
+  - ../playbookvariables/vars_fabric_creation.yml
+
+  tasks:
+    - name: Auto accept EULA, Disable STP, enable ports and create/join fabric
+      pn_initial_ztp:
+        pn_cliusername: "{{ USERNAME }}"                              # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ PASSWORD }}"                              # Cli password (value comes from cli_vault.yml).
+        pn_fabric_name: "{{ pn_fabric_name }}"                        # Name of the fabric to create/join.
+        pn_current_switch: "{{ inventory_hostname }}"                 # Name of the switch on which this task is currently getting executed.
+        pn_toggle_40g: "{{ pn_toggle_40g }}"                          # Flag to indicate if 40g ports should be converted to 10g ports or not.
+        pn_inband_ip: "{{ pn_inband_ip }}"                            # Inband ips to be assigned to switches starting with this value. Default: 172.16.0.0/24.
+        pn_fabric_network: "{{ pn_fabric_network }}"                  # Choices: in-band or mgmt.  Default: mgmt
+        pn_fabric_control_network: "{{ pn_fabric_control_network }}"  # Choices: in-band or mgmt.  Default: mgmt
+        pn_static_setup: "{{ pn_static_setup }}"                      # Flag to indicate if static values should be assign to following switch setup params. Default: True.
+        pn_mgmt_ip: "{{ ansible_host }}"                              # Specify MGMT-IP value to be assign if pn_static_setup is True.
+        pn_mgmt_ip_subnet: "{{ pn_mgmt_ip_subnet }}"                  # Specify subnet mask for MGMT-IP value to be assign if pn_static_setup is True.
+        pn_gateway_ip: "{{ pn_gateway_ip }}"                          # Specify GATEWAY-IP value to be assign if pn_static_setup is True.
+        pn_dns_ip: "{{ pn_dns_ip }}"                                  # Specify DNS-IP value to be assign if pn_static_setup is True.
+        pn_dns_secondary_ip: "{{ pn_dns_secondary_ip }}"              # Specify DNS-SECONDARY-IP value to be assign if pn_static_setup is True.
+        pn_domain_name: "{{ pn_domain_name }}"                        # Specify DOMAIN-NAME value to be assign if pn_static_setup is True.
+        pn_ntp_server: "{{ pn_ntp_server }}"                          # Specify NTP-SERVER value to be assign if pn_static_setup is True.
+        pn_web_api: "{{ pn_web_api }}"                                # Flag to enable web api. Default: True
+        pn_stp: "{{ pn_stp }}"                                        # Specify True if you want to enable STP at the end. Default: False.
+
+      register: ztp_out              # Variable to hold/register output of the above tasks.
+      until: ztp_out.failed != true  # If the above code fails it will retry the code
+      retries: 3                     # This is the retries count
+      delay: 3
+      ignore_errors: yes             # Flag to indicate if we should ignore errors if any.
+
+    - debug:
+        var: ztp_out.stdout_lines    # Print stdout_lines of register variable.
+
+    - pause:
+        seconds: 2                   # Pause playbook execution for specified amount of time.
+```
+
+  **and the associated variables file:**
+ 
+```
+---
+#Fabric creation
+
+pn_fabric_name: 'gui-fabric'                      # mandatory, , Name of the fabric to create/join, Fabric Name, text
+pn_toggle_40g: True                               # optional, True:False, Flag to toggle/convert 40g ports to 10g ports, Toggle 40g, boolean
+pn_inband_ip: '172.16.1.0/24'                     # optional, 172.16.0.0/24, Inband ips to be assigned to switches starting with this value, Inband IP, text
+pn_fabric_network: 'mgmt'                         # optional, in-band:mgmt, Select fabric network type, Fabric Network, text
+pn_fabric_control_network: 'mgmt'                 # optional, in-band:mgmt, Select fabric control network, Fabric Control Network, text
+pn_static_setup: False                            # optional, True:False, Flag to indicate if static values should be assigned to following switch setup parameters, Static Setup, boolean
+pn_mgmt_ip_subnet: '16'                           # optional, , Specify subnet mask for mgmt-ip to be assigned to switches, Mgmt IP Subnet, text
+pn_gateway_ip: '10.9.9.0'                         # optional, , Specify gateway-ip to be assigned to switches, Gateway IP, text
+pn_dns_ip: '10.20.41.1'                           # optional, , Specify dns-ip to be assigned to switches, DNS IP, text
+pn_dns_secondary_ip: '10.20.4.1'                  # optional, , Specify dns-secondary-ip to be assigned to switches, DNS Secondary IP, text
+pn_domain_name: 'pluribusnetworks.com'            # optional, , Specify domain-name to be assigned to switches, Domain Name, text
+pn_ntp_server: '0.us.pool.ntp.org'                # optional, , Specify ntp-server value to be assigned to switches, NTP Server, text
+pn_web_api: True                                  # optional, True:False, Flag to enable web api, Web API, boolean
+pn_stp: False                                     # optional, True:False, Flag to enable STP at the end of configuration, STP, boolean 
+```
+ **Key Points** 
+ - The variables file is included under the `vars_files` by specifying its path relative to the playbook. 
+ - The vault file is also included under the `vars_files` by specifying its path relative to the playbook.(Vault file contains sensitive information like passwords.)
+ - Parameters from Vault file are accessed as `"{{ USERNAME }}"` and `"{{ PASSWORD }}"`.
+ - The variables file is also wriiten in YAML format.
+ - Parameters from variables file are accessed as `"{{ pn_fabric_name }}"`.
+ - Inventory or host parameters can be passed as `"{{ inventory_hostname }}"` and `"{{ ansible_host }}"`.
+ - Hostnames from the inventory/hosts file can also be accessed using filters as `"{{ groups['spine'] }}"` and `"{{ groups['leaf'] }}"`. 
+ - Certain modules take a comma separated file(csv file) as a parameter. You can use ansible provided lookup plugin to parse the csv file.
+ 
+ ```
+   ...
+   ...
+  vars_files:
+  - cli_vault.yml
+  - ../playbookvariables/vars_l3_ztp.yml
+  ...
+  ...
+  ...  pn_spine_list: "{{ groups['spine'] }}"  # List of all spine switches mentioned under [spine] grp in hosts file.
+       pn_leaf_list: "{{ groups['leaf'] }}"    # List of all leaf switches mentioned under [leaf] grp in hosts file.
+       pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"
+  ...
+  ...
+  
+ ```
+ 
+ Following is the list of Pluribus playbooks available and their documentation can be accessed [here](/docs/playbook_docs).
  
  - [pn_initial_ztp.yml](ansible/playbooks/pn_initial_ztp.yml)
  - [pn_l2_ztp.yml](ansible/playbooks/pn_l2_ztp.yml)
@@ -180,24 +286,18 @@ Now you can begin working on your branch.
  - [pn_l3_vrrp_ebgp.yml](ansible/playbooks/pn_l3_vrrp_ebgp.yml)
  - [pn_l3_vrrp_ospf.yml](ansible/playbooks/pn_l3_vrrp_ospf.yml)
  - [pn_vflow_create.yml](ansible/playbooks/pn_vflow_create.yml)
- - [pn_vflow_delete.yml](ansible/playbooks/pn_vflow_delete.yml)
  - [pn_vxlan.yml](ansible/playbooks/pn_vxlan.yml)
  - [pn_switch_reset.yml](ansible/playbooks/pn_switch_reset.yml)
  - [pn_vlanshow.yml](ansible/roles/examples/pn_vlanshow.yml)
- - [pn_vlanstatsshow.yml](ansible/roles/examples/pn_vlanstatsshow.yml)
- - [pn_vlanstatssettingsshow.yml](ansible/roles/examples/pn_vlanstatssettingsshow.yml)
  - [pn_vlancreate.yml](ansible/roles/examples/pn_vlancreate.yml)
- - [pn_vlandelete.yml](ansible/roles/examples/pn_vlandelete.yml)
  - [pn_vlagcreate.yml](ansible/roles/examples/pn_vlagcreate.yml)
- - [pn_vlagdelete.yml](ansible/roles/examples/pn_vlagdelete.yml)
  - [pn_clustercreate.yml](ansible/roles/examples/pn_clustecreate.yml)
- - [pn_clusterdelete.yml](ansible/roles/examples/pn_clusterdelete.yml)
 
-[YAML Lint](http://www.yamllint.com/) (online) helps you debug YAML syntax.
+**Tip**:[YAML Lint](http://www.yamllint.com/) (online) helps you debug YAML syntax.
  
  
 # Security
- Netvisor CLI has a one stage authentication process requiring login credentials to use CLI on devices running ONVL. These credentials have to be passed to the Pluribus Ansible modules through playbooks via the parameters `pn_cliusername` and `pn_clipassword`. However it is not a best practice to provide plain-text login credentials for security concerns. These login credentials are not required if root login is enabled on target nodes but this is not recommended unless you have a good reason.
+ Netvisor CLI has a one stage authentication process requiring login credentials to use CLI on devices running ONVL/nvOS. These credentials have to be passed to the Pluribus Ansible modules through playbooks via the parameters `pn_cliusername` and `pn_clipassword`. However it is not a best practice to provide plain-text login credentials for security reasons. These login credentials are not required if root login is enabled on target nodes but this is not recommended unless you have a good reason.
  Ansible Vault to the rescue!
    Ansible vault is a feature of ansible that allows keeping sensitive data such as passwords or keys in encrypted files rather than as plain-text in your playbooks or roles. 
    To enable this feature, a command line tool, `ansible-vault` is used to edit files and a command line flag `--ask-vault-pass` is used. If you have different credentials for different devices, you can encrypt them in `group_vars/` or `host_vars/` inventory variables,  variables loaded by `include_vars` or `vars_files`. 
@@ -241,11 +341,44 @@ PASSWORD: admin
 
   - debug: var=show_output
 ```
-  
- **Running a Playbook with Vault**
-   To run the play book, include the `--ask-vault-pass` flag in the command line.
+ 
+# Running Playbooks
+   Congratulations, You are now ready to run Pluribus-Ansible playbooks! Just kidding, not yet.
+Playbooks can be run using the command `ansible-playbook playbook.yml [options][flags]`. But what are these options and flags?
+Let's see the command with the various options/flags:
 ```
-ansible-playbook playbook.yml --ask-vault-pass
+ $ansible-playbook -i hosts playbook.yml -u pluribus -K --ask-pass --ask-vault-pass -vvv 
 ```
-  
+**Options**:
+ - **`ansible-playbook`** : The command to run ansible playbook.
+ - **`playbook.yml`** : Name of the playbook that you want to run.
+ 
+ **General Options**:
+ - **`-i`** : inventory(host) file. 
+   - The `-i` flag is followed by the hosts file.
+   - Specify the hosts file name  if it is in the same directory as the playbook.
+   - Specify the complete path of the hosts file if it is in a different directory.
+   - If the `-i` flag is not specified, ansible will consider the hosts file located at `/etc/ansible/hosts`.
+ - **`ask-vault-pass`** : ask for vault password when using vault file.
+ - **`-v`** : verbose mode(-vvv for more, -vvvv to enable cnnection debugging)
+ **Connection Options**:
+ - **`-k or --ask-pass`** : (lowercase 'k') ask for connection password.
+   - SSH password.
+   - Can be provided in the hosts file with vault protection.
+   - We recommend setting up SSH key based authentication to avoid using username/password for a more secured connection.  
+ - **`-u`** : remote user(generally SSH user, defaults to root!).
+   - The `-u` flag is followed by the username.
+   - You can specify the username in the hosts file in which case you dont have to provide this flag.
+   - You can also set this in the ansible.cfg file(not recommended).
+   - We recommend setting up SSH key based authentication to avoid using username/password for a more secured connection. 
+ **Privilege Escalation Options**:
+ - **`-b or --become`** : run operations with become. 
+   - We recommend specifying this in the playbook.
+ - **`--become-method=BECOME_METHOD`**: privilege escalation method to use.
+   - Defaults to sudo. Valid choices: **sudo**, **su**, pbrun, pfexec, doas, dzdo, ksu.
+ - **`--become-user=BECOME_USER`** : run operations as this user, defaults to root.
+   - We recommend specifying this in the playbook.
+ - **`-K or --ask-become-pass`** : (uppercase 'K') ask for privilege escalation password.
+
+Use the flags/options based on your requirements to run the playbooks. 
 
