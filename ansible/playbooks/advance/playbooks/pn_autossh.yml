@@ -8,8 +8,8 @@
   hosts: localhost
 
   vars_files:
-    - cli_vault.yml
-    - vars_sshkeys.yml
+    - ../playbookvariables/cli_vault.yml
+    - ../playbookvariables/vars_sshkeys.yml
 
   tasks:
     - name: Generate SSH keys and push them onto switches

@@ -1,3 +1,4 @@
+#Fabric creation
 ---
 
 
@@ -14,7 +15,7 @@
 
   vars_files:
   - cli_vault.yml
-  - vars_fabric_creation.yml
+  - playbook-variable.yml
 
   tasks:
     - name: Auto accept EULA, Disable STP, enable ports and create/join fabric

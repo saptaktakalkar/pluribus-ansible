@@ -20,6 +20,7 @@
 
 from ansible.module_utils.basic import AnsibleModule
 import shlex
+import time
 
 DOCUMENTATION = """
 ---
@@ -226,7 +227,7 @@ def auto_accept_eula(module):
         cli += ' eula-accepted true '
         return run_cli(module, cli)
     elif out:
-        return ' EULA has been accepted already! '
+        return ' EULA has been accepted already '
 
 
 def update_switch_names(module, switch_name):
@@ -259,36 +260,30 @@ def make_switch_setup_static(module):
     dns_secondary_ip = module.params['pn_dns_secondary_ip']
     domain_name = module.params['pn_domain_name']
     ntp_server = module.params['pn_ntp_server']
+    cli = pn_cli(module)
+    cli += ' switch-setup-modify '
 
     if mgmt_ip:
-        cli = pn_cli(module)
         ip = mgmt_ip + '/' + mgmt_ip_subnet
-        cli += ' switch-setup-modify mgmt-ip ' + ip
-        run_cli(module, cli)
+        cli += ' mgmt-ip ' + ip
 
     if gateway_ip:
-        cli = pn_cli(module)
-        cli += ' switch-setup-modify gateway-ip ' + gateway_ip
-        run_cli(module, cli)
+        cli += ' gateway-ip ' + gateway_ip
 
     if dns_ip:
-        cli = pn_cli(module)
-        cli += ' switch-setup-modify dns-ip ' + dns_ip
-        run_cli(module, cli)
+        cli += ' dns-ip ' + dns_ip
 
     if dns_secondary_ip:
-        cli = pn_cli(module)
-        cli += ' switch-setup-modify dns-secondary-ip ' + dns_secondary_ip
-        run_cli(module, cli)
+        cli += ' dns-secondary-ip ' + dns_secondary_ip
 
     if domain_name:
-        cli = pn_cli(module)
-        cli += ' switch-setup-modify domain-name ' + domain_name
-        run_cli(module, cli)
+        cli += ' domain-name ' + domain_name
 
     if ntp_server:
-        cli = pn_cli(module)
-        cli += ' switch-setup-modify ntp-server ' + ntp_server
+        cli += ' ntp-server ' + ntp_server
+
+    clicopy = cli
+    if clicopy.split('switch-setup-modify')[1] != ' ':
         run_cli(module, cli)
 
 
@@ -308,7 +303,7 @@ def modify_stp_local(module, modify_flag):
         cli += ' switch-local stp-modify ' + modify_flag
         return run_cli(module, cli)
     else:
-        return ' STP is already disabled! '
+        return ' Already modified '
 
 
 def configure_control_network(module, network):
@@ -322,12 +317,12 @@ def configure_control_network(module, network):
     cli += ' fabric-info format control-network '
     current_control_network = run_cli(module, cli).split()[1]
 
-    if current_control_network == network:
-        return ' Fabric is already in %s control network ' % network
-    else:
+    if current_control_network != network:
         cli = pn_cli(module)
         cli += ' fabric-local-modify control-network ' + network
         return run_cli(module, cli)
+    else:
+        return ' Already configured '
 
 
 def enable_ports(module):
@@ -337,10 +332,11 @@ def enable_ports(module):
     :return: The output of run_cli() method.
     """
     cli = pn_cli(module)
+    clicopy = cli
     cli += ' port-config-show format port no-show-headers '
     out = run_cli(module, cli)
 
-    cli = pn_cli(module)
+    cli = clicopy
     cli += ' port-config-show format port speed 40g no-show-headers '
     out_40g = run_cli(module, cli)
     out_remove10g = []
@@ -360,7 +356,7 @@ def enable_ports(module):
         out = list(out)
         if out:
             ports = ','.join(out)
-            cli = pn_cli(module)
+            cli = clicopy
             cli += ' port-config-modify port %s enable ' % ports
             return run_cli(module, cli)
     else:
@@ -380,9 +376,9 @@ def create_or_join_fabric(module, fabric_name, fabric_network):
     clicopy = cli
 
     cli += ' fabric-show format name no-show-headers '
-    fabrics_names = run_cli(module, cli).split()
+    existing_fabrics = run_cli(module, cli).split()
 
-    if fabric_name not in fabrics_names:
+    if fabric_name not in existing_fabrics:
         cli = clicopy
         cli += ' fabric-create name ' + fabric_name
         cli += ' fabric-network ' + fabric_network
@@ -397,7 +393,7 @@ def create_or_join_fabric(module, fabric_name, fabric_network):
             cli += ' fabric-join name ' + fabric_name
         elif out:
             present_fabric_name = out.split()
-            if present_fabric_name[1] not in fabrics_names:
+            if present_fabric_name[1] not in existing_fabrics:
                 cli = clicopy
                 cli += ' fabric-join name ' + fabric_name
             else:
@@ -437,26 +433,36 @@ def toggle_40g_local(module):
         ports_to_modify = list(set(ports_40g) - set(local_ports))
 
         for port in ports_to_modify:
-            end_port = int(port) + 4
-            range_port = port + '-' + str(end_port)
-
+            next_port = str(int(port) + 1)
             cli = clicopy
-            cli += ' switch-local port-config-modify port %s ' % range_port
-            cli += ' speed disable '
-            output += 'port range_port ' + range_port + ' disabled'
-            output += run_cli(module, cli)
+            cli += ' switch-local'
+            cli += ' port-show port %s format bezel-port' % next_port
+            cli += ' no-show-headers'
+            bezel_port = run_cli(module, cli).split()[0]
 
-            cli = clicopy
-            cli += ' switch-local port-config-modify port %s ' % range_port
-            cli += ' speed 10g '
-            output += 'port range_port ' + range_port + ' 10g converted'
-            output += run_cli(module, cli)
+            if '.2' in bezel_port:
+                end_port = int(port) + 3
+                range_port = port + '-' + str(end_port)
+    
+                cli = clicopy
+                cli += ' switch-local port-config-modify port %s ' % port
+                cli += ' disable '
+                output += 'port ' + port + ' disabled'
+                output += run_cli(module, cli)
+    
+                cli = clicopy
+                cli += ' switch-local port-config-modify port %s ' % port
+                cli += ' speed 10g '
+                output += 'port ' + port + ' converted to 10g'
+                output += run_cli(module, cli)
+    
+                cli = clicopy
+                cli += ' switch-local port-config-modify port %s ' % range_port
+                cli += ' enable '
+                output += 'port range_port ' + range_port + '  enabled'
+                output += run_cli(module, cli)
 
-            cli = clicopy
-            cli += ' switch-local port-config-modify port %s ' % range_port
-            cli += ' enable '
-            output += 'port range_port ' + range_port + '  enabled'
-            output += run_cli(module, cli)
+        time.sleep(10)
 
     return output
 
@@ -493,6 +499,8 @@ def assign_inband_ip(module, inband_address):
             # If ip is not unique, increase the ip count by 1.
             ip_count += 1
             ip = static_part + str(ip_count) + '/' + subnet
+            if ip in existing_inband_ip:
+                return None
 
         # Assign unique in-band ip to the switch.
         cli = clicopy
@@ -544,19 +552,15 @@ def main():
     CHANGED_FLAG = []
 
     # Auto accept EULA
-    eula_out_msg = auto_accept_eula(module)
-    if 'Setup completed successfully' in eula_out_msg:
-        message += ' EULA accepted on %s! ' % current_switch
+    if 'Setup completed successfully' in auto_accept_eula(module):
+        message += ' %s: EULA accepted \n' % current_switch
         CHANGED_FLAG.append(True)
     else:
-        message += eula_out_msg
-        CHANGED_FLAG.append(False)
+        message += ' %s: EULA has already been accepted \n' % current_switch
 
     # Update switch names to match host names from hosts file
     if 'Updated' in update_switch_names(module, current_switch):
         CHANGED_FLAG.append(True)
-    else:
-        CHANGED_FLAG.append(False)
 
     # Make switch setup static
     if module.params['pn_static_setup']:
@@ -565,71 +569,61 @@ def main():
     # Create/join fabric
     if 'already in the fabric' in create_or_join_fabric(module, fabric_name,
                                                         fabric_network):
-        message += ' %s is already in fabric %s! ' % (current_switch,
-                                                      fabric_name)
-        CHANGED_FLAG.append(False)
+        message += ' %s: Already a part of fabric %s \n' % (current_switch,
+                                                            fabric_name)
     else:
-        message += ' %s has joined fabric %s! ' % (current_switch,
-                                                   fabric_name)
+        message += ' %s: Joined fabric %s \n' % (current_switch,
+                                                 fabric_name)
         CHANGED_FLAG.append(True)
 
     # Configure fabric control network to either mgmt or in-band
-    net_out_msg = configure_control_network(module, control_network)
-    if 'Success' in net_out_msg:
-        message += ' Configured fabric control network to %s on %s! ' % (
-            control_network, current_switch)
+    if 'Success' in configure_control_network(module, control_network):
+        message += ' %s: Configured fabric control network to %s \n' % (
+            current_switch, control_network)
         CHANGED_FLAG.append(True)
     else:
-        message += net_out_msg
-        CHANGED_FLAG.append(False)
+        message += ' %s: Fabric is already in %s control network \n' % (
+            current_switch, control_network)
 
     # Enable web api if flag is True
     if module.params['pn_web_api']:
         enable_web_api(module)
 
     # Disable STP
-    stp_out_msg = modify_stp_local(module, 'disable')
-    if 'Success' in stp_out_msg:
-        message += ' STP disabled on %s! ' % current_switch
+    if 'Success' in modify_stp_local(module, 'disable'):
+        message += ' %s: STP disabled \n' % current_switch
         CHANGED_FLAG.append(True)
     else:
-        message += stp_out_msg
-        CHANGED_FLAG.append(False)
+        message += ' %s: STP is already disabled \n' % current_switch
 
     # Enable ports
-    ports_out_msg = enable_ports(module)
-    if 'Success' in ports_out_msg:
-        message += ' Ports enabled on %s! ' % current_switch
+    if 'Success' in enable_ports(module):
+        message += ' %s: Ports enabled \n' % current_switch
         CHANGED_FLAG.append(True)
     else:
-        message += ports_out_msg
-        CHANGED_FLAG.append(False)
+        message += ' %s: Ports are already enabled \n' % current_switch
 
     # Toggle 40g ports to 10g
     if toggle_40g_flag:
         if toggle_40g_local(module):
-            message += ' Toggled 40G ports to 10G on %s! ' % current_switch
+            message += ' %s: Toggled 40G ports to 10G \n' % current_switch
             CHANGED_FLAG.append(True)
-        else:
-            CHANGED_FLAG.append(False)
 
     # Assign in-band ips.
     ip = assign_inband_ip(module, module.params['pn_inband_ip'])
     if ip is not None:
-        message += ' Assigned in-band ip %s to %s! ' % (ip, current_switch)
+        message += ' %s: Assigned in-band ip %s \n' % (current_switch, ip)
     else:
-        message += ' In-band ip %s has already been assigned to %s! ' % (
-            ip, current_switch)
+        message += ' %s: In-band ip has already been assigned \n' % (
+            current_switch)
 
     # Enable STP if flag is True
     if module.params['pn_stp']:
-        stp_out_msg = modify_stp_local(module, 'enable')
-        if 'Success' in stp_out_msg:
-            message += ' STP enabled on %s! ' % current_switch
+        if 'Success' in modify_stp_local(module, 'enable'):
+            message += ' %s: STP enabled \n' % current_switch
             CHANGED_FLAG.append(True)
         else:
-            message += stp_out_msg
-            CHANGED_FLAG.append(False)
+            message += ' %s: STP is already enabled \n' % current_switch
 
     # Exit the module and return the required JSON
     module.exit_json(

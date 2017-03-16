@@ -5,7 +5,7 @@
   hosts: all
 
   vars_files:
-  - cli_vault.yml
+  - ../playbookvariables/cli_vault.yml
 
   tasks:
     - name: Reset all switches

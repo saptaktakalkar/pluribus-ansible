@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI VRRP L3 """
+""" PN CLI VRRP L3 with third party switches"""
 
 #
 # This file is part of Ansible
@@ -23,10 +23,13 @@ import shlex
 
 DOCUMENTATION = """
 ---
-module: pn_ztp_vrrp_l3
+module: pn_ztp_vrrp_l3_thirdparty
 author: 'Pluribus Networks (devops@pluribusnetworks.com)'
 short_description: CLI command to configure VRRP - Layer 3 Setup
-description: Virtual Router Redundancy Protocol (VRRP) - Layer 3 Setup
+description: 
+    Virtual Router Redundancy Protocol (VRRP) - Layer 3 Setup. It
+    will configure vrrp on all leaf switches, with spines being 
+    third party (non PN) switches.
 options:
     pn_cliusername:
         description:
@@ -38,11 +41,6 @@ options:
         - Provide login password if user is not root.
       required: False
       type: str
-    pn_spine_list:
-      description:
-        - Specify list of Spine hosts
-      required: False
-      type: list
     pn_leaf_list:
       description:
         - Specify list of leaf hosts
@@ -57,10 +55,9 @@ options:
 
 EXAMPLES = """
     - name: VRRP L3 setup
-      pn_ztp_vrrp_l3:
+      pn_ztp_vrrp_l3_thirdparty:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_spine_list: "{{ groups['spine'] }}"
         pn_leaf_list: "{{ groups['leaf'] }}"
         pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"
 """
@@ -169,19 +166,24 @@ def create_vlan(module, vlan_id, switch):
         )
 
 
-def create_vrouter(module, switch, vrrp_id, vnet_name):
+def create_vrouter(module, switch, vrrp_id):
     """
     Method to create vrouter and assign vrrp_id to the switches.
     :param module: The Ansible module to fetch input parameters.
     :param switch: The switch name on which vrouter will be created.
     :param vrrp_id: The vrrp_id to be assigned.
-    :param vnet_name: The name of the vnet for vrouter creation.
     :return: String describing if vrouter got created or if it already exists.
     """
     global CHANGED_FLAG
     output = ''
     vrouter_name = str(switch) + '-vrouter'
     cli = pn_cli(module)
+    clicopy = cli
+    cli += ' fabric-node-show format fab-name no-show-headers '
+    fabric_name = list(set(run_cli(module, cli).split()))[0]
+    vnet_name = str(fabric_name) + '-global'
+
+    cli = clicopy
     cli += ' switch ' + switch
     clicopy = cli
 
@@ -195,7 +197,8 @@ def create_vrouter(module, switch, vrrp_id, vnet_name):
         cli += ' vrouter-create name %s vnet %s hw-vrrp-id %s enable ' % (
             vrouter_name, vnet_name, vrrp_id)
         run_cli(module, cli)
-        output = ' %s: Created vrouter with name %s \n' % (switch, vrouter_name)
+        output += ' %s: Created vrouter with name %s \n' % (switch,
+                                                            vrouter_name)
         CHANGED_FLAG.append(True)
     else:
         cli = clicopy
@@ -324,17 +327,21 @@ def create_cluster(module, switch, name, node1, node2):
         return ' %s: %s already exists \n' % (switch, name)
 
 
-def create_vrouter_without_vrrp(module, switch, vnet_name):
+def create_vrouter_without_vrrp(module, switch):
     """
     Method to create vrouter without assigning vrrp id to it.
     :param module: The Ansible module to fetch input parameters.
     :param switch: The switch name on which vrouter will be created.
-    :param vnet_name: The name of the vnet for vrouter creation.
     :return: String describing if vrouter got created or if it already exists.
     """
     global CHANGED_FLAG
     vrouter_name = str(switch) + '-vrouter'
     cli = pn_cli(module)
+    clicopy = cli
+    cli += ' fabric-node-show format fab-name no-show-headers '
+    fabric_name = list(set(run_cli(module, cli).split()))[0]
+    vnet_name = str(fabric_name) + '-global'
+    cli = clicopy
     cli += ' switch ' + switch
     clicopy = cli
 
@@ -384,7 +391,6 @@ def configure_vrrp_for_non_cluster_leafs(module, ip, non_cluster_leaf, vlan_id):
 
     if vrouter_name not in existing_vrouter:
         cli = clicopy
-        cli += 'switch ' + non_cluster_leaf
         cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
         cli += ' vlan ' + vlan_id
         cli += ' ip ' + ip_gateway
@@ -420,10 +426,8 @@ def configure_vrrp_for_clustered_switches(module, vrrp_id, vrrp_ip,
     output = create_cluster(module, node2, name, node1, node2)
     output += create_vlan(module, vlan_id, node2)
 
-    vnet_name = get_global_vnet_name(module)
-
     for switch in switch_list:
-        output += create_vrouter(module, switch, vrrp_id, vnet_name)
+        output += create_vrouter(module, switch, vrrp_id)
 
     for switch in switch_list:
         host_count += 1
@@ -445,8 +449,7 @@ def configure_vrrp_for_non_clustered_switches(module, vlan_id, ip,
     :param non_cluster_leaf: Name of non-clustered leaf switch.
     :return: Output string of configuration.
     """
-    vnet_name = get_global_vnet_name(module)
-    output = create_vrouter_without_vrrp(module, non_cluster_leaf, vnet_name)
+    output = create_vrouter_without_vrrp(module, non_cluster_leaf)
     output += create_vlan(module, vlan_id, non_cluster_leaf)
     output += configure_vrrp_for_non_cluster_leafs(module, ip,
                                                    non_cluster_leaf, vlan_id)
@@ -461,9 +464,6 @@ def configure_vrrp(module, csv_data):
     :return: Output string of configuration.
     """
     output = ''
-    vnet_name = get_global_vnet_name(module)
-    for switch in module.params['pn_spine_list']:
-        output += create_vrouter_without_vrrp(module, switch, vnet_name)
 
     csv_data = csv_data.replace(" ", "")
     csv_data_list = csv_data.split('\n')
@@ -494,25 +494,12 @@ def configure_vrrp(module, csv_data):
     return output
 
 
-def get_global_vnet_name(module):
-    """
-    Method to get global vnet name, required for vrouters creation.
-    :param module: The Ansible module to fetch input parameters.
-    :return: Global vnet name.
-    """
-    cli = pn_cli(module)
-    cli += ' fabric-node-show format fab-name no-show-headers '
-    fabric_name = list(set(run_cli(module, cli).split()))[0]
-    return str(fabric_name) + '-global'
-
-
 def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_spine_list=dict(required=False, type='list'),
             pn_leaf_list=dict(required=False, type='list'),
             pn_csv_data=dict(required=True, type='str'),
         )

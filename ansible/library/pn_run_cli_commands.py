@@ -24,7 +24,7 @@ import re
 DOCUMENTATION = """
 ---
 module: pn_run_cli_commands
-author: "Pluribus Networks (@gauravbajaj)"
+author: "Pluribus Networks (devops@pluribusnetworks.com)"
 version: 1
 short_description: Module to execute commands from a csv file.
 description:

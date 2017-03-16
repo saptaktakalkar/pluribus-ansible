@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" Tests for ZTP L3 """
+""" Tests for L2 ZTP with 3rd party switches """
 
 #
 # This file is part of Ansible
@@ -23,9 +23,9 @@ import shlex
 
 DOCUMENTATION = """
 ---
-module: pn_test_ztp_l3
+module: pn_test_l2_ztp_third_party
 author: "Pluribus Networks (devops@pluribusnetworks.com)"
-short_description: Tests for ZTP L3.
+short_description: Tests for L2 ZTP with third party switches.
 options:
     pn_cliusername:
         description:
@@ -37,11 +37,6 @@ options:
         - Provide login password if user is not root.
       required: False
       type: str
-    pn_spine_count:
-      description:
-        - Number of spine switches.
-      required: False
-      type: int
     pn_leaf_count:
       description:
         - Number of leaf switches.
@@ -50,11 +45,10 @@ options:
 """
 
 EXAMPLES = """
-- name: Test Layer3 Zero Touch Provisioning
-  pn_test_ztp_l3:
+- name: Test Layer2 Zero Touch Provisioning with 3rd party switches
+  pn_test_l2_ztp_third_party:
   pn_cliusername: "{{ USERNAME }}"
   pn_clipassword: "{{ PASSWORD }}"
-  pn_spine_count: "{{ spine_count }}"
   pn_leaf_count: "{{ leaf_count }}"
 """
 
@@ -118,8 +112,7 @@ def test_fabric_creation(module):
     :param module: The Ansible module to fetch input parameters.
     :return: Output of run_cli() method.
     """
-    switch_count = module.params['pn_spine_count'] + module.params[
-        'pn_leaf_count']
+    switch_count = module.params['pn_leaf_count']
     find_str = 'Count: ' + str(switch_count)
     cli = pn_cli(module)
     cli += ' fabric-node-show count-output '
@@ -137,43 +130,37 @@ def test_fabric_control_network(module):
     return run_cli(module, cli, 'mgmt', 'Configure fabric control network')
 
 
-def test_vrouter_creation(module):
+def test_cluster_creation(module):
     """
-    Test vrouters creation.
-    :param module: The Ansible module to fetch input parameters.
-    :return: Output of run_cli() method.
-    """
-    switch_count = module.params['pn_spine_count'] + module.params[
-        'pn_leaf_count']
-    find_str = 'Count: ' + str(switch_count)
-    cli = pn_cli(module)
-    cli += ' vrouter-show count-output '
-    return run_cli(module, cli, find_str, 'Vrouters creation')
-
-
-def test_vrouter_interface_creation(module):
-    """
-    Test vrouters interface creation.
+    Test cluster creation.
     :param module: The Ansible module to fetch input parameters.
     :return: Output of run_cli() method.
     """
     cli = pn_cli(module)
-    cli += ' vrouter-interface-show count-output '
-    return run_cli(module, cli, 'Count:', 'Vrouter interfaces creation')
+    cli += ' cluster-show count-output '
+    return run_cli(module, cli, 'Count:', 'Cluster creation')
 
 
-def test_loopback_interface_addition(module):
+def test_trunk_creation(module):
     """
-    Test loopback interface addition to vrouters.
+    Test trunk creation.
     :param module: The Ansible module to fetch input parameters.
     :return: Output of run_cli() method.
     """
-    switch_count = module.params['pn_spine_count'] + module.params[
-        'pn_leaf_count']
-    find_str = 'Count: ' + str(switch_count)
     cli = pn_cli(module)
-    cli += ' vrouter-loopback-interface-show count-output '
-    return run_cli(module, cli, find_str, 'Loopback interface addition')
+    cli += ' trunk-show count-output '
+    return run_cli(module, cli, 'Count:', 'Trunk creation')
+
+
+def test_vlag_creation(module):
+    """
+    Test vlags creation.
+    :param module: The Ansible module to fetch input parameters.
+    :return: Output of run_cli() method.
+    """
+    cli = pn_cli(module)
+    cli += ' vlag-show count-output '
+    return run_cli(module, cli, 'Count:', 'vLags creation')
 
 
 def main():
@@ -182,16 +169,15 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_spine_count=dict(required=False, type='int'),
             pn_leaf_count=dict(required=False, type='int'),
         )
     )
 
     msg = test_fabric_creation(module)
     msg += test_fabric_control_network(module)
-    msg += test_vrouter_creation(module)
-    msg += test_vrouter_interface_creation(module)
-    msg += test_loopback_interface_addition(module)
+    msg += test_cluster_creation(module)
+    msg += test_trunk_creation(module)
+    msg += test_vlag_creation(module)
 
     module.exit_json(
         stdout=msg,

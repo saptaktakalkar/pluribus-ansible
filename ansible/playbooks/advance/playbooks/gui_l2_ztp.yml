@@ -1,3 +1,4 @@
+#L2 ZTP
 ---
 
 
@@ -13,7 +14,7 @@
 
   vars_files:
   - cli_vault.yml
-  - vars_l2_ztp.yml
+  - playbook-variable.yml
 
   tasks:
     - name: Configure auto vlag

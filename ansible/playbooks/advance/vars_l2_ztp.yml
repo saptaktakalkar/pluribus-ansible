@@ -1,7 +1,0 @@
----
-
-### Variables for L2 ZTP setup. ###
-
-# These are optional since default value exists for them.
-pn_update_fabric_to_inband: False     # Flag to indicate if fabric network should be updated to in-band. Default: False.
-pn_stp: True                          # Specify True if you want to enable STP at the end. Default: False.
