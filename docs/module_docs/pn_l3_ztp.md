@@ -77,16 +77,9 @@
         # pn_stp: True                          # Flag to enable STP. Default: True.
 
       register: ztp_l3_out                      # Variable to hold/register output of the above tasks.
-      until:  ztp_l3_out.failed != true         # If error pops up it will retry the code
-      retries: 3                                # This is the retries count
-      delay: 1
-      ignore_errors: yes                        # Flag to indicate if we should ignore errors if any.
 
     - debug:
         var: ztp_l3_out.stdout_lines            # Print stdout_lines of register variable.
-
-    - pause:
-        seconds: 2                              # Pause playbook execution for specified amount of time.
   
 ```
 
