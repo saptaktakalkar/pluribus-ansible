@@ -37,8 +37,8 @@
 | pn_dns\_secondary\_ip | no(\*) |  | str | | Specify the Secondary DNS IP to be assigned if pn_static\_setup is True. |
 | pn_domain\_name | no(\*) |  | str | | Specify the domain name to be assigned if pn_static\_setup is True. |
 | pn_ntp\_server | no(\*) | | str | | Specify the NTP server to be assigned if pn_static\_setup is True. |
-| pn_web\_api | no(\*) | True | bool | | Flag to enable web api. |
-| pn_stp | no(\*) | False | bool | | Flag to enable STP at the end. |
+| pn_web\_api | no | True | bool | | Flag to enable web api. |
+| pn_stp | no | False | bool | | Flag to enable STP at the end. |
 
 
 
