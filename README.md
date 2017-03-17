@@ -13,6 +13,7 @@
   + [Security](#security)
   + [Setup Key Based Authentication](#setup-key-based-authentication)
   + [Running Playbooks](#running-playbooks)
+  + [Troubleshooting Utilities!](#troubleshooting-utilities)
   
 # Ansible
  Ansible is an open source IT automation tool for configuration management, provisioning and application deployment. Ansible is agentless and does not require a software agent to be installed on the target nodes. It uses SSH for secured communication with the target nodes. The Pluribus Networks Ansible library provides support for using Ansible to deploy, configure and manage devices running Netvisor OS. This repository contains modules developed for Netvisor OS CLI to perform specific tasks on devices running Netvisor OS. These modules run CLI commands for installing Netvisor OS, configuring, retrieving information/device statistics, modifying configuration settings on the target nodes. 
@@ -397,7 +398,7 @@ Let's see the command with the various options/flags:
    - Specify the complete path of the hosts file if it is in a different directory.
    - If the `-i` flag is not specified, ansible will consider the hosts file located at `/etc/ansible/hosts`.
  - **`ask-vault-pass`** : ask for vault password when using vault file.
- - **`-v`** : verbose mode(-vvv for more, -vvvv to enable cnnection debugging).
+ - **`-v`** : verbose mode(-vv recommended, -vvv for more, -vvvv to enable cnnection debugging).
  
  **Connection Options**:
  - **`-k or --ask-pass`** : (lowercase 'k') ask for connection password.
@@ -421,3 +422,49 @@ Let's see the command with the various options/flags:
 
 Use the flags/options based on your requirements to run the playbooks. 
 
+# Troubleshooting Utilities
+  In this section, we describe certain linux utilities that can come in handy while troubleshooting for issues.
+  
+  **Playbook Logs**
+  
+  The only way to check the output of the ansible playbook is to use `register` and `debug` modules in playbooks to capture output from the modules. This is because ansible requires module output in JSON format and does not support print statements in module. It is therefore recommended to have some level of verbosity flags while running the playbooks. 
+  You can also log the output of the playbook in a log file for later inspection. There are many ways to capture output into log files. Two of them are discussed here:
+
+   - `I/O redirection` : Most command line programs that display their results do so by sending their results to standard output. By default, standard output directs its contents to the display. To redirect standard output to a file(overwrite), the `>` character is used.
+  
+```
+  $ ansible-playbook -i hosts playbook.yml -u pluribus -K --ask-pass --ask-vault-pass > playbookoutput.log
+```
+  or you can use `>>` to append to a file:
+
+```
+  $ ansible-playbook -i hosts playbook.yml -u pluribus -K --ask-pass --ask-vault-pass >> playbookoutput.log
+```
+
+   - `tee` : The I/O redirection only redirects the output to a file, it does not display the output on the screen. Tee command is used to save and view (both at the same time) the output of any command. Tee command writes to the STDOUT, and to a file at a time(`-a` for append):
+  
+```
+  $ ansible-playbook -i hosts playbook.yml -u pluribus -K --ask-pass --ask-vault-pass | tee -a playbookoutput.log  
+```
+  
+  **Execution Time**
+  
+  You can also time the execution of the playbook by using the linux `time` utility.
+
+```
+  $ time ansible-playbook -i hosts playbook.yml -u pluribus -K --ask-pass --ask-vault-pass | tee -a playbookoutput.log
+```
+ 
+ This will give the time it took for the playbook to run. 
+ 
+ ```
+  real	47m17.075s
+  user	6m33.070s
+  sys	0m57.437s
+ ```
+  
+  
+  
+  
+  
+  
