@@ -422,7 +422,8 @@ Let's see the command with the various options/flags:
  - **`--become-user=BECOME_USER`** : run operations as this user, defaults to root.
    - We recommend specifying this in the playbook.
  - **`-K or --ask-become-pass`** : (uppercase 'K') ask for privilege escalation password.
-
+   - We recommend specifying this in the hosts file, with vault encryption.
+   
 Use the flags/options based on your requirements to run the playbooks. 
 
 # Troubleshooting Utilities
