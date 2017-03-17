@@ -193,6 +193,7 @@ def find_dict_bgp_as(module):
     leaf_list = module.params['pn_leaf_list']
     spine_list = module.params['pn_spine_list']
     bgp_as = int(module.params['pn_bgp_as_range'])
+    cluster_leaf_list = []
     cli = pn_cli(module)
     clicopy = cli
     dict_bgp_as = {}
@@ -215,10 +216,11 @@ def find_dict_bgp_as(module):
                 bgp_as += 1
                 dict_bgp_as[cluster_nodes[0]] = str(bgp_as)
                 dict_bgp_as[cluster_nodes[1]] = str(bgp_as)
-                leaf_list.remove(cluster_nodes[0])
-                leaf_list.remove(cluster_nodes[1])
+                cluster_leaf_list.append(cluster_nodes[0])
+                cluster_leaf_list.append(cluster_nodes[1])
 
-    for leaf in leaf_list:
+    noncluster_leaf_list = list(set(leaf_list) - set(cluster_leaf_list))
+    for leaf in noncluster_leaf_list:
         bgp_as += 1
         dict_bgp_as[leaf] = str(bgp_as)
 
@@ -738,6 +740,7 @@ def dict_area_id_leaf(module):
     """
     leaf_list = module.params['pn_leaf_list']
     ospf_area_id = int(module.params['pn_ospf_area_id'])
+    cluster_leaf_list = []
     cli = pn_cli(module)
     clicopy = cli
     dict_area_id = {}
@@ -752,15 +755,16 @@ def dict_area_id_leaf(module):
             cli += ' cluster-show name %s' % cluster
             cli += ' format cluster-node-1,cluster-node-2 no-show-headers'
             cluster_nodes = run_cli(module, cli).split()
-    
+
             if cluster_nodes[0] in leaf_list and cluster_nodes[1] in leaf_list:
                 ospf_area_id += 1
                 dict_area_id[cluster_nodes[0]] = str(ospf_area_id)
                 dict_area_id[cluster_nodes[1]] = str(ospf_area_id)
-                leaf_list.remove(cluster_nodes[0])
-                leaf_list.remove(cluster_nodes[1])
+                cluster_leaf_list.append(cluster_nodes[0])
+                cluster_leaf_list.append(cluster_nodes[1])
 
-    for leaf in leaf_list:
+    noncluster_leaf_list = list(set(leaf_list) - set(cluster_leaf_list))
+    for leaf in noncluster_leaf_list:
         ospf_area_id += 1
         dict_area_id[leaf] = str(ospf_area_id)
 

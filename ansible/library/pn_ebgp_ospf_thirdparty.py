@@ -185,91 +185,56 @@ def run_cli(module, cli):
         return 'Success'
 
 
-def assign_bgp_as(module, bgp_spine):
+def find_dict_bgp_as(module):
     """
-    Method to assign bgp_as to vrouters.
+    Method to find bgp-as for all switches and store in dictionary.
     :param module: The Ansible module to fetch input parameters.
-    :param bgp_spine: The user_input for the bgp_as to be assigned.
-    :return: String describing if bgp_as got added to vrouters or not.
+    :return: Dictionary containing area_id of all leaf.
     """
-    global CHANGED_FLAG
-    output = ''
-    bgp_leaf = int(bgp_spine) + 1
     leaf_list = module.params['pn_leaf_list']
-    modified_vrouters = []
-
+    bgp_as = int(module.params['pn_bgp_as_range'])
+    cluster_leaf_list = []
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' vrouter-show format name no-show-headers '
-    vrouter_names = run_cli(module, cli).split()
+    dict_bgp_as = {}
 
-    if len(vrouter_names) > 0:
-        for vrouter in vrouter_names:
+    f = open('output1.txt', 'a')
+    f.write('%s' % leaf_list)
+    f.close()
+    cli += ' cluster-show format name no-show-headers'
+    cluster_list = run_cli(module, cli).split()
+
+    if 'Success' not in cluster_list:
+        for cluster in cluster_list:
+
             cli = clicopy
-            cli += ' vrouter-show name ' + vrouter
-            cli += ' format location no-show-headers '
-            switch_name = run_cli(module, cli).split()[0]
+            cli += ' cluster-show name %s' % cluster
+            cli += ' format cluster-node-1,cluster-node-2 no-show-headers'
+            cluster_nodes = run_cli(module, cli).split()
 
-            if switch_name in leaf_list and vrouter not in modified_vrouters:
-                cli = clicopy
-                cli += ' vrouter-modify name %s bgp-as %s ' % (vrouter,
-                                                               str(bgp_leaf))
+            if cluster_nodes[0] in leaf_list and cluster_nodes[1] in leaf_list:
+                bgp_as += 1
+                dict_bgp_as[cluster_nodes[0]] = str(bgp_as)
+                dict_bgp_as[cluster_nodes[1]] = str(bgp_as)
+                cluster_leaf_list.append(cluster_nodes[0])
+                cluster_leaf_list.append(cluster_nodes[1])
 
-                if 'Success' in run_cli(module, cli):
-                    output += ' %s: Added %s BGP_AS to %s \n' % (switch_name,
-                                                                 str(bgp_leaf),
-                                                                 vrouter)
-                    CHANGED_FLAG.append(True)
-                    modified_vrouters.append(vrouter)
+    noncluster_leaf_list = list(set(leaf_list) - set(cluster_leaf_list))
+    for leaf in noncluster_leaf_list:
+        bgp_as += 1
+        dict_bgp_as[leaf] = str(bgp_as)
 
-                cli = clicopy
-                cli += ' cluster-show format name no-show-headers '
-                cluster_list = run_cli(module, cli).split()
-                for cluster in cluster_list:
-                    if str(switch_name) in str(cluster):
-                        cli = clicopy
-                        cli += ' cluster-show cluster-node-1 ' + switch_name
-                        cli += ' format cluster-node-2 no-show-headers '
-                        cluster_node_2 = run_cli(module, cli).split()[0]
-
-                        cli = clicopy
-                        cli += ' cluster-show cluster-node-2 ' + switch_name
-                        cli += ' format cluster-node-1 no-show-headers '
-                        cluster_node_1 = run_cli(module, cli).split()[0]
-
-                        if 'Success' in cluster_node_2:
-                            vrouter_name = str(cluster_node_1) + '-vrouter'
-                            switch = cluster_node_1
-                        else:
-                            vrouter_name = str(cluster_node_2) + '-vrouter'
-                            switch = cluster_node_2
-
-                        cli = clicopy
-                        cli += ' vrouter-modify name %s bgp-as %s ' % (
-                            vrouter_name, str(bgp_leaf))
-
-                        if 'Success' in run_cli(module, cli):
-                            output += ' %s: Added %s BGP_AS to %s \n' % (
-                                switch, str(bgp_leaf), vrouter_name
-                            )
-                            CHANGED_FLAG.append(True)
-                            modified_vrouters.append(vrouter_name)
-
-                bgp_leaf += 1
-
-    else:
-        output += ' No vrouters present/created \n'
-
-    return output
+    return dict_bgp_as
 
 
-def vrouter_interface_ibgp_add(module, switch_name, interface_ip, neighbor_ip):
+def vrouter_interface_ibgp_add(module, switch_name, interface_ip, neighbor_ip, remote_as):
     """
     Method to create interfaces and add ibgp neighbors.
     :param module: The Ansible module to fetch input parameters.
     :param switch_name: The name of the switch to run interface.
     :param interface_ip: Interface ip to create a vrouter interface.
     :param neighbor_ip: Neighbor_ip for the ibgp neighbor.
+    :param  remote_as: Bgp-as for remote switch.
     :return: String describing if ibgp neighbours got added or already exists.
     """
     global CHANGED_FLAG
@@ -294,10 +259,6 @@ def vrouter_interface_ibgp_add(module, switch_name, interface_ip, neighbor_ip):
     cli += ' vrouter-show location %s format name' % switch_name
     cli += ' no-show-headers'
     vrouter = run_cli(module, cli).split()[0]
-
-    cli = clicopy
-    cli += ' vrouter-show name %s format bgp-as no-show-headers ' % vrouter
-    remote_as = run_cli(module, cli).split()[0]
 
     cli = clicopy
     cli += ' vrouter-interface-show ip %s vlan %s' % (interface_ip, vlan_id)
@@ -345,10 +306,11 @@ def vrouter_interface_ibgp_add(module, switch_name, interface_ip, neighbor_ip):
     return output
 
 
-def assign_ibgp_interface(module):
+def assign_ibgp_interface(module, dict_bgp_as):
     """
     Method to create interfaces and add ibgp neighbors.
     :param module: The Ansible module to fetch input parameters.
+    :param dict_bgp_as: The dictionary containing bgp-as of all switches.
     :return: The output of vrouter_interface_ibgp_add() method.
     """
     output = ''
@@ -384,10 +346,11 @@ def assign_ibgp_interface(module):
                 cli += ' no-show-headers'
                 cluster_node_2 = run_cli(module, cli).split()[0]
 
+                remote_as = dict_bgp_as[cluster_node_1]
                 output += vrouter_interface_ibgp_add(module, cluster_node_1,
-                                                     ip1, ip2)
+                                                     ip1, ip2, remote_as)
                 output += vrouter_interface_ibgp_add(module, cluster_node_2,
-                                                     ip2, ip1)
+                                                     ip2, ip1, remote_as)
 
                 subnet_count += 1
     else:
@@ -410,6 +373,9 @@ def add_bgp_neighbor(module):
 
     for leaf in module.params['pn_leaf_list']:
         weight_allowas_flag = 0
+        f = open('output.txt', 'a')
+        f.write('%s' % leaf)
+        f.close()
 
         cli = clicopy
         cli += ' vrouter-show location %s ' % leaf
@@ -423,6 +389,10 @@ def add_bgp_neighbor(module):
             if leaf in cluster:
                 weight_allowas_flag = 1
                 break
+
+        f = open('output.txt', 'a')
+        f.write('%s' % leaf)
+        f.close()
 
         cli = clicopy
         cli += ' vrouter-interface-show vrouter-name %s ' % vrouter
@@ -483,18 +453,17 @@ def add_bgp_neighbor(module):
     return output
 
 
-def assign_router_id(module):
+def assign_router_id(module, vrouter_names):
     """
     Method to assign router-id to vrouters which is same as loopback ip.
     :param module: The Ansible module to fetch input parameters.
+    :param vrouter_names: List of vrouter names.
     :return: String describing if router id got assigned or not.
     """
     global CHANGED_FLAG
     output = ''
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' vrouter-show format name no-show-headers '
-    vrouter_names = run_cli(module, cli).split()
 
     if len(vrouter_names) > 0:
         for vrouter in vrouter_names:
@@ -521,64 +490,34 @@ def assign_router_id(module):
     return output
 
 
-def add_bgp_redistribute(module, bgp_redis):
+def configure_bgp(module, vrouter_names, dict_bgp_as, bgp_max, bgp_redis):
     """
     Method to add bgp_redistribute to the vrouter.
     :param module: The Ansible module to fetch input parameters.
-    :param bgp_redis: bgp-redistribute value to add.
+    :param dict_bgp_as: Dictionary containing the bgp-as for all the switches.
+    :param vrouter_names: List of vrouter names.
+    :param bgp_max: Maxpath for bgp.
+    :param bgp_redis: Bgp redistribute for bgp.
     :return: String describing if bgp-redistribute got added or not.
     """
     global CHANGED_FLAG
     output = ''
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' vrouter-show format name no-show-headers '
-    vrouter_names = run_cli(module, cli).split()
 
     for vrouter in vrouter_names:
         cli = clicopy
-        cli += ' vrouter-modify name %s bgp-redistribute %s ' % (vrouter,
-                                                                 bgp_redis)
-        if 'Success' in run_cli(module, cli):
-            cli = clicopy
-            cli += ' vrouter-show name ' + vrouter
-            cli += ' format location no-show-headers '
-            switch = run_cli(module, cli).split()[0]
+        cli += ' vrouter-show name ' + vrouter
+        cli += ' format location no-show-headers '
+        switch = run_cli(module, cli).split()[0]
 
-            output += ' %s: Added %s BGP_REDISTRIBUTE to %s \n' % (switch,
-                                                                   bgp_redis,
+        cli = clicopy
+        cli += ' vrouter-modify name %s bgp-as %s bgp-max-paths %s bgp-redistribute %s' % (vrouter,
+                                                            dict_bgp_as[switch], bgp_max, bgp_redis)
+        if 'Success' in run_cli(module, cli):
+            output += ' %s: Added BGP_REDISTRIBUTE %s BGP_AS %s BGP_MAXPATH %s to %s\n' % (switch,
+                                                          bgp_redis, dict_bgp_as[switch], bgp_max,
                                                                    vrouter)
-            CHANGED_FLAG.append(True)
-
-    return output
-
-
-def add_bgp_maxpath(module, bgp_max):
-    """
-    Method to add bgp_maxpath to the vrouter.
-    :param module: The Ansible module to fetch input parameters.
-    :param bgp_max: bgp-max-paths value to add.
-    :return: String describing if bgp-max-paths got added or not.
-    """
-    global CHANGED_FLAG
-    output = ''
-    cli = pn_cli(module)
-    clicopy = cli
-    cli += ' vrouter-show format name no-show-headers '
-    vrouter_names = run_cli(module, cli).split()
-
-    for vrouter in vrouter_names:
-        cli = clicopy
-        cli += ' vrouter-modify name %s bgp-max-paths %s ' % (vrouter,
-                                                              bgp_max)
-        if 'Success' in run_cli(module, cli):
-            cli = clicopy
-            cli += ' vrouter-show name ' + vrouter
-            cli += ' format location no-show-headers '
-            switch = run_cli(module, cli).split()[0]
-
-            output += ' %s: Added %s BGP_MAXPATH to %s \n' % (switch,
-                                                              bgp_max, vrouter)
             CHANGED_FLAG.append(True)
 
     return output
@@ -678,7 +617,7 @@ def create_leaf_clusters(module):
 
                 node_count += 1
 
-        return output
+    return output
 
 
 def configure_ospf_bfd(module, vrouter, ip):
@@ -709,31 +648,76 @@ def configure_ospf_bfd(module, vrouter, ip):
     cli += ' format location no-show-headers '
     switch = run_cli(module, cli).split()[0]
 
-    if ospf_status[0] != 'Success':
-        ospf_status.remove(vrouter)
-
-    if ospf_status[0] != 'enable':
+    if 'Success' in ospf_status:
         cli = clicopy
         cli += ' vrouter-interface-config-add vrouter-name %s' % vrouter
         cli += ' nic %s ospf-bfd enable' % nic_interface[0]
         if 'Success' in run_cli(module, cli):
             CHANGED_FLAG.append(True)
             return ' %s: Added OSPF BFD to %s \n' % (switch, vrouter)
+
+    elif 'enable' not in ospf_status:
+        ospf_status.remove(vrouter)
+        cli = clicopy
+        cli += ' vrouter-interface-config-modify vrouter-name %s' % vrouter
+        cli += ' nic %s ospf-bfd enable' % nic_interface[0]
+        if 'Success' in run_cli(module, cli):
+            CHANGED_FLAG.append(True)
+            return ' %s: Modified OSPF BFD to enable for %s \n' % (switch, vrouter)
     else:
-        return ' %s: OSPF BFD already exists for %s \n' % (switch, vrouter)
+        return ' %s: OSPF BFD already enabled for %s \n' % (switch, vrouter)
 
 
-def add_ospf_neighbor(module):
+def dict_area_id_leaf(module):
+    """
+    Method to find area_id for all leaf and store in dictionary.
+    :param module: The Ansible module to fetch input parameters.
+    :return: Dictionary containing area_id of all leaf.
+    """
+    leaf_list = module.params['pn_leaf_list']
+    ospf_area_id = int(module.params['pn_ospf_area_id'])
+    cluster_leaf_list = []
+    cli = pn_cli(module)
+    clicopy = cli
+    dict_area_id = {}
+
+    cli += ' cluster-show format name no-show-headers'
+    cluster_list = run_cli(module, cli).split()
+
+    if 'Success' not in cluster_list:
+        for cluster in cluster_list:
+
+            cli = clicopy
+            cli += ' cluster-show name %s' % cluster
+            cli += ' format cluster-node-1,cluster-node-2 no-show-headers'
+            cluster_nodes = run_cli(module, cli).split()
+
+            if cluster_nodes[0] in leaf_list and cluster_nodes[1] in leaf_list:
+                ospf_area_id += 1
+                dict_area_id[cluster_nodes[0]] = str(ospf_area_id)
+                dict_area_id[cluster_nodes[1]] = str(ospf_area_id)
+                cluster_leaf_list.append(cluster_nodes[0])
+                cluster_leaf_list.append(cluster_nodes[1])
+
+    noncluster_leaf_list = list(set(leaf_list) - set(cluster_leaf_list))
+    for leaf in noncluster_leaf_list:
+        ospf_area_id += 1
+        dict_area_id[leaf] = str(ospf_area_id)
+
+    return dict_area_id
+
+
+def add_ospf_neighbor(module, dict_area_id):
     """
     This method add ospf_neighbor to the vrouter.
     :param module: The Ansible module to fetch input parameters.
+    :param dict_area_id: Dictionary containing area_id of leafs.
     :return: The output of the adding ospf-neighbor.
     """
     global CHANGED_FLAG
     output = ''
     cli = pn_cli(module)
     clicopy = cli
-    ospf_area_id = module.params['pn_ospf_area_id']
 
     if len(module.params['pn_leaf_list']) > 0:
         for leaf in module.params['pn_leaf_list']:
@@ -748,6 +732,8 @@ def add_ospf_neighbor(module):
             port_list = run_cli(module, cli).split()
             port_list = list(set(port_list))
             port_list.remove(vrouter_leaf)
+
+            ospf_area_id = dict_area_id[leaf]
 
             for port in port_list:
                 cli = clicopy
@@ -805,18 +791,17 @@ def add_ospf_neighbor(module):
     return output
 
 
-def add_ospf_redistribute(module):
+def add_ospf_redistribute(module, vrouter_names):
     """
     Method to add ospf_redistribute to the vrouters.
     :param module: The Ansible module to fetch input parameters.
+    :param vrouter_names: List of vrouter names.
     :return: String describing if ospf-redistribute got added or not.
     """
     global CHANGED_FLAG
     output = ''
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' vrouter-show format name no-show-headers '
-    vrouter_names = run_cli(module, cli).split()
 
     for vrouter in vrouter_names:
         cli = clicopy
@@ -836,19 +821,19 @@ def add_ospf_redistribute(module):
 
 
 def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
-                                 ospf_network):
+                                 ospf_network, ospf_area_id):
     """
     Method to create interfaces and add ospf neighbors.
     :param module: The Ansible module to fetch input parameters.
     :param switch_name: The name of the switch to run interface.
     :param interface_ip: Interface ip to create a vrouter interface.
     :param ospf_network: Ospf network for the ospf neighbor.
+    :ospf_area_id: The area_id for ospf neighborship.
     :return: String describing if ospf neighbors got added or not.
     """
     global CHANGED_FLAG
     output = ''
     vlan_id = module.params['pn_iospf_vlan']
-    ospf_area_id = module.params['pn_ospf_area_id']
 
     cli = pn_cli(module)
     clicopy = cli
@@ -895,25 +880,26 @@ def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
     already_added = run_cli(module, cli).split()
 
     if vrouter in already_added:
-        output += ' %s: OSPF Neighbor already exists for %s \n' % (switch_name,
-                                                                   vrouter)
+        output += ' %s: OSPF Neighbor %s already exists for %s \n' % (switch_name,
+                                                                  ospf_network,  vrouter)
     else:
         cli = clicopy
         cli += ' vrouter-ospf-add vrouter-name ' + vrouter
         cli += ' network %s ospf-area %s' % (ospf_network, ospf_area_id)
 
         if 'Success' in run_cli(module, cli):
-            output += ' %s: Added OSPF neighbor to %s \n' % (switch_name,
-                                                             vrouter)
+            output += ' %s: Added OSPF neighbor %s to %s \n' % (switch_name,
+                                                            ospf_network, vrouter)
             CHANGED_FLAG.append(True)
 
     return output
 
 
-def assign_leafcluster_ospf_interface(module):
+def assign_leafcluster_ospf_interface(module, dict_area_id):
     """
     Method to create interfaces and add ospf neighbor for leaf cluster.
     :param module: The Ansible module to fetch input parameters.
+    :param dict_area_id: Dictionary containing area_id of leafs.
     :return: The output of vrouter_interface_ibgp_add() method.
     """
     output = ''
@@ -950,10 +936,11 @@ def assign_leafcluster_ospf_interface(module):
                 cli += ' no-show-headers'
                 cluster_node_2 = run_cli(module, cli).split()[0]
 
+                ospf_area_id = dict_area_id[cluster_node_1]
                 output += vrouter_leafcluster_ospf_add(module, cluster_node_1,
-                                                       ip1, ospf_network)
+                                                       ip1, ospf_network, ospf_area_id)
                 output += vrouter_leafcluster_ospf_add(module, cluster_node_2,
-                                                       ip2, ospf_network)
+                                                       ip2, ospf_network, ospf_area_id)
 
                 subnet_count += 1
     else:
@@ -991,21 +978,29 @@ def main():
 
     global CHANGED_FLAG
     routing_protocol = module.params['pn_routing_protocol']
+    dict_area_id = {}
+    dict_bgp_as = {}
 
-    message = assign_router_id(module)
+    # Get the list of vrouter names.
+    cli = pn_cli(module)
+    cli += ' vrouter-show format name no-show-headers '
+    vrouter_names = run_cli(module, cli).split()
+
+    message = assign_router_id(module, vrouter_names)
     message += create_leaf_clusters(module)
 
     if routing_protocol == 'ebgp':
-        message += assign_bgp_as(module, module.params['pn_bgp_as_range'])
-        message += add_bgp_redistribute(module,
-                                        module.params['pn_bgp_redistribute'])
-        message += add_bgp_maxpath(module, module.params['pn_bgp_maxpath'])
+        dict_bgp_as = find_dict_bgp_as(module)
+        message += configure_bgp(module,
+                                 vrouter_names, dict_bgp_as,
+           module.params['pn_bgp_maxpath'], module.params['pn_bgp_redistribute'])
         message += add_bgp_neighbor(module)
-        message += assign_ibgp_interface(module)
+        message += assign_ibgp_interface(module, dict_bgp_as)
     elif routing_protocol == 'ospf':
-        message += add_ospf_neighbor(module)
-        message += add_ospf_redistribute(module)
-        message += assign_leafcluster_ospf_interface(module)
+        dict_area_id = dict_area_id_leaf(module)
+        message += add_ospf_neighbor(module, dict_area_id)
+        message += add_ospf_redistribute(module, vrouter_names)
+        message += assign_leafcluster_ospf_interface(module, dict_area_id)
 
     module.exit_json(
         stdout=message,
