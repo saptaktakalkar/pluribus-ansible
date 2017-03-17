@@ -23,10 +23,10 @@
 |------------------|----------------|---------------|-------------|---------------|------------------------------------------------------------|
 | pn_cliusername   | see comments   |               | str         |               | Provide login username if user is not root.                |
 | pn_clipassword   | see comments   |               | str         |               | Provide login password if user is not root.                |
-| pn_spine_list    | True           |               | list        |               | Specify the list of Spine switches listed under the [spine] group in hosts file. Can be obtained from the hosts file using `"{{ groups['spine'] }}"` filter. |
-| pn_leaf_list     | True           |               | list        |               | Specify the list of Leaf switches listed under the [leaf] group in hosts file. Can be obtained from the hosts file using `"{{ groups['leaf'] }}"` filter. |
-| pn_update_fabric_to_inband | False| False         | bool        |               | Flag to indicate if fabric network should be updated to in-band or not. |
-| pn_stp | no(\*) | False | bool | | Flag to enable STP at the end. |
+| pn_spine_list    | yes            |               | list        |               | Specify the list of Spine switches listed under the [spine] group in hosts file. Can be obtained from the hosts file using `"{{ groups['spine'] }}"` filter. |
+| pn_leaf_list     | yes            |               | list        |               | Specify the list of Leaf switches listed under the [leaf] group in hosts file. Can be obtained from the hosts file using `"{{ groups['leaf'] }}"` filter. |
+| pn_update_fabric_to_inband | no   | False         | bool        |               | Flag to indicate if fabric network should be updated to in-band or not. |
+| pn_stp | no | False | bool | | Flag to enable STP at the end. |
 
 
 
