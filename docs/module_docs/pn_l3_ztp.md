@@ -47,8 +47,8 @@
 
 # This task is to configure ZTP layer 3 setup.
 # It uses pn_l3_ztp.py module from library/ directory.
-# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
-# If the tasks fails then it will retry as specified by retries count.
+# pn_cliusername and pn_clipassword comes from vault file - cli_vault.yml.
+# pn_spine_list and pn_leaf_list comes from the hosts file.
 - name: Zero Touch Provisioning - Layer3 setup
   hosts: spine[0]
   become: true
