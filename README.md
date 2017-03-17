@@ -257,10 +257,10 @@ pn_web_api: True                                  # optional, True:False, Flag t
 pn_stp: False                                     # optional, True:False, Flag to enable STP at the end of configuration, STP, boolean 
 ```
  **Key Points** 
- - The variables file is included under the `vars_files` by specifying its path relative to the playbook. 
- - The vault file is also included under the `vars_files` by specifying its path relative to the playbook.(Vault file contains sensitive information like passwords.)
- - Parameters from Vault file are accessed as `"{{ USERNAME }}"` and `"{{ PASSWORD }}"`.
- - The variables file is also wriiten in YAML format.
+ - The variables file is included under the `vars_files` section by specifying its path relative to the playbook. 
+ - The vault file is also included under the `vars_files` section by specifying its path relative to the playbook.(Vault file contains sensitive information like passwords.)
+ - Parameters from vault file are accessed as `"{{ USERNAME }}"` and `"{{ PASSWORD }}"`.
+ - The variables file is also written in YAML format.
  - Parameters from variables file are accessed as `"{{ pn_fabric_name }}"`.
  - Inventory or host parameters can be passed as `"{{ inventory_hostname }}"` and `"{{ ansible_host }}"`.
  - Hostnames from the inventory/hosts file can also be accessed using filters as `"{{ groups['spine'] }}"` and `"{{ groups['leaf'] }}"`. 
