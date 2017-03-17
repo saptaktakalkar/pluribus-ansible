@@ -63,13 +63,16 @@ gui-leaf3 ansible_host=10.9.21.64 ansible_user="{{ SSH_USER }}" ansible_ssh_pass
 gui-leaf4 ansible_host=10.9.21.65 ansible_user="{{ SSH_USER }}" ansible_ssh_pass="{{ SSH_PASS }}" ansible_become_pass="{{ SSH_PASS }}"
 
 [cisco-spine]
+nexus9k-spine.pluribusnetworks.com
 
 [arista-spine]
+aristaeOs-spine.pluribusnetworks.com
 
 [juniper-spine]
+junos-spine.pluribusnetworks.com
 
 [wan]
-
+pn_wan
 
 ``` 
 
@@ -430,7 +433,7 @@ Use the flags/options based on your requirements to run the playbooks.
   The only way to check the output of the ansible playbook is to use `register` and `debug` modules in playbooks to capture output from the modules. This is because ansible requires module output in JSON format and does not support print statements in module. It is therefore recommended to have some level of verbosity flags while running the playbooks. 
   You can also log the output of the playbook in a log file for later inspection. There are many ways to capture output into log files. Two of them are discussed here:
 
-   - `I/O redirection` : Most command line programs that display their results do so by sending their results to standard output. By default, standard output directs its contents to the display. To redirect standard output to a file(overwrite), the `>` character is used.
+   - **`I/O redirection`** : Most command line programs that display their results do so by sending their results to standard output. By default, standard output directs its contents to the display. To redirect standard output to a file(overwrite), the `>` character is used.
   
 ```
   $ ansible-playbook -i hosts playbook.yml -u pluribus -K --ask-pass --ask-vault-pass > playbookoutput.log
@@ -441,7 +444,7 @@ Use the flags/options based on your requirements to run the playbooks.
   $ ansible-playbook -i hosts playbook.yml -u pluribus -K --ask-pass --ask-vault-pass >> playbookoutput.log
 ```
 
-   - `tee` : The I/O redirection only redirects the output to a file, it does not display the output on the screen. Tee command is used to save and view (both at the same time) the output of any command. Tee command writes to the STDOUT, and to a file at a time(`-a` for append):
+   - **`tee`** : The I/O redirection only redirects the output to a file, it does not display the output on the screen. Tee command is used to save and view (both at the same time) the output of any command. Tee command writes to the STDOUT, and to a file at a time(`-a` for append):
   
 ```
   $ ansible-playbook -i hosts playbook.yml -u pluribus -K --ask-pass --ask-vault-pass | tee -a playbookoutput.log  
