@@ -283,21 +283,19 @@ pn_stp: False                                     # optional, True:False, Flag t
   
  ```
  
- Following is the list of Pluribus playbooks available and their documentation can be accessed [here](/docs/playbook_docs).
+ Following is the list of Pluribus playbooks available to the users:
  
- - [pn_initial_ztp.yml](ansible/playbooks/pn_initial_ztp.yml)
- - [pn_l2_ztp.yml](ansible/playbooks/pn_l2_ztp.yml)
- - [pn_l3_ztp.yml](ansible/playbooks/pn_l3_ztp.yml)
- - [pn_vrrp_l2_with_csv.yml](ansible/playbooks/pn_vrrp_l2_with_csv.yml)
- - [pn_l3_vrrp_ebgp.yml](ansible/playbooks/pn_l3_vrrp_ebgp.yml)
- - [pn_l3_vrrp_ospf.yml](ansible/playbooks/pn_l3_vrrp_ospf.yml)
- - [pn_vflow_create.yml](ansible/playbooks/pn_vflow_create.yml)
- - [pn_vxlan.yml](ansible/playbooks/pn_vxlan.yml)
- - [pn_switch_reset.yml](ansible/playbooks/pn_switch_reset.yml)
- - [pn_vlanshow.yml](ansible/roles/examples/pn_vlanshow.yml)
- - [pn_vlancreate.yml](ansible/roles/examples/pn_vlancreate.yml)
- - [pn_vlagcreate.yml](ansible/roles/examples/pn_vlagcreate.yml)
- - [pn_clustercreate.yml](ansible/roles/examples/pn_clustecreate.yml)
+ - [pn_initial_ztp.yml](ansible/playbooks/pn_initial_ztp.yml): This playbook allows Zero Touch Provisioning of switches automatically.  
+ - [pn_l2_ztp.yml](ansible/playbooks/pn_l2_ztp.yml): This playbook allows users to provision their switches in L2 or Layer2 setup.
+ - [pn_l3_ztp.yml](ansible/playbooks/pn_l3_ztp.yml): This playbook allows users to provision their switches in L3 or Layer3 setup. 
+ - [pn_vrrp_l2_with_csv.yml](ansible/playbooks/pn_vrrp_l2_with_csv.yml): This playbook allows users to configue Layer2 VRRP at the Spine layer.
+ - [pn_l3_vrrp_ebgp.yml](ansible/playbooks/pn_l3_vrrp_ebgp.yml): This playbook allows users to configure Layer3 VRRP at the Leaf layer along with eBGP configuration.
+ - [pn_l3_vrrp_ospf.yml](ansible/playbooks/pn_l3_vrrp_ospf.yml): This playbook allows users to configure Layer3 VRRP at the Leaf layer along with OSPF configuration.
+ - [pn_switch_reset.yml](ansible/playbooks/pn_switch_reset.yml): This playbook allows users to perform a switch config reset on the switches.
+ - [pn_vlanshow.yml](ansible/roles/examples/pn_vlanshow.yml): This playbook allows users to run a vlan-show command on the network.
+ - [pn_vlancreate.yml](ansible/roles/examples/pn_vlancreate.yml): This playbook allows users to create vlans.
+ - [pn_vlagcreate.yml](ansible/roles/examples/pn_vlagcreate.yml): This playbook allows users to create vlags.
+ - [pn_clustercreate.yml](ansible/roles/examples/pn_clustecreate.yml): This playbook allows users to create cluster configuration between two switches.
 
 **Tip**:[YAML Lint](http://www.yamllint.com/) (online) helps you debug YAML syntax.
  
