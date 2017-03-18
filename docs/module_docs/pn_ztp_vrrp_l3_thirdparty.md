@@ -79,10 +79,6 @@
         pn_leaf_list: "{{ groups['leaf'] }}"    # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"  # VRRP Layer3 data specified in CSV file.
       register: vrrp_out               # Variable to hold/register output of the above tasks.
-      until:  vrrp_out.failed != true  # If error pops up it will retry the code
-      retries: 3                       # This is the retries count
-      delay: 1
-      ignore_errors: yes               # Flag to indicate if we should ignore errors if any.
 
     - debug:
         var: vrrp_out.stdout_lines     # Print stdout_lines of register variable.
