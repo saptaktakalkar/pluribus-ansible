@@ -24,7 +24,7 @@ import shlex
 DOCUMENTATION = """
 ---
 module: pn_l2_third_party
-author: 'Pluribus Networks (@saptaktakalkar)'
+author: 'Pluribus Networks (devops@pluribusnetworks.com)'
 short_description: CLI command to configure layer2 zero touch provisioning.
 description:
     Zero Touch Provisioning (ZTP) allows you to provision new switches in your

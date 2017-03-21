@@ -22,7 +22,7 @@
         pn_clipassword: "{{ PASSWORD }}"               # Cli password (value comes from cli_vault.yml).
         pn_fabric_name: 'bgp-fabric'                   # Name of the fabric to create/join.
         pn_current_switch: "{{ inventory_hostname }}"  # Name of the switch on which this task is currently getting executed.
-        # pn_toggle_40g: True                          # Flag to indicate if 40g ports should be converted to 10g ports or not.
+        pn_toggle_40g: True                            # Flag to indicate if 40g ports should be converted to 10g ports or not.
         # pn_inband_ip: '172.16.1.0/24'                # Inband ips to be assigned to switches starting with this value. Default: 172.16.0.0/24.
         # pn_fabric_network: 'mgmt'                    # Choices: in-band or mgmt.  Default: mgmt
         # pn_fabric_control_network: 'mgmt'            # Choices: in-band or mgmt.  Default: mgmt
@@ -65,7 +65,7 @@
   - cli_vault.yml
 
   vars:
-  - csv_file: /etc/ansible/l3csv.csv  # CSV file path
+  - csv_file: /etc/ansible/fabric_over_l3.csv  # CSV file path
 
   tasks:
     - name: Configure VRRP L3 setup
@@ -158,14 +158,8 @@
         pn_bgp_maxpath: '16'                               # BGP-MAXPATH value to be assigned to vrouters. Default: 16
         pn_bgp_redistribute: 'connected'                   # BGP-REDISTRIBUTE value to be assigned to vrouters. Chocies: none, static, connected, rip, ospf. Default: connected
         pn_bgp_as_range: '65000'                           # BGP-AS-RANGE value to be assigned to vrouters. Default: 65000
-        pn_ibgp_ip_range: '75.75.75.0/30'                  # iBGP IP range to be assigned to interfaces. Default: '75.75.75.0/30'
+        pn_ibgp_ip_range: '75.75.75.0/24'                  # iBGP IP range to be assigned to interfaces. Default: '75.75.75.0/30'
         pn_ibgp_vlan: '4040'                               # iBGP vlan value to be assigned to interfaces. Default 4040
-        # <<< Following attributes are not needed for eBGP but since OSPF and eBGP are configured using same Ansible module, we are including it here. (Should always be commented out)
-        # pn_routing_protocol: 'ospf'                      # Routing protocol to configure. Choices are ['ebgp', 'ospf']
-        # pn_ospf_area_id: '0'                             # Area id to configure for ospf. Default: 0
-        # pn_iospf_ip_range: '75.75.75.0/30'               # Ip range for creating the interface between leaf clusters. Default:'75.75.75.0/30'
-        # pn_iospf_vlan: '4040'                            # Vlan for creating the interface between leaf clusters. Default:'4040'
-        # >>> OSPF parameters end here
       register: bgp_out                         # Variable to hold/register output of the above tasks.
       until: bgp_out.failed != true             # If the above code fails it will retry the code
       retries: 3                                # This is the retries count
