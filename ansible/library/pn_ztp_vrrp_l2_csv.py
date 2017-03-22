@@ -24,7 +24,8 @@ import shlex
 DOCUMENTATION = """
 ---
 module: pn_ztp_vrrp_l2_csv
-author: 'Pluribus Networks (devops@pluribusnetworks.com)'
+author: 'Pluribus Networks (@gauravbajaj)'
+modified by: 'Pluribus Networks (@saptaktakalkar)'
 version: 1
 short_description: CLI command to configure VRRP - Layer 2 Setup
 description: Virtual Router Redundancy Protocol (VRRP) - Layer 2 Setup
@@ -307,7 +308,7 @@ def configure_vrrp(module, vrrp_id, vrrp_ip, active_switch, vlan_id):
     host_count = 1
     for spine in module.params['pn_spine_list']:
         host_count += 1
-        vrrp_priority = '110' if spine == active_switch else '100'
+        vrrp_priority = '110' if spine == active_switch else '109'
         output += create_vrouter_interface(module, spine, vrrp_ip, vlan_id,
                                            vrrp_id, str(host_count),
                                            vrrp_priority)

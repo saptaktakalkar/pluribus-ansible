@@ -103,7 +103,7 @@
   - cli_vault.yml
 
   vars:
-  - csv_file: /etc/ansible/pluribus-ansible/ansible/pn_vrrp_l2.csv  # CSV file path.
+  - csv_file: /etc/ansible/pn_vrrp_l2.csv  # CSV file path.
 
   tasks:
     - name: Configure VRRP L2

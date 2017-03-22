@@ -377,6 +377,9 @@ def configure_trunk_vlag_for_clustered_leafs(module, non_clustered_leafs,
                 if node2 in non_clustered_leafs:
                     # Cluster creation
                     cluster_name = node1 + '-to-' + node2 + '-cluster'
+                    if len(cluster_name) > 59:
+                        cluster_name = cluster_name[:59]
+
                     output += create_cluster(module, node2, cluster_name,
                                              node1, node2)
 
@@ -388,6 +391,9 @@ def configure_trunk_vlag_for_clustered_leafs(module, non_clustered_leafs,
 
                     # Vlag creation (leaf to spine)
                     vlag_name = node1 + '-' + node2 + '-to-' + 'spine'
+                    if len(vlag_name) > 59:
+                        vlag_name = vlag_name[:59]
+
                     output += create_vlag(module, node1, vlag_name, node2,
                                           trunk_name1, trunk_name2)
 
@@ -424,9 +430,8 @@ def configure_auto_vlag(module):
     leaf_list = module.params['pn_leaf_list']
 
     # Configure trunk, vlag for clustered leaf switches.
-    non_clustered_leafs = find_non_clustered_leafs(module, leaf_list)
     output = configure_trunk_vlag_for_clustered_leafs(module,
-                                                      non_clustered_leafs,
+                                                      list(leaf_list),
                                                       spine_list)
 
     # Configure trunk, vlag for non clustered leaf switches.
