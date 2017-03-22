@@ -198,9 +198,6 @@ def find_dict_bgp_as(module):
     clicopy = cli
     dict_bgp_as = {}
 
-    f = open('output1.txt', 'a')
-    f.write('%s' % leaf_list)
-    f.close()
     cli += ' cluster-show format name no-show-headers'
     cluster_list = run_cli(module, cli).split()
 
@@ -292,12 +289,14 @@ def vrouter_interface_ibgp_add(module, switch_name, interface_ip, neighbor_ip, r
         cli += ' vrouter-bgp-add vrouter-name %s' % vrouter
         cli += ' neighbor %s remote-as %s next-hop-self' % (neighbor_ip,
                                                             remote_as)
-        run_cli(module, cli)
+        if module.params['pn_bfd']:
+            cli += ' bfd '
 
-        output += ' %s: Added iBGP neighbor %s for %s \n' % (switch_name,
-                                                             neighbor_ip,
-                                                             vrouter)
-        CHANGED_FLAG.append(True)
+        if 'Success' in run_cli(module, cli):
+            output += ' %s: Added iBGP neighbor %s for %s \n' % (switch_name,
+                                                                 neighbor_ip,
+                                                                 vrouter)
+            CHANGED_FLAG.append(True)
     else:
         output += ' %s: iBGP neighbour %s already exists for %s \n' % (
             switch_name, neighbor_ip, vrouter
@@ -318,6 +317,7 @@ def assign_ibgp_interface(module, dict_bgp_as):
     spine_list = module.params['pn_spine_list']
     leaf_list = module.params['pn_leaf_list']
     subnet_count = 0
+    supernet = 30
 
     cli = pn_cli(module)
     clicopy = cli
@@ -338,8 +338,8 @@ def assign_ibgp_interface(module, dict_bgp_as):
 
             if cluster_node_1 not in spine_list and cluster_node_1 in leaf_list:
                 ip_count = subnet_count * 4
-                ip1 = static_part + str(ip_count + 1) + '/' + str(30)
-                ip2 = static_part + str(ip_count + 2) + '/' + str(30)
+                ip1 = static_part + str(ip_count + 1) + '/' + str(supernet)
+                ip2 = static_part + str(ip_count + 2) + '/' + str(supernet)
 
                 cli = clicopy
                 cli += ' cluster-show name %s format cluster-node-2' % cluster
@@ -373,9 +373,6 @@ def add_bgp_neighbor(module):
 
     for leaf in module.params['pn_leaf_list']:
         weight_allowas_flag = 0
-        f = open('output.txt', 'a')
-        f.write('%s' % leaf)
-        f.close()
 
         cli = clicopy
         cli += ' vrouter-show location %s ' % leaf
@@ -389,10 +386,6 @@ def add_bgp_neighbor(module):
             if leaf in cluster:
                 weight_allowas_flag = 1
                 break
-
-        f = open('output.txt', 'a')
-        f.write('%s' % leaf)
-        f.close()
 
         cli = clicopy
         cli += ' vrouter-interface-show vrouter-name %s ' % vrouter
@@ -884,6 +877,10 @@ def vrouter_leafcluster_ospf_add(module, switch_name, interface_ip,
                                                                   ospf_network,  vrouter)
     else:
         cli = clicopy
+        interface_ip_without_supernet = interface_ip.split('/')[0]
+        if module.params['pn_bfd']:
+            output += configure_ospf_bfd(module, vrouter,
+                                         interface_ip_without_supernet)
         cli += ' vrouter-ospf-add vrouter-name ' + vrouter
         cli += ' network %s ospf-area %s' % (ospf_network, ospf_area_id)
 
@@ -907,6 +904,7 @@ def assign_leafcluster_ospf_interface(module, dict_area_id):
     spine_list = module.params['pn_spine_list']
     leaf_list = module.params['pn_leaf_list']
     subnet_count = 0
+    supernet = 30
 
     cli = pn_cli(module)
     clicopy = cli
@@ -927,9 +925,9 @@ def assign_leafcluster_ospf_interface(module, dict_area_id):
 
             if cluster_node_1 not in spine_list and cluster_node_1 in leaf_list:
                 ip_count = subnet_count * 4
-                ip1 = static_part + str(ip_count + 1) + '/' + str(30)
-                ip2 = static_part + str(ip_count + 2) + '/' + str(30)
-                ospf_network = static_part + str(ip_count) + '/' + str(30)
+                ip1 = static_part + str(ip_count + 1) + '/' + str(supernet)
+                ip2 = static_part + str(ip_count + 2) + '/' + str(supernet)
+                ospf_network = static_part + str(ip_count) + '/' + str(supernet)
 
                 cli = clicopy
                 cli += ' cluster-show name %s format cluster-node-2' % cluster
@@ -965,11 +963,11 @@ def main():
             pn_bgp_maxpath=dict(required=False, type='str', default='16'),
             pn_bfd=dict(required=False, type='bool', default=False),
             pn_ibgp_ip_range=dict(required=False, type='str',
-                                  default='75.75.75.0/30'),
+                                  default='75.75.75.0/24'),
             pn_ibgp_vlan=dict(required=False, type='str', default='4040'),
             pn_iospf_vlan=dict(required=False, type='str', default='4040'),
             pn_iospf_ip_range=dict(required=False, type='str',
-                                   default='75.75.75.0/30'),
+                                   default='75.75.75.0/24'),
             pn_ospf_area_id=dict(required=False, type='str', default='0'),
             pn_routing_protocol=dict(required=False, type='str',
                                      choices=['ebgp', 'ospf'], default='ebgp'),
