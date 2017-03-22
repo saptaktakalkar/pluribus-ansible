@@ -1,7 +1,7 @@
 ---
 
 # Initial ZTP setup for only leaf switches
-- name: Zero Touch Provisioning - Initial setup on leaf switches
+- name: Zero Touch Provisioning - Initial setup on spine switches
   hosts: spine
   serial: 1
   become: true

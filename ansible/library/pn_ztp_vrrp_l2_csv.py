@@ -24,8 +24,7 @@ import shlex
 DOCUMENTATION = """
 ---
 module: pn_ztp_vrrp_l2_csv
-author: 'Pluribus Networks (@gauravbajaj)'
-modified by: 'Pluribus Networks (@saptaktakalkar)'
+author: 'Pluribus Networks (devops@pluribusnetworks.com)'
 version: 1
 short_description: CLI command to configure VRRP - Layer 2 Setup
 description: Virtual Router Redundancy Protocol (VRRP) - Layer 2 Setup
