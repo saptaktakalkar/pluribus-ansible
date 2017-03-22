@@ -214,14 +214,15 @@ def update_switch_names(module, switch_name):
         return ' Updated switch name to match hostname! '
 
 
-def assign_inband_ip(module, inband_ip):
+def assign_inband_ip(module):
     """
     Method to assign in-band ips to switches.
     :param module: The Ansible module to fetch input parameters.
-    :param inband_ip: In-band ip to be assigned to the switch.
     :return: String describing if in-band ip got assigned or not.
     """
+    global CHANGED_FLAG
     supernet = 4
+    inband_ip = module.params['pn_inband_ip']
     leaf_list = module.params['pn_leaf_list']
     current_switch = module.params['pn_current_switch']
 
@@ -240,9 +241,61 @@ def assign_inband_ip(module, inband_ip):
     cli += 'switch-setup-modify in-band-ip %s ' % ip
 
     if 'Setup completed successfully' in run_cli(module, cli):
+        CHANGED_FLAG.append(True)
         return '%s: In-band ip assigned with ip %s \n' % (current_switch, ip)
 
     return ''
+
+
+def configure_fabric(module, switch):
+    """
+    Method to configure (create/join) fabric.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch: Name of the current switch.
+    :return: String describing fabric creation/joining description.
+    """
+    global CHANGED_FLAG
+    output = ''
+    fabric_name = module.params['pn_fabric_name']
+    switch_index = module.params['pn_leaf_list'].index(switch)
+
+    address = module.params['pn_inband_ip'].split('.')
+    inband_static_part = str(address[0]) + '.' + str(address[1]) + '.'
+    inband_static_part += str(address[2]) + '.'
+    last_octet = str(address[3]).split('/')
+    subnet = last_octet[1]
+
+    if switch_index == 0:
+        cli = pn_cli(module)
+        clicopy = cli
+        cli += 'fabric-show format name no-show-headers'
+        existing_fabric = run_cli(module, cli).split()
+
+        # Create fabric if not already created.
+        if fabric_name not in existing_fabric:
+            cli = clicopy
+            cli += 'fabric-create name %s ' % fabric_name
+            cli += ' fabric-network in-band control-network in-band '
+            output += ' %s: %s ' % (switch, run_cli(module, cli))
+            CHANGED_FLAG.append(True)
+        else:
+            output += ' %s: Fabric already exists\n' % switch
+
+        # Indicate all subnets of the in-band interfaces of switches,
+        # that will be part of the fabric.
+        output += fabric_inband_net_create(module, inband_static_part,
+                                           subnet, switch)
+    else:
+        switch_ip = inband_static_part + str(1)
+        # Join existing fabric.
+        if 'Already' in join_fabric(module, switch_ip):
+            output += ' %s: Already part of fabric %s \n' % (switch,
+                                                             fabric_name)
+        else:
+            output += ' %s: Joined fabric %s \n' % (switch, fabric_name)
+            CHANGED_FLAG.append(True)
+
+    return output
 
 
 def find_clustered_switches(module):
@@ -277,12 +330,13 @@ def find_clustered_switches(module):
     return cluster_dict_info
 
 
-def fabric_inband_net_create(module, inband_static_part, subnet):
+def fabric_inband_net_create(module, inband_static_part, subnet, switch):
     """
     Method to create fabric in-band network.
     :param module: The Ansible module to fetch input parameters.
     :param inband_static_part: In-band ip address till third octet.
     :param subnet: Subnet mask of in-band ip address.
+    :param switch: Name of the 1st switch in the DC.
     :return: String describing if fabric in-band network got created or not.
     """
     global CHANGED_FLAG
@@ -293,7 +347,7 @@ def fabric_inband_net_create(module, inband_static_part, subnet):
     clicopy = cli
 
     while switch_count < len(module.params['pn_leaf_list']):
-        ip_count = switch_count * supernet
+        ip_count = (switch_count * supernet) + 1
         inband_network_ip = inband_static_part + str(ip_count) + '/' + subnet
 
         cli = clicopy
@@ -304,13 +358,13 @@ def fabric_inband_net_create(module, inband_static_part, subnet):
             cli = clicopy
             cli += 'fabric-in-band-network-create network ' + inband_network_ip
             if 'Success' in run_cli(module, cli):
-                output += ' Fabric in-band network created for %s \n' % (
-                    inband_network_ip
+                output += ' %s: Fabric in-band network created for %s \n' % (
+                    switch, inband_network_ip
                 )
                 CHANGED_FLAG.append(True)
         else:
-            output += ' Fabric in-band network %s already exists\n' % (
-                inband_network_ip
+            output += ' %s: Fabric in-band network %s already exists\n' % (
+                switch, inband_network_ip
             )
 
         switch_count += 1
@@ -341,29 +395,26 @@ def join_fabric(module, switch_ip):
     return run_cli(module, cli)
 
 
-def create_and_configure_vrouter(module, bgp_nic_ip, neighbor_ip, remote_switch,
-                                 cluster_list, non_clustered_switches):
+def create_vrouter(module, switch, bgp_as, router_id, bgp_nic_ip,
+                   bgp_nic_l3_port, neighbor_ip, remote_as, in_band_nic_ip,
+                   in_band_nic_netmask, fabric_network_address):
     """
-    Method to create and configure vrouter.
+    Method to create vrouter.
     :param module: The Ansible module to fetch input parameters.
+    :param switch: Name of the current switch.
+    :param bgp_as: BGP AS value of this switch.
+    :param router_id: Router id to be assigned to this vrouter.
     :param bgp_nic_ip: Bgp_nic_ip for the vrouter creation.
-    :param neighbor_ip: Neighbor_ip for the vrouter creation.
-    :param remote_switch: Remote switch for the vrouter creation.
-    :param cluster_list: List of clustered switch pairs.
-    :param non_clustered_switches: List of non_clustered switches.
-    :return: String describing vrouter creation details.
+    :param bgp_nic_l3_port: L3 port number connected to neighbor switch.
+    :param neighbor_ip: Ip of the BGP neighbor node.
+    :param remote_as: BGP AS value of the neighbor node.
+    :param in_band_nic_ip: In-band nic ip of this switch.
+    :param in_band_nic_netmask: Netmask of in-band nic ip.
+    :param fabric_network_address: Fabric network address of the existing fabric
+    :return: String describing if vrouter got created or if it already exists.
     """
     global CHANGED_FLAG
-    output = ''
-    vrouter_name = module.params['pn_current_switch'] + '-vrouter'
-    bgp_as_range = module.params['pn_bgp_as_range']
-    spine_list = module.params['pn_spine_list']
-    leaf_list = module.params['pn_leaf_list']
-    current_switch = module.params['pn_current_switch']
-    bgp_redistribute = module.params['pn_bgp_redistribute']
-    bgp_max_path = module.params['pn_bgp_max_path']
-    non_clustered_switches_count = len(non_clustered_switches)
-
+    vrouter_name = switch + '-vrouter'
     cli = pn_cli(module)
     clicopy = cli
 
@@ -371,112 +422,207 @@ def create_and_configure_vrouter(module, bgp_nic_ip, neighbor_ip, remote_switch,
     existing_vrouter_names = run_cli(module, cli).split()
     if vrouter_name not in existing_vrouter_names:
         cli = clicopy
-        cli += 'switch-setup-show format in-band-ip no-show-headers'
-        inband_ip = run_cli(module, cli)
+        cli += ' fabric-comm-vrouter-bgp-create name %s ' % vrouter_name
+        cli += ' bgp-as %s router-id %s ' % (bgp_as, router_id)
+        cli += ' bgp-nic-ip %s ' % bgp_nic_ip
+        cli += ' bgp-nic-l3-port %s ' % bgp_nic_l3_port
+        cli += ' neighbor %s remote-as %s ' % (neighbor_ip, remote_as)
+        cli += ' bfd in-band-nic-ip %s ' % in_band_nic_ip
+        cli += ' in-band-nic-netmask %s ' % in_band_nic_netmask
 
-        address = inband_ip.split(':')[1]
-        address = address.replace(' ', '')
-        address = address.split('.')
-        static_part = str(address[0]) + '.' + str(address[1]) + '.'
-        static_part += str(address[2]) + '.'
-        last_octet = str(address[3]).split('/')
-        netmask = last_octet[1]
-        gateway_ip = int(last_octet[0]) + 1
-        ip = static_part + str(gateway_ip)
+        if fabric_network_address is not None:
+            cli += ' fabric-network %s ' % fabric_network_address
 
-        # remote-as for leaf is always spine1 and for spine is always leaf1
-        if current_switch in spine_list:
-            bgp_as = bgp_as_range
-            if remote_switch in non_clustered_switches:
-                remote_as = int(bgp_as_range) + 1 + \
-                            non_clustered_switches.index(remote_switch)
-            else:
-                cluster_count = 0
-                stop_flag = 0
-                while cluster_count < len(cluster_list) and stop_flag == 0:
-                    if remote_switch in cluster_list[cluster_count]:
-                        remote_as = int(non_clustered_switches_count) + 1 + \
-                                    cluster_count + int(bgp_as_range)
-                        stop_flag += 1
-                    cluster_count += 1
-            remote_as = str(remote_as)
-
-            cli = clicopy
-            cli += 'port-show hostname %s format port, no-show-headers' % (
-                leaf_list[0])
-            ports = run_cli(module, cli).split()
-
-            cli = clicopy
-            cli += 'trunk-show ports %s format trunk-id, no-show-headers ' % (
-                ports[0])
-            trunk_id = run_cli(module, cli)
-
-            if len(trunk_id) == 0 or trunk_id == 'Success':
-                l3_port = ports[0]
-            else:
-                l3_port = trunk_id
-
-            fabric_network_addr = static_part + str(0) + '/' + netmask
-
-        else:
-
-            if current_switch in non_clustered_switches:
-                bgp_as = int(bgp_as_range) + 1 + non_clustered_switches.index(
-                    current_switch)
-            else:
-                cluster_count = 0
-                stop_flag = 0
-                while cluster_count < len(cluster_list) and stop_flag == 0:
-                    if current_switch in cluster_list[cluster_count]:
-                        bgp_as = int(non_clustered_switches_count) + 1 + \
-                                 cluster_count + int(bgp_as_range)
-                        stop_flag += 1
-                    cluster_count += 1
-            remote_as = bgp_as_range
-            bgp_as = str(bgp_as)
-
-            cli = clicopy
-            cli += 'port-show hostname %s format port, no-show-headers' % \
-                   spine_list[0]
-            ports = run_cli(module, cli).split()
-
-            cli = clicopy
-            cli += 'trunk-show ports %s format trunk-id, no-show-headers ' % (
-                ports[0]
-            )
-            trunk_id = run_cli(module, cli)
-            if len(trunk_id) == 0 or trunk_id == 'Success':
-                l3_port = ports[0]
-            else:
-                l3_port = trunk_id
-
-            fabric_network_addr = static_part + str(0) + '/' + netmask
-
-        cli = clicopy
-        cli += 'fabric-comm-vrouter-bgp-create name %s bgp-as %s' % (
-            vrouter_name, bgp_as
-        )
-        cli += ' bgp-redistribute %s bgp-max-paths %s' % (bgp_redistribute,
-                                                          bgp_max_path)
-        cli += ' bgp-nic-ip %s bgp-nic-l3-port %s' % (bgp_nic_ip, l3_port)
-        cli += ' neighbor %s remote-as %s' % (neighbor_ip, remote_as)
-
-        if (current_switch in spine_list and
-                spine_list.index(current_switch) == 0):
-            pass
-        else:
-            cli += ' fabric-network %s' % fabric_network_addr
-
-        cli += ' in-band-nic-ip %s in-band-nic-netmask %s bfd' % (ip, netmask)
-        cli += ' allowas-in'
-        output += '%s: Fab-comm command executed with output- ' % current_switch
-        output += str(run_cli(module, cli))
+        cli += ' allowas-in '
+        run_cli(module, cli)
         CHANGED_FLAG.append(True)
+        return ' %s: Created %s \n' % (switch, vrouter_name)
     else:
-        output += '%s: Vrouter already exist \n' % current_switch
+        return ' %s: %s already exists\n' % (switch, vrouter_name)
+
+
+def get_l3_port(module, neighbor_name):
+    """
+    Method to get l3 port number which is connected to given neighbor.
+    :param module: The Ansible module to fetch input parameters.
+    :param neighbor_name: Name of the bgp neighbor host.
+    :return: l3 port number.
+    """
+    cli = pn_cli(module)
+    cli += 'port-show hostname %s format port no-show-headers' % (
+        neighbor_name
+    )
+    ports = run_cli(module, cli).split()
+
+    cli = pn_cli(module)
+    cli += 'trunk-show ports %s format trunk-id no-show-headers ' % (
+        ports[0]
+    )
+    trunk_id = run_cli(module, cli)
+
+    if len(trunk_id) == 0 or trunk_id == 'Success':
+        return ports[0]
+    else:
+        return trunk_id
+
+
+def configure_loopback_interface(module, switch, router_id):
+    """
+    Method to configure looack interface on a vrouter.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch: Name of the switch.
+    :param router_id: Router id which is same as loopback ip.
+    :return: String describing if loopback interface got configured or not
+    """
+    global CHANGED_FLAG
+    vrouter_name = switch + '-vrouter'
+    cli = pn_cli(module)
+    cli += ' vrouter-loopback-interface-add vrouter-name %s ' % vrouter_name
+    cli += ' ip %s index 1 ' % router_id
+    run_cli(module, cli)
+
+    cli = pn_cli(module)
+    cli += ' vrouter-bgp-network-add vrouter-name %s ' % vrouter_name
+    cli += ' network %s netmask 255.255.255.255 ' % router_id
+    run_cli(module, cli)
+
+    CHANGED_FLAG.append(True)
+    return ' %s: Configured loopback interface with ip %s \n' % (switch,
+                                                                 router_id)
+
+
+def configure_ebgp_connections(module, switch, third_party_data, bgp_nic_ip):
+    """
+    Method to configure eBGP connection to remaining third party neighbors.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch: Name of the switch.
+    :param third_party_data: Third party BGP data in csv format.
+    :param bgp_nic_ip: Ip of first bgp neighbor added.
+    :return: String describing eBGP configuration.
+    """
+    global CHANGED_FLAG
+    output = ''
+    vrouter_name = switch + '-vrouter'
+    skip_flag = False
+    address = bgp_nic_ip.split('.')
+    bgp_static_part = str(address[0]) + '.' + str(address[1]) + '.'
+    bgp_static_part += str(address[2]) + '.'
+    bgp_last_octet = str(address[3]).split('/')
+    bgp_count = int(bgp_last_octet[0])
+    bgp_subnet = bgp_last_octet[1]
+
+    for row in third_party_data:
+        row = row.split(',')
+        if not skip_flag and row[3] == switch:
+            skip_flag = True
+            continue
+
+        if skip_flag and row[3] == switch:
+            neighbor_name = row[0]
+            neighbor_ip = row[1]
+            remote_as = row[2]
+
+            l3_port = get_l3_port(module, neighbor_name)
+            bgp_count += 1
+            ip = bgp_static_part + str(bgp_count) + '/' + bgp_subnet
+
+            cli = pn_cli(module)
+            clicopy = cli
+            cli += ' vrouter-interface-add vrouter-name %s ' % vrouter_name
+            cli += ' l3-port %s ip %s ' % (l3_port, ip)
+            run_cli(module, cli)
+            output += ' %s: Added vrouter interface %s \n' % (switch, ip)
+
+            cli = clicopy
+            cli += ' vrouter-bgp-add vrouter-name %s ' % vrouter_name
+            cli += ' neighbor %s remote-as %s bfd ' % (neighbor_ip, remote_as)
+            cli += ' allowas-in '
+            run_cli(module, cli)
+            output += ' %s: Added eBGP neighbor %s \n' % (switch, neighbor_ip)
+
+            cli = clicopy
+            cli += ' vrouter-modify name %s ' % vrouter_name
+            cli += ' bgp-max-paths %s ' % module.params['pn_bgp_max_path']
+            cli += ' bgp-bestpath-as-path multipath-relax '
+            run_cli(module, cli)
 
     return output
 
+
+def create_vlan(module, switch):
+    """
+    Method to create local vlan.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch: Name of the switch.
+    :return: String describing vlan creation details.
+    """
+    global CHANGED_FLAG
+    vlan_id = module.params['pn_ibgp_vlan']
+    
+    cli = pn_cli(module)
+    clicopy = cli
+    cli += ' switch %s vlan-show format id no-show-headers ' % switch
+    existing_vlan_ids = run_cli(module, cli).split()
+    existing_vlan_ids = list(set(existing_vlan_ids))
+
+    if vlan_id not in existing_vlan_ids:
+        cli = clicopy
+        cli += ' switch %s vlan-create id %s scope local ' % (switch, vlan_id)
+        run_cli(module, cli)
+        CHANGED_FLAG.append(True)
+        
+        cli = clicopy
+        cli += ' vlan-port-add vlan-id %s ports 128 tagged ' % vlan_id
+        run_cli(module, cli)
+        
+        return ' %s: Vlan id %s with scope local created \n' % (
+            switch, vlan_id
+        )
+
+    else:
+        return ' %s: Vlan id %s with scope local already exists \n' % (
+            switch, vlan_id
+        )
+    
+    
+def configure_ibgp_connection(module, switch, local_ip, remote_ip, remote_as):
+    """
+    Method to configure iBGP connection between cluster members.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch: Name of the switch.
+    :param local_ip: Vrouter interface ip of local switch.
+    :param remote_ip: Vrouter interface ip of remote switch.
+    :param remote_as: Remote-as value of cluster.
+    :return: String describing details of iBGP configuration made.
+    """
+    global CHANGED_FLAG
+    output = ''
+    vrouter_name = switch + '-vrouter'
+    vlan_id = module.params['pn_ibgp_vlan']
+    cli = pn_cli(module)
+    clicopy = cli
+    
+    cli += ' vrouter-interface-add vrouter-name %s ' % vrouter_name
+    cli += ' ip %s vlan %s ' % (local_ip, vlan_id)
+    run_cli(module, cli)
+
+    output += ' %s: Added vrouter interface with ip %s on %s \n' % (
+        switch, local_ip, vrouter_name
+    )
+
+    remote_ip = remote_ip.split('/')[0]
+    cli = clicopy
+    cli += ' vrouter-bgp-add vrouter-name %s ' % vrouter_name
+    cli += ' neighbor %s remote-as %s next-hop-self bfd ' % (remote_ip, 
+                                                             remote_as)
+    run_cli(module, cli)
+
+    output += ' %s: Added iBGP neighbor %s for %s \n' % (switch, remote_ip,
+                                                         vrouter_name)
+
+    CHANGED_FLAG.append(True)
+    return output
+    
 
 def implement_dci(module):
     """
@@ -487,24 +633,22 @@ def implement_dci(module):
     global CHANGED_FLAG
     output = ''
     supernet = 4
-    inband_ip = module.params['pn_inband_ip']
     bgp_ip = module.params['pn_bgp_ip']
     leaf_list = module.params['pn_leaf_list']
-    switch_count = len(leaf_list)
-    fabric_name = module.params['pn_fabric_name']
-
-    # Assign in-band ip.
-    output += assign_inband_ip(module, inband_ip)
+    loopback_ip = module.params['pn_loopback_ip']
+    bgp_as_range = module.params['pn_bgp_as_range']
+    third_party_data = module.params['pn_third_party_data'].replace(' ', '')
+    third_party_data = third_party_data.split('\n')
 
     address = bgp_ip.split('.')
-    static_part = str(address[0]) + '.' + str(address[1]) + '.'
-    static_part += str(address[2]) + '.'
+    bgp_static_part = str(address[0]) + '.' + str(address[1]) + '.'
+    bgp_static_part += str(address[2]) + '.'
+    bgp_last_octet = str(address[3]).split('/')
+    bgp_subnet = bgp_last_octet[1]
 
-    address = inband_ip.split('.')
-    inband_static_part = str(address[0]) + '.' + str(address[1]) + '.'
-    inband_static_part += str(address[2]) + '.'
-    last_octet = str(address[3]).split('/')
-    subnet = last_octet[1]
+    address = loopback_ip.split('.')
+    loopback_static_part = str(address[0]) + '.' + str(address[1]) + '.'
+    loopback_static_part += str(address[2]) + '.'
 
     cluster_dict_info = find_clustered_switches(module)
     cluster_list = cluster_dict_info[0]
@@ -513,48 +657,116 @@ def implement_dci(module):
     non_clustered_switches = list(sorted(set(leaf_list) - set(
         cluster_switches)))
 
-    cli = pn_cli(module)
-    clicopy = cli
+    # Calculate bgp-as value for all DC switches.
+    bgp_as_dict = {}
+    for switch in leaf_list:
+        if switch not in bgp_as_dict.keys():
+            if switch in non_clustered_switches:
+                bgp_as_dict[switch] = bgp_as_range
+            else:
+                bgp_as_dict[switch] = bgp_as_range
+                for cluster in cluster_list:
+                    if cluster[0] == switch:
+                        bgp_as_dict[cluster[1]] = bgp_as_range
+                        break
+                    elif cluster[1] == switch:
+                        bgp_as_dict[cluster[0]] = bgp_as_range
+                        break
+
+            bgp_as_range += supernet
 
     for switch in leaf_list:
         switch_index = leaf_list.index(switch)
-        if switch_index == 0:
-            cli = clicopy
-            cli += 'fabric-show format name no-show-headers'
-            existing_fabric = run_cli(module, cli).split()
+        # Calculate router-id to be assigned to vrouter.
+        router_id = loopback_static_part + str(switch_index + 1)
 
-            # Create fabric if not already created.
-            if fabric_name not in existing_fabric:
-                cli = clicopy
-                cli += 'fabric-create name %s ' % fabric_name
-                cli += ' fabric-network in-band control-network in-band '
-                output += ' %s: %s ' % (switch, run_cli(module, cli))
-                CHANGED_FLAG.append(True)
-            else:
-                output += ' %s: Fabric already exists\n' % switch
+        # Calculate bgp-nic-ip to be assigned while vrouter creation.
+        bgp_nic_ip_count = (switch_index * supernet) + 1
+        bgp_nic_ip = bgp_static_part + str(bgp_nic_ip_count) + '/' + bgp_subnet
 
-            # Indicate all subnets of the in-band interfaces of switches,
-            # that will be part of the fabric.
-            output += fabric_inband_net_create(module, inband_static_part,
-                                               subnet)
+        # Calculate in-band-nic-ip and in-band-nic-netmask for vrouter creation.
+        cli = pn_cli(module)
+        cli += 'switch-setup-show format in-band-ip no-show-headers'
+        inband_ip = run_cli(module, cli)
+        address = inband_ip.split(':')[1]
+        address = address.replace(' ', '')
+        address = address.split('.')
+        inband_static_part = str(address[0]) + '.' + str(address[1]) + '.'
+        inband_static_part += str(address[2]) + '.'
+        inband_last_octet = str(address[3]).split('/')
+        inband_nic_ip = inband_static_part + str(int(inband_last_octet[0]) + 1)
+        inband_nic_netmask = inband_last_octet[1]
+
+        # Get the bgp-as value
+        bgp_as = bgp_as_dict[switch]
+
+        # Get the neighbor ip and remote-as value of the first neighbor
+        neighbor_name, neighbor_ip, remote_as = None, None, None
+        for row in third_party_data:
+            row = row.split(',')
+            if row[3] == switch:
+                neighbor_name = row[0]
+                neighbor_ip = row[1]
+                remote_as = row[2]
+                break
+
+        if neighbor_name is None or neighbor_ip is None or remote_as is None:
+            return ' %s: Could not find remote bgp data \n' % switch
+
+        # Calculate bgp-nic-l3-port number connected to first neighbor
+        bgp_nic_l3_port = get_l3_port(module, neighbor_name)
+
+        # Calculate fabric-network address
+        if switch_index != 0:
+            fabric_network_address = inband_static_part + str(0) + '/'
+            fabric_network_address += inband_nic_netmask
         else:
-            switch_ip = inband_static_part + str(1)
-            # Join existing fabric.
-            if 'Already' in join_fabric(module, switch_ip):
-                output += ' %s: Already part of fabric %s \n' % (switch,
-                                                                 fabric_name)
-            else:
-                output += ' %s: Joined fabric %s \n' % (switch, fabric_name)
+            fabric_network_address = None
 
-        bgp_nic_ip_count = (switch_index * switch_count * supernet) + 1
-        neighbor_ip_count = bgp_nic_ip_count + 1
-        bgp_nic_ip = static_part + str(bgp_nic_ip_count) + '/' + subnet
-        neighbor_ip = static_part + str(neighbor_ip_count)
+        # Create and configure vrouter on this switch.
+        output += create_vrouter(module, switch, bgp_as, router_id,
+                                 bgp_nic_ip, bgp_nic_l3_port, neighbor_ip,
+                                 remote_as, inband_nic_ip, inband_nic_netmask,
+                                 fabric_network_address)
 
-        # Create and configure vrouter.
-        output += create_and_configure_vrouter(
-            module, bgp_nic_ip, neighbor_ip, switch, cluster_list,
-            non_clustered_switches)
+        # Configure other eBGP connection to third party switches
+        output += configure_ebgp_connections(module, switch, third_party_data,
+                                             bgp_nic_ip)
+
+        # Configure loopback interface for debugging purpose.
+        output += configure_loopback_interface(module, switch, router_id)
+
+    # Configure iBGP connection between clusters
+    for cluster in cluster_list:
+        cluster_node1 = cluster[0]
+        cluster_node2 = cluster[1]
+        
+        # Create local vlans on both cluster nodes.
+        output += create_vlan(module, cluster_node1)
+        output += create_vlan(module, cluster_node2)
+
+        ibgp_ip_range = module.params['pn_ibgp_ip_range']
+        subnet_count = 0
+
+        address = ibgp_ip_range.split('.')
+        static_part = str(address[0]) + '.' + str(address[1]) + '.'
+        static_part += str(address[2]) + '.'
+        last_octet = str(address[3]).split('/')
+        subnet = last_octet[1]
+
+        ip_count = subnet_count * 4
+        node1_ip = static_part + str(ip_count + 1) + '/' + subnet
+        node2_ip = static_part + str(ip_count + 2) + '/' + subnet
+        subnet_count += 1
+    
+        # Configure iBGP connection.
+        output += configure_ibgp_connection(module, cluster_node1, node1_ip,
+                                            node2_ip, 
+                                            bgp_as_dict[cluster_node1])
+        
+        output += configure_ibgp_connection(module, cluster_node2, node2_ip,
+                                            node1_ip,
+                                            bgp_as_dict[cluster_node1])
 
     return output
 
@@ -619,19 +831,25 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_fabric_name=dict(required=True, type='str'),
+            pn_fabric_name=dict(required=False, type='str'),
             pn_spine_list=dict(required=True, type='list'),
             pn_leaf_list=dict(required=True, type='list'),
             pn_inband_ip=dict(required=False, type='str',
                               default='172.16.0.0/24'),
-            pn_current_switch=dict(required=True, type='str'),
+            pn_loopback_ip=dict(required=False, type='str',
+                                default='109.109.109.0/24'),
+            pn_current_switch=dict(required=False, type='str'),
             pn_bgp_as_range=dict(required=False, type='str', default='65000'),
             pn_bgp_ip=dict(required=False, type='str', default='100.1.1.0/24'),
             pn_accept_eula=dict(required=True, type='bool'),
             pn_bgp_redistribute=dict(required=False, type='str',
                                      default='connected'),
             pn_bgp_max_path=dict(required=False, type='str', default='16'),
-            pn_csv_data=dict(required=True, type='str'),
+            pn_ibgp_vlan=dict(required=False, type='str', default='4040'),
+            pn_ibgp_ip_range=dict(required=False, type='str',
+                                  default='75.75.75.0/30'),
+            pn_csv_data=dict(required=False, type='str'),
+            pn_third_party_bgp_data=dict(required=False, type='str'),
         )
     )
 
@@ -655,7 +873,14 @@ def main():
         if toggle_40g_local(module):
             message += ' %s: Toggled 40G ports to 10G \n' % current_switch
             CHANGED_FLAG.append(True)
+
+        # Assign in-band ip
+        message += assign_inband_ip(module)
+
+        # Configure fabric
+        message += configure_fabric(module, current_switch)
     else:
+        # Implement Data Center Interconnect
         message += implement_dci(module)
 
     # Exit the module and return the required JSON
