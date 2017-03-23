@@ -549,16 +549,16 @@ def configure_ebgp_connections(module, switch, third_party_data, bgp_nic_ip):
     return output
 
 
-def create_vlan(module, switch):
+def create_vlan(module, vlan_id, switch, scope):
     """
     Method to create local vlan.
     :param module: The Ansible module to fetch input parameters.
+    :param vlan_id: vlan id to create.
     :param switch: Name of the switch.
+    :param scope: Scope of the vlan to create.
     :return: String describing vlan creation details.
     """
     global CHANGED_FLAG
-    vlan_id = module.params['pn_ibgp_vlan']
-    
     cli = pn_cli(module)
     clicopy = cli
     cli += ' switch %s vlan-show format id no-show-headers ' % switch
@@ -567,24 +567,27 @@ def create_vlan(module, switch):
 
     if vlan_id not in existing_vlan_ids:
         cli = clicopy
-        cli += ' switch %s vlan-create id %s scope local ' % (switch, vlan_id)
+        cli += ' switch %s vlan-create id %s scope %s ' % (switch, vlan_id,
+                                                           scope)
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
-        
+
         cli = clicopy
-        cli += ' vlan-port-add vlan-id %s ports 128 tagged ' % vlan_id
-        run_cli(module, cli)
-        
-        return ' %s: Vlan id %s with scope local created \n' % (
+        cli += ' switch %s vlan-port-add vlan-id %s ports 128 tagged ' % (
             switch, vlan_id
+        )
+        run_cli(module, cli)
+
+        return ' %s: Vlan id %s with scope %s created \n' % (
+            switch, vlan_id, scope
         )
 
     else:
-        return ' %s: Vlan id %s with scope local already exists \n' % (
-            switch, vlan_id
+        return ' %s: Vlan id %s with scope %s already exists \n' % (
+            switch, vlan_id, scope
         )
-    
-    
+
+
 def configure_ibgp_connection(module, switch, local_ip, remote_ip, remote_as):
     """
     Method to configure iBGP connection between cluster members.
@@ -601,7 +604,7 @@ def configure_ibgp_connection(module, switch, local_ip, remote_ip, remote_as):
     vlan_id = module.params['pn_ibgp_vlan']
     cli = pn_cli(module)
     clicopy = cli
-    
+
     cli += ' vrouter-interface-add vrouter-name %s ' % vrouter_name
     cli += ' ip %s vlan %s ' % (local_ip, vlan_id)
     run_cli(module, cli)
@@ -613,7 +616,7 @@ def configure_ibgp_connection(module, switch, local_ip, remote_ip, remote_as):
     remote_ip = remote_ip.split('/')[0]
     cli = clicopy
     cli += ' vrouter-bgp-add vrouter-name %s ' % vrouter_name
-    cli += ' neighbor %s remote-as %s next-hop-self bfd ' % (remote_ip, 
+    cli += ' neighbor %s remote-as %s next-hop-self bfd ' % (remote_ip,
                                                              remote_as)
     run_cli(module, cli)
 
@@ -622,7 +625,250 @@ def configure_ibgp_connection(module, switch, local_ip, remote_ip, remote_as):
 
     CHANGED_FLAG.append(True)
     return output
-    
+
+
+def create_cluster(module, name, cluster_list):
+    """
+    Method to create a cluster between two switches.
+    :param module: The Ansible module to fetch input parameters.
+    :param name: The name of the cluster to create.
+    :param cluster_list: List of cluster switches.
+    :return: String describing if cluster got created or if it already exists.
+    """
+    global CHANGED_FLAG
+    cluster_node1 = cluster_list[0]
+    cluster_node2 = cluster_list[1]
+
+    cli = pn_cli(module)
+    clicopy = cli
+    cli += ' switch %s cluster-show format name no-show-headers ' % (
+        cluster_node1)
+    existing_clusters = run_cli(module, cli).split()
+    if name not in existing_clusters:
+        cli = clicopy
+        cli += ' switch %s cluster-create name %s ' % (cluster_node1, name)
+        cli += ' cluster-node-1 %s cluster-node-2 %s ' % (cluster_node1,
+                                                          cluster_node2)
+        if 'Success' in run_cli(module, cli):
+            CHANGED_FLAG.append(True)
+            return ' %s: %s created successfully \n' % (cluster_node1, name)
+    else:
+        return ' %s: %s already exists \n' % (cluster_node1, name)
+
+
+def modify_vrouter(module, switch, vrrp_id):
+    """
+    Method to add vrrp id to a vrouter.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch: Name of the switch.
+    :param vrrp_id: vrrp id to be assigned to vrouter.
+    :return: String describing if vrrp id got assigned or not.
+    """
+    global CHANGED_FLAG
+    vrouter_name = switch + '-vrouter'
+    cli = pn_cli(module)
+    cli += ' switch %s vrouter-modify name %s ' % (switch, vrouter_name)
+    cli += ' hw-vrrp-id %s ' % vrrp_id
+    run_cli(module, cli)
+    return ' %s: Added vrrp_id %s to %s \n' % (switch, vrrp_id, vrouter_name)
+
+
+def create_vrouter_interface(module, switch, vrrp_ip, vlan_id, vrrp_id,
+                             ip_count, vrrp_priority):
+    """
+    Method to add vrouter interface and assign IP to it along with
+    vrrp_id and vrrp_priority.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch: The switch name on which interfaces will be created.
+    :param vrrp_ip: IP address to be assigned to vrouter interface.
+    :param vlan_id: vlan_id to be assigned.
+    :param vrrp_id: vrrp_id to be assigned.
+    :param vrrp_priority: priority to be given(110 for active switch).
+    :param ip_count: The value of fourth octet in the ip.
+    :return: String describing if vrouter interface got added or not.
+    """
+    global CHANGED_FLAG
+    vrouter_name = switch + '-vrouter'
+    ip_addr = vrrp_ip.split('.')
+    fourth_octet = ip_addr[3].split('/')
+    subnet = fourth_octet[1]
+
+    static_ip = ip_addr[0] + '.' + ip_addr[1] + '.' + ip_addr[2] + '.'
+    vip = static_ip + '1' + '/' + subnet
+    interface_ip = static_ip + ip_count + '/' + subnet
+
+    cli = pn_cli(module)
+    clicopy = cli
+    cli += ' vrouter-interface-show vlan %s ip %s ' % (vlan_id, interface_ip)
+    cli += ' format switch no-show-headers '
+    existing_vrouter = run_cli(module, cli).split()
+    existing_vrouter = list(set(existing_vrouter))
+
+    if vrouter_name not in existing_vrouter:
+        cli = clicopy
+        cli += ' switch %s vrouter-interface-add vrouter-name %s ' % (
+            switch, vrouter_name
+        )
+        cli += ' ip ' + interface_ip
+        cli += ' vlan %s if data ' % vlan_id
+        run_cli(module, cli)
+        output = ' %s: Added vrouter interface with ip %s to %s \n' % (
+            switch, interface_ip, vrouter_name
+        )
+        CHANGED_FLAG.append(True)
+    else:
+        output = ' %s: Vrouter interface %s already exists for %s \n' % (
+            switch, interface_ip, vrouter_name
+        )
+
+    cli = clicopy
+    cli += ' vrouter-interface-show vrouter-name %s ip %s vlan %s ' % (
+        vrouter_name, interface_ip, vlan_id
+    )
+    cli += ' format nic no-show-headers '
+    eth_port = run_cli(module, cli).split()
+    eth_port.remove(vrouter_name)
+
+    cli = clicopy
+    cli += ' vrouter-interface-show vlan %s ip %s vrrp-primary %s ' % (
+        vlan_id, vip, eth_port[0]
+    )
+    cli += ' format switch no-show-headers '
+    existing_vrouter = run_cli(module, cli).split()
+    existing_vrouter = list(set(existing_vrouter))
+
+    if vrouter_name not in existing_vrouter:
+        cli = clicopy
+        cli += ' switch %s vrouter-interface-add vrouter-name %s ' % (
+            switch, vrouter_name
+        )
+        cli += ' ip ' + vip
+        cli += ' vlan %s if data vrrp-id %s ' % (vlan_id, vrrp_id)
+        cli += ' vrrp-primary %s vrrp-priority %s ' % (eth_port[0],
+                                                       vrrp_priority)
+        run_cli(module, cli)
+        output += ' %s: Added vrouter interface with ip %s to %s \n' % (
+            switch, vip, vrouter_name
+        )
+        CHANGED_FLAG.append(True)
+
+    else:
+        output += ' %s: Vrouter interface %s already exists for %s \n' % (
+            switch, vip, vrouter_name
+        )
+
+    return output
+
+
+def add_vrouter_interface_for_non_cluster_switch(module, vrrp_ip, switch,
+                                                 vlan_id):
+    """
+    Method to add vrouter interface for non clustered switches.
+    :param module: The Ansible module to fetch input parameters.
+    :param vrrp_ip: Vrouter interface ip to be added.
+    :param switch: Name of non clustered switch.
+    :param vlan_id: vlan id.
+    :return: String describing if vrouter interface got added or not.
+    """
+    global CHANGED_FLAG
+    vrouter_name = switch + '-vrouter'
+
+    ip_addr = vrrp_ip.split('.')
+    fourth_octet = ip_addr[3].split('/')
+    subnet = fourth_octet[1]
+
+    static_ip = ip_addr[0] + '.' + ip_addr[1] + '.' + ip_addr[2] + '.'
+    gateway_ip = static_ip + '1' + '/' + subnet
+
+    cli = pn_cli(module)
+    clicopy = cli
+    cli += ' vrouter-interface-show ip %s vlan %s ' % (gateway_ip, vlan_id)
+    cli += ' format switch no-show-headers '
+    existing_vrouter = run_cli(module, cli).split()
+    existing_vrouter = list(set(existing_vrouter))
+
+    if vrouter_name not in existing_vrouter:
+        cli = clicopy
+        cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
+        cli += ' vlan ' + vlan_id
+        cli += ' ip ' + gateway_ip
+        run_cli(module, cli)
+        CHANGED_FLAG.append(True)
+        return ' %s: Added vrouter interface with ip %s on %s \n' % (
+            switch, gateway_ip, vrouter_name
+        )
+
+    else:
+        return ' %s: Vrouter interface %s already exists on %s \n' % (
+            switch, gateway_ip, vrouter_name
+        )
+
+
+def add_vxlan_to_vlan(module, vlan_id, vxlan):
+    """
+    Method to add vxlan mapping to vlan.
+    :param module: The Ansible module to fetch input parameters.
+    :param vlan_id: vlan id to be modified.
+    :param vxlan: vxlan id to be assigned to vlan.
+    :return: String describing if vxlan for added or not.
+    """
+    cli = pn_cli(module)
+    cli += ' vlan-modify id %s vxlan %s ' % (vlan_id, vxlan)
+    run_cli(module, cli)
+    return ' Added vxlan %s to vlan %s! ' % (vxlan, vlan_id)
+
+
+def configure_vrrp(module):
+    """
+    Method to configure VRRP L3.
+    :param module: The Ansible module to fetch input parameters.
+    :return: Output string of configuration.
+    """
+    output = ''
+    csv_data = module.params['pn_csv_data'].replace(" ", "")
+    csv_data_list = csv_data.split('\n')
+    # Parse csv file data and configure VRRP.
+    for row in csv_data_list:
+        elements = row.split(',')
+        cluster_list = []
+        vlan_id = elements[0]
+        vrrp_ip = elements[1]
+        cluster_node1 = str(elements[2])
+        if len(elements) > 5:
+            # Configure VRRP for clustered switches
+            cluster_node2 = str(elements[3])
+            vrrp_id = elements[4]
+            active_switch = str(elements[5])
+            cluster_list.append(cluster_node1)
+            cluster_list.append(cluster_node2)
+            cluster_name = cluster_node1 + '-to-' + cluster_node2 + '-cluster'
+            host_count = 1
+
+            # Create a cluster and vlan with scope cluster
+            output = create_cluster(module, cluster_name, cluster_list)
+            output += create_vlan(module, vlan_id, cluster_node1, 'cluster')
+
+            for switch in cluster_list:
+                output += modify_vrouter(module, switch, vrrp_id)
+                host_count += 1
+                vrrp_priority = '110' if switch == active_switch else '100'
+                output += create_vrouter_interface(module, switch, vrrp_ip,
+                                                   vlan_id,
+                                                   vrrp_id, str(host_count),
+                                                   vrrp_priority)
+
+            # For vxlan config, add vxlan to vlan
+            output += add_vxlan_to_vlan(module, vlan_id,
+                                        module.params['pn_vxlan'])
+
+        else:
+            # Configure VRRP for non clustered switches.
+            output += create_vlan(module, vlan_id, cluster_node1, 'local')
+            output += add_vrouter_interface_for_non_cluster_switch(
+                module, vrrp_ip, cluster_node1, vlan_id)
+
+    return output
+
 
 def implement_dci(module):
     """
@@ -740,13 +986,14 @@ def implement_dci(module):
     for cluster in cluster_list:
         cluster_node1 = cluster[0]
         cluster_node2 = cluster[1]
-        
-        # Create local vlans on both cluster nodes.
-        output += create_vlan(module, cluster_node1)
-        output += create_vlan(module, cluster_node2)
-
+        vlan_id = module.params['pn_ibgp_vlan']
+        vlan_scope = 'local'
         ibgp_ip_range = module.params['pn_ibgp_ip_range']
         subnet_count = 0
+
+        # Create local vlans on both cluster nodes.
+        output += create_vlan(module, cluster_node1, vlan_id, vlan_scope)
+        output += create_vlan(module, cluster_node2, vlan_id, vlan_scope)
 
         address = ibgp_ip_range.split('.')
         static_part = str(address[0]) + '.' + str(address[1]) + '.'
@@ -758,15 +1005,26 @@ def implement_dci(module):
         node1_ip = static_part + str(ip_count + 1) + '/' + subnet
         node2_ip = static_part + str(ip_count + 2) + '/' + subnet
         subnet_count += 1
-    
+
         # Configure iBGP connection.
         output += configure_ibgp_connection(module, cluster_node1, node1_ip,
-                                            node2_ip, 
+                                            node2_ip,
                                             bgp_as_dict[cluster_node1])
-        
+
         output += configure_ibgp_connection(module, cluster_node2, node2_ip,
                                             node1_ip,
                                             bgp_as_dict[cluster_node1])
+
+    # Configure VRRP to be used for VTEP HA
+    output += configure_vrrp(module)
+
+    # Configure vxlan tunnels between clusters
+    for local_cluster in cluster_list:
+        for remote_cluster in cluster_list:
+            if local_cluster == remote_cluster:
+                continue
+            else:
+                pass
 
     return output
 
@@ -890,6 +1148,7 @@ def main():
         failed=False,
         changed=True if True in CHANGED_FLAG else False
     )
+
 
 if __name__ == '__main__':
     main()
