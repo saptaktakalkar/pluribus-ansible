@@ -212,10 +212,10 @@ def create_cluster(module, switch, name, node1, node2):
         cli += ' cluster-node-1 %s cluster-node-2 %s ' % (node1, node2)
         if 'Success' in run_cli(module, cli):
             CHANGED_FLAG.append(True)
-            return ' %s created successfully! ' % name
+            return ' %s created successfully \n' % name
     else:
         CHANGED_FLAG.append(False)
-        return ' %s already exists! ' % name
+        return ' %s already exists! \n' % name
 
 
 def get_ports(module, switch, peer_switch):
@@ -253,10 +253,10 @@ def create_trunk(module, switch, name, ports):
         cli += ' ports %s ' % ports_string
         if 'Success' in run_cli(module, cli):
             CHANGED_FLAG.append(True)
-            return ' %s trunk created successfully! ' % name
+            return ' %s trunk created successfully! \n' % name
     else:
         CHANGED_FLAG.append(False)
-        return ' %s trunk already exists! ' % name
+        return ' %s trunk already exists! \n' % name
 
 
 def find_non_clustered_leafs(module, leaf_list):
@@ -306,10 +306,10 @@ def create_vlag(module, switch, name, peer_switch, port, peer_port):
                                                                     peer_port)
         if 'Success' in run_cli(module, cli):
             CHANGED_FLAG.append(True)
-            return ' %s vlag configured successfully! ' % name
+            return ' %s vlag configured successfully \n' % name
     else:
         CHANGED_FLAG.append(False)
-        return ' %s vlag is already configured! ' % name
+        return ' %s vlag is already configured \n' % name
 
 
 def configure_trunk(module, cluster_node, switch_list):
@@ -329,8 +329,8 @@ def configure_trunk(module, cluster_node, switch_list):
 
     src_ports = list(set(src_ports))
     name = cluster_node + '-to-' + switch_names
-    create_trunk(module, cluster_node, name, src_ports)
-    return name
+    output = create_trunk(module, cluster_node, name, src_ports)
+    return output + name
 
 
 def configure_trunk_vlag_for_clustered_leafs(module, non_clustered_leafs,
@@ -386,8 +386,12 @@ def configure_trunk_vlag_for_clustered_leafs(module, non_clustered_leafs,
                     non_clustered_leafs.remove(node2)
 
                     # Trunk creation (leaf to spine)
-                    trunk_name1 = configure_trunk(module, node1, spine_list)
-                    trunk_name2 = configure_trunk(module, node2, spine_list)
+                    trunk_message1 = configure_trunk(module, node1, spine_list).split('\n')
+                    trunk_message2 = configure_trunk(module, node2, spine_list).split('\n')
+                    trunk_name1 = trunk_message1[1]
+                    trunk_name2 = trunk_message2[1]
+                    output += trunk_message1[0] + '\n'
+                    output += trunk_message2[0] + '\n'
 
                     # Vlag creation (leaf to spine)
                     vlag_name = node1 + '-' + node2 + '-to-' + 'spine'
@@ -412,10 +416,10 @@ def configure_trunk_non_clustered_leafs(module, non_clustered_leafs,
     :param spine_list: The list of all spine switches.
     :return: Output of configure_trunk() method.
     """
-    output = ''
     for leaf in non_clustered_leafs:
         # Trunk creation (leaf to spine)
-        output += configure_trunk(module, leaf, spine_list)
+        trunk_message = configure_trunk(module, leaf, spine_list).split('\n')
+        output = trunk_message[0] + '\n'
 
     return output
 

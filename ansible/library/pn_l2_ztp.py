@@ -295,8 +295,11 @@ def configure_trunk(module, cluster_node, switch_list):
 
     src_ports = list(set(src_ports))
     name = cluster_node + '-to-' + switch_names
-    create_trunk(module, cluster_node, name, src_ports)
-    return name
+    if len(name) > 59:
+        name = name[:59]
+
+    output = create_trunk(module, cluster_node, name, src_ports)
+    return output + name
 
 
 def configure_trunk_vlag_for_clustered_leafs(module, non_clustered_leafs,
@@ -352,9 +355,12 @@ def configure_trunk_vlag_for_clustered_leafs(module, non_clustered_leafs,
                     non_clustered_leafs.remove(node2)
 
                     # Trunk creation (leaf to spines)
-                    trunk_name1 = configure_trunk(module, node1, spine_list)
-                    trunk_name2 = configure_trunk(module, node2, spine_list)
-
+                    trunk_message1 = configure_trunk(module, node1, spine_list).split('\n')
+                    trunk_message2 = configure_trunk(module, node2, spine_list).split('\n')
+                    trunk_name1 = trunk_message1[1]
+                    trunk_name2 = trunk_message2[1]
+                    output += trunk_message1[0] + '\n'
+                    output += trunk_message2[0] + '\n'
                     # Vlag creation (leaf to spines)
                     vlag_name = node1 + '-' + node2 + '-to-' + 'spine'
                     if len(vlag_name) > 59:
@@ -368,8 +374,12 @@ def configure_trunk_vlag_for_clustered_leafs(module, non_clustered_leafs,
                     spine2 = str(spine_list[1])
 
                     # Trunk creation (spine to leafs)
-                    trunk_name1 = configure_trunk(module, spine1, leafs_list)
-                    trunk_name2 = configure_trunk(module, spine2, leafs_list)
+                    trunk_message1 = configure_trunk(module, spine1, leafs_list).split('\n')
+                    trunk_message2 = configure_trunk(module, spine2, leafs_list).split('\n')
+                    trunk_name1 = trunk_message1[1]
+                    trunk_name2 = trunk_message2[1]
+                    output += trunk_message1[0] + '\n'
+                    output += trunk_message2[0] + '\n'
 
                     # Vlag creation (spine to leafs)
                     name =  'spine-to-' + node1 + '-' + node2
@@ -397,14 +407,19 @@ def configure_trunk_non_clustered_leafs(module, non_clustered_leafs,
     output = ''
     for leaf in non_clustered_leafs:
         # Trunk creation (leaf to spines)
-        configure_trunk(module, leaf, spine_list)
+        trunk_message = configure_trunk(module, leaf, spine_list).split('\n')
+        output += trunk_message[0] + '\n'
 
         spine1 = str(spine_list[0])
         spine2 = str(spine_list[1])
 
         # Trunk creation (spine to leafs)
-        trunk_name1 = configure_trunk(module, spine1, [leaf])
-        trunk_name2 = configure_trunk(module, spine2, [leaf])
+        trunk_message1 = configure_trunk(module, spine1, [leaf]).split('\n')
+        trunk_message2 = configure_trunk(module, spine2, [leaf]).split('\n')
+        trunk_name1 = trunk_message1[1]
+        trunk_name2 = trunk_message2[1]
+        output += trunk_message1[0] + '\n'
+        output += trunk_message2[0] + '\n'
 
         # Vlag creation (spine to leafs)
         name = 'spine-to-' + leaf
