@@ -1,0 +1,223 @@
+<playbooks>
+    <playbook>
+        <name> Fabric creation </name>
+        <image>  </image>
+        <description> Fabric creation playbook. This playbook creates fabric from the host file. </description>
+
+        <guiProperties>
+            <tab> mandatory </tab>
+            <displayText> Fabric Creation</displayText>
+            <value> gui-fabric </value>
+            <choices></choices>
+            <key> pn_fabric_name </key>
+            <type> text </type>
+            <tooltip> Enter Fabric Name </tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab> optional </tab>
+            <displayText> Toggle 40G </displayText>
+            <value> True </value>
+            <choices>
+		<option> True </option>
+                <option> False </option>
+	    </choices>
+            <key> pn_toggle_40g </key>
+            <type> boolean </type>
+            <tooltip> Flag to toggle/convert 40g ports to 10g ports, Toggle 40g, boolean </tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab> optional </tab>
+            <displayText> Inband IP </displayText>
+            <value> 172.16.1.0/24 </value>
+            <choices>
+                <option> 172.16.0.0/24 </option>
+            </choices>
+            <key> pn_inband_ip </key>
+            <type> IP </type>
+            <tooltip> Inband ips to be assigned to switches starting with this value, Inband IP </tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab> optional </tab>
+            <displayText> Fabric Network </displayText>
+            <value> mgmt </value>
+            <choices>
+                <option> in-band </option>
+                <option> mgmt </option>
+            </choices>
+            <key> pn_fabric_network </key>
+            <type> boolean </type>
+            <tooltip> Select fabric network type </tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab> optional </tab>
+            <displayText> Fabric Control Network </displayText>
+            <value> mgmt </value>
+            <choices>
+                <option> in-band </option>
+                <option> mgmt </option>
+            </choices>
+            <key> pn_fabric_control_network </key>
+            <type> boolean </type>
+            <tooltip> Select fabric control network </tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab> optional </tab>
+            <displayText>  Static Setup </displayText>
+            <value> False </value>
+            <choices>
+                <option> True </option>
+                <option> False </option>
+            </choices>
+            <key> pn_static_setup </key>
+            <type> boolean </type>
+            <tooltip> Flag to indicate if static values should be assigned to following switch setup parameters </tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab> optional </tab>
+            <displayText> Mgmt IP Subnet </displayText>
+            <value> 16 </value>
+            <choices></choices>
+            <key> pn_mgmt_ip_subnet </key>
+            <type> text </type>
+            <tooltip> Specify subnet mask for mgmt-ip to be assigned to switches </tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab> optional </tab>
+            <displayText> Gateway IP </displayText>
+            <value> 10.9.9.1 </value>
+            <choices></choices>
+            <key> pn_gateway_ip </key>
+            <type> text </type>
+            <tooltip> Specify gateway-ip to be assigned to switches </tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab> optional </tab>
+            <displayText> DNS IP </displayText>
+            <value> 10.20.41.1 </value>
+            <choices></choices>
+            <key> pn_dns_ip </key>
+            <type> IP </type>
+            <tooltip> Specify dns-ip to be assigned to switches </tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab> optional </tab>
+            <displayText> DNS Secondary IP </displayText>
+            <value> 10.20.4.1 </value>
+            <choices></choices>
+            <key> pn_dns_secondary_ip </key>
+            <type> IP </type>
+            <tooltip> Specify dns-secondary-ip to be assigned to switches </tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab> optional </tab>
+            <displayText> Domain Name </displayText>
+            <value> pluribusnetworks.com </value>
+            <choices></choices>
+            <key> pn_domain_name </key>
+            <type> text </type>
+            <tooltip> Specify domain-name to be assigned to switches </tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab> optional </tab>
+            <displayText> NTP Server </displayText>
+            <value> 0.us.pool.ntp.org </value>
+            <choices></choices>
+            <key> pn_ntp_server </key>
+            <type> text </type>
+            <tooltip> Specify ntp-server value to be assigned to switches </tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab> optional </tab>
+            <displayText> Web API </displayText>
+            <value> True </value>
+            <choices>
+                <option> True </option>
+                <option> False </option>
+            </choices>
+            <key> pn_web_api </key>
+            <type> boolean </type>
+            <tooltip> Flag to enable web api </tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab> optional </tab>
+            <displayText> STP </displayText>
+            <value> False </value>
+            <choices>
+                <option> True </option>
+                <option> False </option>
+            </choices>
+            <key> pn_stp </key>
+            <type> boolean </type>
+            <tooltip> Flag to enable STP at the end of configuration </tooltip>
+        </guiProperties>
+    </playbook>
+
+    <playbook>
+        <name> L2 VRRP </name>
+        <image>  </image>
+        <description> A short  description regarding L2 VRRP Playbook. </description>
+
+        <guiProperties>
+            <tab> optional </tab>
+            <displayText> Update Fabric Network </displayText>
+            <value> False </value>
+            <choices>
+                <option> True </option>
+                <option> False </option>
+            </choices>
+            <key> pn_update_fabric_to_inband </key>
+            <type> boolean </type>
+            <tooltip> Flag to update fabric network to in-band </tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab> optional </tab>
+            <displayText> STP </displayText>
+            <value> True </value>
+            <choices>
+                <option> True </option>
+                <option> False </option>
+            </choices>
+            <key> pn_stp </key>
+            <type> boolean </type>
+            <tooltip> Flag to enable STP at the end of configuration </tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab> mandatory </tab>
+            <displayText> CSV FILE </displayText>
+            <value> </value>
+            <choices></choices>
+            <key> csv_file </key>
+            <type> file </type>
+            <tooltip> Layer2 VRRP data csv file </tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab> optional </tab>
+            <displayText> VRRP ID </displayText>
+            <value> 18 </value>
+            <choices>
+                <option> 18 </option>
+            </choices>
+            <key> pn_vrrp_id </key>
+            <type> text </type>
+            <tooltip> Specify VRRP ID to be assigned </tooltip>
+        </guiProperties>
+
+    </playbook>
+
+</playbooks>
