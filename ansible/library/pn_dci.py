@@ -19,6 +19,7 @@
 #
 
 from ansible.module_utils.basic import AnsibleModule
+import re
 import shlex
 import time
 
@@ -804,20 +805,6 @@ def add_vrouter_interface_for_non_cluster_switch(module, vrrp_ip, switch,
         )
 
 
-def add_vxlan_to_vlan(module, vlan_id, vxlan):
-    """
-    Method to add vxlan mapping to vlan.
-    :param module: The Ansible module to fetch input parameters.
-    :param vlan_id: vlan id to be modified.
-    :param vxlan: vxlan id to be assigned to vlan.
-    :return: String describing if vxlan for added or not.
-    """
-    cli = pn_cli(module)
-    cli += ' vlan-modify id %s vxlan %s ' % (vlan_id, vxlan)
-    run_cli(module, cli)
-    return ' Added vxlan %s to vlan %s! ' % (vxlan, vlan_id)
-
-
 def configure_vrrp(module):
     """
     Method to configure VRRP L3.
@@ -856,11 +843,6 @@ def configure_vrrp(module):
                                                    vlan_id,
                                                    vrrp_id, str(host_count),
                                                    vrrp_priority)
-
-            # For vxlan config, add vxlan to vlan
-            output += add_vxlan_to_vlan(module, vlan_id,
-                                        module.params['pn_vxlan'])
-
         else:
             # Configure VRRP for non clustered switches.
             output += create_vlan(module, vlan_id, cluster_node1, 'local')
@@ -868,6 +850,176 @@ def configure_vrrp(module):
                 module, vrrp_ip, cluster_node1, vlan_id)
 
     return output
+
+
+def add_vxlan_to_vlan(module, vlan_id, vxlan):
+    """
+    Method to add vxlan mapping to vlan.
+    :param module: The Ansible module to fetch input parameters.
+    :param vlan_id: vlan id to be modified.
+    :param vxlan: vxlan id to be assigned to vlan.
+    :return: String describing if vxlan for added or not.
+    """
+    cli = pn_cli(module)
+    cli += ' vlan-modify id %s vxlan %s ' % (vlan_id, vxlan)
+    run_cli(module, cli)
+    return ' Added vxlan %s to vlan %s! ' % (vxlan, vlan_id)
+
+
+def get_vrouter_interface_ip(module, switch, vlan):
+    """
+    Method to get vrouter interface ip to be used as local ip.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch: Name of the local switch.
+    :param vlan: Vlan id for which to find vrouter interface ip.
+    :return: Vrouter interface ip.
+    """
+    vrouter_name = switch + '-vrouter'
+    cli = pn_cli(module)
+    cli += ' vrouter-interface-show vrouter-name ' + vrouter_name
+    cli += ' vlan %s format ip no-show-headers ' % vlan
+    output = run_cli(module, cli).split()
+    output = list(set(output))
+    output.remove(vrouter_name)
+    regex = re.compile(r'^\d.*1/')
+    ip_with_subnet = [ip for ip in output if not regex.match(ip)]
+    return ip_with_subnet[0].split('/')[0]
+
+
+def create_tunnel(module, local_switch, tunnel_name, scope, local_ip, remote_ip,
+                  peer_switch=None):
+    """
+    Method to create tunnel to carry vxlan traffic.
+    :param module: The Ansible module to fetch input parameters.
+    :param local_switch: Name of the switch on which tunnel will be created.
+    :param tunnel_name: Name of the tunnel to create.
+    :param scope: Scope of the tunnel to create.
+    :param local_ip: Local vrouter interface ip.
+    :param remote_ip: Remote vrouter interface ip.
+    :param peer_switch: Name of the peer clustered switch. In case of
+    unclustered switch, this will be None.
+    :return: String describing if tunnel got created or if it already exists.
+    """
+    global CHANGED_FLAG
+    cli = pn_cli(module)
+    cli += ' switch %s tunnel-show format name no-show-headers ' % local_switch
+    existing_tunnels = run_cli(module, cli).split()
+
+    if tunnel_name not in existing_tunnels:
+        cli = pn_cli(module)
+        cli += ' switch %s tunnel-create name %s scope %s ' % (local_switch,
+                                                               tunnel_name,
+                                                               scope)
+        cli += ' local-ip %s remote-ip %s ' % (local_ip, remote_ip)
+        cli += ' vrouter-name %s ' % (local_switch + '-vrouter')
+
+        if peer_switch is not None:
+            cli += ' peer-vrouter-name %s ' % (peer_switch + '-vrouter')
+
+        if 'Success' in run_cli(module, cli):
+            CHANGED_FLAG.append(True)
+            return ' %s: %s created successfully \n ' % (local_switch,
+                                                         tunnel_name)
+        else:
+            return ' %s: Could not create %s \n' % (local_switch, tunnel_name)
+    else:
+        return ' %s: %s already exists \n' % (local_switch, tunnel_name)
+
+
+def add_vxlan_to_tunnel(module, vxlan, tunnel_name, switch):
+    """
+    Method to add vxlan to created tunnel so that it can carry vxlan traffic.
+    :param module: The Ansible module to fetch input parameters.
+    :param vxlan: vxlan id to add to tunnel.
+    :param tunnel_name: Name of the tunnel on which vxlan will be added.
+    :param switch: Name of the switch on which tunnel exists.
+    :return: String describing if vxlan got added to tunnel or not.
+    """
+    global CHANGED_FLAG
+    cli = pn_cli(module)
+    cli += ' switch %s tunnel-vxlan-show format switch no-show-headers ' % (
+        switch)
+    existing_tunnel_vxlans = run_cli(module, cli).split()
+
+    if tunnel_name not in existing_tunnel_vxlans:
+        cli = pn_cli(module)
+        cli += ' switch %s tunnel-vxlan-add name %s vxlan %s ' % (switch,
+                                                                  tunnel_name,
+                                                                  vxlan)
+        if 'Success' in run_cli(module, cli):
+            CHANGED_FLAG.append(True)
+            return ' %s: Added vxlan %s to %s \n' % (switch, vxlan, tunnel_name)
+        else:
+            return ' %s: Could not add vxlan %s to %s \n' % (switch, vxlan,
+                                                             tunnel_name)
+    else:
+        return ' %s: vxlan %s already added to %s \n' % (switch, vxlan,
+                                                         tunnel_name)
+
+
+def configure_vxlan(module):
+    """
+    Method to configure vxlan.
+    :param module: The Ansible module to fetch input parameters.
+    :return: Output string of configuration.
+    """
+    output = ''
+    vxlan_switches_list = []
+    csv_data = module.params['pn_csv_data']
+    csv_data = csv_data.replace(" ", "")
+    csv_data_list = csv_data.split('\n')
+
+    for row in csv_data_list:
+        elements = row.split(',')
+        vlan_id = elements[0]
+        leaf_switch_1 = elements[2]
+        if len(elements) == 7:
+            leaf_switch_2 = elements[3]
+            vxlan_id = elements[6]
+            vxlan_switches_list.append([leaf_switch_1, leaf_switch_2, vlan_id])
+            output += add_vxlan_to_vlan(module, vlan_id, vxlan_id)
+        elif len(elements) == 4:
+            vxlan_id = elements[3]
+            vxlan_switches_list.append([leaf_switch_1, vlan_id])
+            output += add_vxlan_to_vlan(module, vlan_id, vxlan_id)
+
+    for row in csv_data_list:
+        elements = row.split(',')
+        vlan_id = elements[0]
+        leaf_switch_1 = elements[2]
+
+        if len(elements) == 7 or len(elements) == 4:
+            if len(elements) == 7:
+                leaf_switch_2 = elements[3]
+                vxlan_id = elements[6]
+                cluster = [leaf_switch_1, leaf_switch_2, vlan_id]
+                scope = 'cluster'
+            else:
+                leaf_switch_2 = None
+                vxlan_id = elements[3]
+                cluster = [leaf_switch_1, vlan_id]
+                scope = 'local'
+
+            for switches in vxlan_switches_list:
+                if switches == cluster:
+                    continue
+                else:
+                    tunnel_name = leaf_switch_1 + '-' + switches[0] + '-tunnel'
+                    local_ip = get_vrouter_interface_ip(module, leaf_switch_1,
+                                                        vlan_id)
+                    if len(switches) == 3:
+                        remote_vlan = switches[2]
+                    else:
+                        remote_vlan = switches[1]
+
+                    remote_ip = get_vrouter_interface_ip(module, switches[0],
+                                                         remote_vlan)
+
+                    output += create_tunnel(leaf_switch_1, tunnel_name, scope,
+                                            local_ip, remote_ip, leaf_switch_2)
+
+                    output += add_vxlan_to_tunnel(module, vxlan_id, tunnel_name,
+                                                  leaf_switch_1)
 
 
 def implement_dci(module):
@@ -1018,13 +1170,8 @@ def implement_dci(module):
     # Configure VRRP to be used for VTEP HA
     output += configure_vrrp(module)
 
-    # Configure vxlan tunnels between clusters
-    for local_cluster in cluster_list:
-        for remote_cluster in cluster_list:
-            if local_cluster == remote_cluster:
-                continue
-            else:
-                pass
+    # Configure vxlan tunnels
+    output += configure_vxlan(module)
 
     return output
 
