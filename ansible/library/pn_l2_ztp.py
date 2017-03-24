@@ -289,7 +289,6 @@ def configure_trunk(module, cluster_node, switch_list):
     :return: Name of the trunk that got created.
     """
     switch_names = ''
-    output = ''
     src_ports = []
     for switch in switch_list:
         src_ports += get_ports(module, cluster_node, switch)
@@ -300,7 +299,7 @@ def configure_trunk(module, cluster_node, switch_list):
     if len(name) > 59:
         name = name[:59]
 
-    output += create_trunk(module, cluster_node, name, src_ports)
+    output = create_trunk(module, cluster_node, name, src_ports)
 
     return output + name
 
