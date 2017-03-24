@@ -216,6 +216,7 @@ def create_trunk(module, switch, name, ports):
     global CHANGED_FLAG
     cli = pn_cli(module)
     clicopy = cli
+    msg  = ''
     cli += ' switch %s trunk-show format name no-show-headers ' % switch
     trunk_list = run_cli(module, cli).split()
     if name not in trunk_list:
@@ -223,9 +224,9 @@ def create_trunk(module, switch, name, ports):
         ports_string = ','.join(ports)
         cli += ' switch %s trunk-create name %s ' % (switch, name)
         cli += ' ports %s ' % ports_string
-        if 'Success' in run_cli(module, cli):
-            CHANGED_FLAG.append(True)
-            return ' %s: %s trunk created successfully \n' % (switch, name)
+        run_cli(module, cli)
+        CHANGED_FLAG.append(True)
+        return ' %s: %s trunk created successfully \n' % (switch, name)
     else:
         return ' %s: %s trunk already exists \n' % (switch, name)
 
@@ -288,6 +289,7 @@ def configure_trunk(module, cluster_node, switch_list):
     :return: Name of the trunk that got created.
     """
     switch_names = ''
+    output = ''
     src_ports = []
     for switch in switch_list:
         src_ports += get_ports(module, cluster_node, switch)
@@ -298,7 +300,8 @@ def configure_trunk(module, cluster_node, switch_list):
     if len(name) > 59:
         name = name[:59]
 
-    output = create_trunk(module, cluster_node, name, src_ports)
+    output += create_trunk(module, cluster_node, name, src_ports)
+
     return output + name
 
 
