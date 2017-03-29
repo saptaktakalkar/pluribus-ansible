@@ -25,8 +25,7 @@ import json
 DOCUMENTATION = """
 ---
 module: pn_ztp_vrrp_l2_csv
-author: 'Pluribus Networks (@gauravbajaj)'
-modified by: 'Pluribus Networks (@saptaktakalkar)'
+author: 'Pluribus Networks (devops@pluribusnetworks.com)'
 version: 1
 short_description: CLI command to configure VRRP - Layer 2 Setup
 description: Virtual Router Redundancy Protocol (VRRP) - Layer 2 Setup
@@ -121,13 +120,19 @@ def run_cli(module, cli):
     """
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
+    results = []
     if out:
         return out
 
     if err:
+        json_msg = {'switch': '', 'output': u'Operation Failed: {}'.format(str(cli))}
+        results.append(json_msg)
         module.exit_json(
-            error='1',
+            unreachable=False,
             failed=True,
+            exception='',
+            summary=results,
+            task='CLI command to configure VRRP - Layer 2 Setup',
             stderr=err.strip(),
             msg='Operation Failed: ' + str(cli),
             changed=False
@@ -371,17 +376,18 @@ def main():
 
         for line in message_string.splitlines():
             if replace_string in line:
-                #info.append((line.replace(replace_string, '')).strip())
                 json_msg = {'switch' : switch , 'output' : (line.replace(replace_string, '')).strip() }
                 results.append(json_msg)
 
     # Exit the module and return the required JSON.
     module.exit_json(
-         summary=results,
-         stdout='abc',
-         error='0',
-         failed=False,
-         changed=True if True in CHANGED_FLAG else False
+        unreachable=False,
+        msg = 'Module executed successfully',
+        summary=results,
+        exception='',
+        task='CLI command to configure VRRP - Layer 2 Setup',
+        failed=False,
+        changed=True if True in CHANGED_FLAG else False
     )
 
 
