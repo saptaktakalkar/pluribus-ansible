@@ -20,12 +20,12 @@
 
 from ansible.module_utils.basic import AnsibleModule
 import shlex
+import json
 
 DOCUMENTATION = """
 ---
 module: pn_ztp_vrrp_l2_csv
-author: 'Pluribus Networks (@gauravbajaj)'
-modified by: 'Pluribus Networks (@saptaktakalkar)'
+author: 'Pluribus Networks (devops@pluribusnetworks.com)'
 version: 1
 short_description: CLI command to configure VRRP - Layer 2 Setup
 description: Virtual Router Redundancy Protocol (VRRP) - Layer 2 Setup
@@ -120,13 +120,19 @@ def run_cli(module, cli):
     """
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
+    results = []
     if out:
         return out
 
     if err:
+        json_msg = {'switch': '', 'output': u'Operation Failed: {}'.format(str(cli))}
+        results.append(json_msg)
         module.exit_json(
-            error='1',
+            unreachable=False,
             failed=True,
+            exception='',
+            summary=results,
+            task='CLI command to configure VRRP - Layer 2 Setup',
             stderr=err.strip(),
             msg='Operation Failed: ' + str(cli),
             changed=False
@@ -308,7 +314,7 @@ def configure_vrrp(module, vrrp_id, vrrp_ip, active_switch, vlan_id):
     host_count = 1
     for spine in module.params['pn_spine_list']:
         host_count += 1
-        vrrp_priority = '110' if spine == active_switch else '100'
+        vrrp_priority = '110' if spine == active_switch else '109'
         output += create_vrouter_interface(module, spine, vrrp_ip, vlan_id,
                                            vrrp_id, str(host_count),
                                            vrrp_priority)
@@ -362,9 +368,24 @@ def main():
     message = configure_vrrp_l2(module, module.params['pn_csv_data'],
                                 module.params['pn_vrrp_id'])
 
+    message_string = message
+    results = []
+    switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
+    for switch in switch_list:
+        replace_string = switch + ': '
+
+        for line in message_string.splitlines():
+            if replace_string in line:
+                json_msg = {'switch' : switch , 'output' : (line.replace(replace_string, '')).strip() }
+                results.append(json_msg)
+
+    # Exit the module and return the required JSON.
     module.exit_json(
-        stdout=message,
-        error='0',
+        unreachable=False,
+        msg = 'Module executed successfully',
+        summary=results,
+        exception='',
+        task='CLI command to configure VRRP - Layer 2 Setup',
         failed=False,
         changed=True if True in CHANGED_FLAG else False
     )

@@ -42,9 +42,6 @@
       delay: 3
       ignore_errors: yes                        # Flag to indicate if we should ignore errors if any.
 
-    - debug:
-        var: ztp_l2_out.stdout_lines            # Print stdout_lines of register variable.
-
     - pause:
         seconds: 2                              # Pause playbook execution for specified amount of time.
 
@@ -66,9 +63,6 @@
       retries: 3                                # This is the retries count
       delay: 1
       ignore_errors: yes                        # Flag to indicate if we should ignore errors if any.
-
-    - debug:
-        var: vrrp_out.stdout_lines              # Print stdout_lines of register variable.
 
     - pause:
         seconds: 2                              # Pause playbook execution for specified amount of time.
