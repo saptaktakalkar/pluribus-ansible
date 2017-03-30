@@ -20,6 +20,7 @@
 
 from ansible.module_utils.basic import AnsibleModule
 import shlex
+import json
 
 DOCUMENTATION = """
 ---
@@ -119,13 +120,19 @@ def run_cli(module, cli):
     """
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
+    results = []
     if out:
         return out
 
     if err:
+        json_msg = {'switch': '', 'output': u'Operation Failed: {}'.format(str(cli))}
+        results.append(json_msg)
         module.exit_json(
-            error='1',
+            unreachable=False,
             failed=True,
+            exception='',
+            summary=results,
+            task='CLI command to configure L2 zero touch provisioning',
             stderr=err.strip(),
             msg='Operation Failed: ' + str(cli),
             changed=False
@@ -216,6 +223,7 @@ def create_trunk(module, switch, name, ports):
     global CHANGED_FLAG
     cli = pn_cli(module)
     clicopy = cli
+    msg  = ''
     cli += ' switch %s trunk-show format name no-show-headers ' % switch
     trunk_list = run_cli(module, cli).split()
     if name not in trunk_list:
@@ -223,9 +231,9 @@ def create_trunk(module, switch, name, ports):
         ports_string = ','.join(ports)
         cli += ' switch %s trunk-create name %s ' % (switch, name)
         cli += ' ports %s ' % ports_string
-        if 'Success' in run_cli(module, cli):
-            CHANGED_FLAG.append(True)
-            return ' %s: %s trunk created successfully \n' % (switch, name)
+        run_cli(module, cli)
+        CHANGED_FLAG.append(True)
+        return ' %s: %s trunk created successfully \n' % (switch, name)
     else:
         return ' %s: %s trunk already exists \n' % (switch, name)
 
@@ -295,8 +303,12 @@ def configure_trunk(module, cluster_node, switch_list):
 
     src_ports = list(set(src_ports))
     name = cluster_node + '-to-' + switch_names
-    create_trunk(module, cluster_node, name, src_ports)
-    return name
+    if len(name) > 59:
+        name = name[:59]
+
+    output = create_trunk(module, cluster_node, name, src_ports)
+
+    return output + name
 
 
 def configure_trunk_vlag_for_clustered_leafs(module, non_clustered_leafs,
@@ -343,17 +355,26 @@ def configure_trunk_vlag_for_clustered_leafs(module, non_clustered_leafs,
                 if node2 in non_clustered_leafs:
                     # Cluster creation
                     cluster_name = node1 + '-to-' + node2 + '-cluster'
+                    if len(cluster_name) > 59:
+                        cluster_name = cluster_name[:59]
+
                     output += create_cluster(module, node2, cluster_name,
                                              node1, node2)
 
                     non_clustered_leafs.remove(node2)
 
                     # Trunk creation (leaf to spines)
-                    trunk_name1 = configure_trunk(module, node1, spine_list)
-                    trunk_name2 = configure_trunk(module, node2, spine_list)
-
+                    trunk_message1 = configure_trunk(module, node1, spine_list).split('\n')
+                    trunk_message2 = configure_trunk(module, node2, spine_list).split('\n')
+                    trunk_name1 = trunk_message1[1]
+                    trunk_name2 = trunk_message2[1]
+                    output += trunk_message1[0] + '\n'
+                    output += trunk_message2[0] + '\n'
                     # Vlag creation (leaf to spines)
                     vlag_name = node1 + '-' + node2 + '-to-' + 'spine'
+                    if len(vlag_name) > 59:
+                        vlag_name = vlag_name[:59]
+
                     output += create_vlag(module, node1, vlag_name, node2,
                                           trunk_name1, trunk_name2)
 
@@ -362,18 +383,25 @@ def configure_trunk_vlag_for_clustered_leafs(module, non_clustered_leafs,
                     spine2 = str(spine_list[1])
 
                     # Trunk creation (spine to leafs)
-                    trunk_name1 = configure_trunk(module, spine1, leafs_list)
-                    trunk_name2 = configure_trunk(module, spine2, leafs_list)
+                    trunk_message1 = configure_trunk(module, spine1, leafs_list).split('\n')
+                    trunk_message2 = configure_trunk(module, spine2, leafs_list).split('\n')
+                    trunk_name1 = trunk_message1[1]
+                    trunk_name2 = trunk_message2[1]
+                    output += trunk_message1[0] + '\n'
+                    output += trunk_message2[0] + '\n'
 
                     # Vlag creation (spine to leafs)
-                    name = spine1 + '-' + spine2 + '-to-' + node1 + '-' + node2
+                    name =  'spine-to-' + node1 + '-' + node2
+                    if len(name) > 59:
+                        name = name[:59]
+
                     output += create_vlag(module, spine1, name, spine2,
                                           trunk_name1, trunk_name2)
 
                     terminate_flag += 1
 
                 node_count += 1
-        return output
+    return output
 
 
 def configure_trunk_non_clustered_leafs(module, non_clustered_leafs,
@@ -388,17 +416,25 @@ def configure_trunk_non_clustered_leafs(module, non_clustered_leafs,
     output = ''
     for leaf in non_clustered_leafs:
         # Trunk creation (leaf to spines)
-        configure_trunk(module, leaf, spine_list)
+        trunk_message = configure_trunk(module, leaf, spine_list).split('\n')
+        output += trunk_message[0] + '\n'
 
         spine1 = str(spine_list[0])
         spine2 = str(spine_list[1])
 
         # Trunk creation (spine to leafs)
-        trunk_name1 = configure_trunk(module, spine1, [leaf])
-        trunk_name2 = configure_trunk(module, spine2, [leaf])
+        trunk_message1 = configure_trunk(module, spine1, [leaf]).split('\n')
+        trunk_message2 = configure_trunk(module, spine2, [leaf]).split('\n')
+        trunk_name1 = trunk_message1[1]
+        trunk_name2 = trunk_message2[1]
+        output += trunk_message1[0] + '\n'
+        output += trunk_message2[0] + '\n'
 
         # Vlag creation (spine to leafs)
-        name = spine1 + '-' + spine2 + '-to-' + leaf
+        name = 'spine-to-' + leaf
+        if len(name) > 59:
+            name = name[:59]
+
         output += create_vlag(module, spine1, name, spine2, trunk_name1,
                               trunk_name2)
 
@@ -420,9 +456,8 @@ def configure_auto_vlag(module):
     output = create_cluster(module, spine1, 'spine-cluster', spine1, spine2)
 
     # Configure trunk, vlag for clustered leaf switches.
-    non_clustered_leafs = find_non_clustered_leafs(module, leaf_list)
     output += configure_trunk_vlag_for_clustered_leafs(module,
-                                                       non_clustered_leafs,
+                                                       list(leaf_list),
                                                        spine_list)
 
     # Configure trunk, vlag for non clustered leaf switches.
@@ -489,11 +524,26 @@ def main():
         message += modify_stp(module, 'enable')
 
     # Exit the module and return the required JSON.
+    message_string = message
+    results = []
+    switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
+    for switch in switch_list:
+        replace_string = switch + ': '
+        
+        for line in message_string.splitlines():
+            if replace_string in line:
+                json_msg = {'switch' : switch , 'output' : (line.replace(replace_string, '')).strip() }
+                results.append(json_msg)
+
+    # Exit the module and return the required JSON.
     module.exit_json(
-        stdout=message,
-        error='0',
+        unreachable=False,
+        msg = 'Module executed successfully',
+        summary=results,
+        exception='',
         failed=False,
-        changed=True if True in CHANGED_FLAG else False
+        changed=True if True in CHANGED_FLAG else False,
+        task='CLI command to configure L2 zero touch provisioning'
     )
 
 

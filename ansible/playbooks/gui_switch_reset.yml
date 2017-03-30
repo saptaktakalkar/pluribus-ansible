@@ -15,9 +15,6 @@
       register: reset_out                 # Variable to hold/register output of the above tasks.
       ignore_errors: yes
 
-    - debug:
-        var: reset_out.stdout_lines
-
     - name: Wait for nvOSd to reboot
       pause:
         minutes: 3                       # Pause playbook execution for specified amount of time.

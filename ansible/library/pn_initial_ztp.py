@@ -19,6 +19,7 @@
 #
 
 from ansible.module_utils.basic import AnsibleModule
+import json
 import shlex
 import time
 
@@ -163,7 +164,6 @@ failed:
   type: bool
 """
 
-
 CHANGED_FLAG = []
 
 
@@ -192,15 +192,21 @@ def run_cli(module, cli):
     :param cli: The complete cli string to be executed on the target node(s).
     :return: Output/Error or Success msg depending upon the response from cli.
     """
+    current_switch = module.params['pn_current_switch']
     cli = shlex.split(cli)
+    results = []
     rc, out, err = module.run_command(cli)
     if out:
         return out
-
     if err:
+        json_msg = {'switch': current_switch, 'output': u'Operation Failed: {}'.format(str(cli))}
+        results.append(json_msg)
         module.exit_json(
-            error='1',
+            unreachable=False,
             failed=True,
+            exception='',
+            summary=results,
+            task='Auto accept EULA, Disable STP, enable ports and create/join fabric',
             stderr=err.strip(),
             msg='Operation Failed: ' + str(cli),
             changed=False
@@ -443,19 +449,19 @@ def toggle_40g_local(module):
             if '.2' in bezel_port:
                 end_port = int(port) + 3
                 range_port = port + '-' + str(end_port)
-    
+
                 cli = clicopy
                 cli += ' switch-local port-config-modify port %s ' % port
                 cli += ' disable '
                 output += 'port ' + port + ' disabled'
                 output += run_cli(module, cli)
-    
+
                 cli = clicopy
                 cli += ' switch-local port-config-modify port %s ' % port
                 cli += ' speed 10g '
                 output += 'port ' + port + ' converted to 10g'
                 output += run_cli(module, cli)
-    
+
                 cli = clicopy
                 cli += ' switch-local port-config-modify port %s ' % range_port
                 cli += ' enable '
@@ -514,32 +520,19 @@ def assign_inband_ip(module, inband_address):
 
 def main():
     """ This section is for arguments parsing """
-    module = AnsibleModule(
-        argument_spec=dict(
-            pn_cliusername=dict(required=False, type='str'),
-            pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_fabric_name=dict(required=True, type='str'),
-            pn_fabric_network=dict(required=False, type='str',
-                                   choices=['mgmt', 'in-band'],
-                                   default='mgmt'),
-            pn_fabric_control_network=dict(required=False, type='str',
-                                           choices=['mgmt', 'in-band'],
-                                           default='mgmt'),
-            pn_toggle_40g=dict(required=False, type='bool', default=True),
-            pn_inband_ip=dict(required=False, type='str',
-                              default='172.16.0.0/24'),
-            pn_current_switch=dict(required=False, type='str'),
-            pn_static_setup=dict(required=False, type='bool', default=False),
-            pn_mgmt_ip=dict(required=False, type='str'),
-            pn_mgmt_ip_subnet=dict(required=False, type='str'),
-            pn_gateway_ip=dict(required=False, type='str'),
-            pn_dns_ip=dict(required=False, type='str'),
-            pn_dns_secondary_ip=dict(required=False, type='str'),
-            pn_domain_name=dict(required=False, type='str'),
-            pn_ntp_server=dict(required=False, type='str'),
-            pn_web_api=dict(type='bool', default=True),
-            pn_stp=dict(required=False, type='bool', default=False),
-        )
+    module = AnsibleModule(argument_spec=dict(
+        pn_cliusername=dict(required=False, type='str'),
+        pn_clipassword=dict(required=False, type='str', no_log=True), pn_fabric_name=dict(required=True, type='str'),
+        pn_fabric_network=dict(required=False, type='str', choices=['mgmt', 'in-band'], default='mgmt'),
+        pn_fabric_control_network=dict(required=False, type='str', choices=['mgmt', 'in-band'], default='mgmt'),
+        pn_toggle_40g=dict(required=False, type='bool', default=True),
+        pn_inband_ip=dict(required=False, type='str', default='172.16.0.0/24'),
+        pn_current_switch=dict(required=False, type='str'),
+        pn_static_setup=dict(required=False, type='bool', default=False), pn_mgmt_ip=dict(required=False, type='str'),
+        pn_mgmt_ip_subnet=dict(required=False, type='str'), pn_gateway_ip=dict(required=False, type='str'),
+        pn_dns_ip=dict(required=False, type='str'), pn_dns_secondary_ip=dict(required=False, type='str'),
+        pn_domain_name=dict(required=False, type='str'), pn_ntp_server=dict(required=False, type='str'),
+        pn_web_api=dict(type='bool', default=True), pn_stp=dict(required=False, type='bool', default=False), )
     )
 
     fabric_name = module.params['pn_fabric_name']
@@ -548,15 +541,19 @@ def main():
     toggle_40g_flag = module.params['pn_toggle_40g']
     current_switch = module.params['pn_current_switch']
     message = ''
+    results = []
     global CHANGED_FLAG
     CHANGED_FLAG = []
 
     # Auto accept EULA
     if 'Setup completed successfully' in auto_accept_eula(module):
+        json_msg = {'switch': current_switch, 'output': 'Eula accepted'}
         message += ' %s: EULA accepted \n' % current_switch
         CHANGED_FLAG.append(True)
     else:
+        json_msg = {'switch': current_switch, 'output': 'Eula has already been accepted'}
         message += ' %s: EULA has already been accepted \n' % current_switch
+    results.append(json_msg)
 
     # Update switch names to match host names from hosts file
     if 'Updated' in update_switch_names(module, current_switch):
@@ -567,23 +564,24 @@ def main():
         make_switch_setup_static(module)
 
     # Create/join fabric
-    if 'already in the fabric' in create_or_join_fabric(module, fabric_name,
-                                                        fabric_network):
-        message += ' %s: Already a part of fabric %s \n' % (current_switch,
-                                                            fabric_name)
+    if 'already in the fabric' in create_or_join_fabric(module, fabric_name, fabric_network):
+        json_msg = {'switch': current_switch, 'output': u'Already a part of fabric {}'.format(fabric_name)}
+        message += ' %s: Already a part of fabric %s \n' % (current_switch, fabric_name)
     else:
-        message += ' %s: Joined fabric %s \n' % (current_switch,
-                                                 fabric_name)
+        json_msg = {'switch': current_switch, 'output': u'Joined fabric {}'.format(fabric_name)}
+        message += ' %s: Joined fabric %s \n' % (current_switch, fabric_name)
         CHANGED_FLAG.append(True)
+    results.append(json_msg)
 
     # Configure fabric control network to either mgmt or in-band
     if 'Success' in configure_control_network(module, control_network):
-        message += ' %s: Configured fabric control network to %s \n' % (
-            current_switch, control_network)
+        json_msg = {'switch': current_switch, 'output': u'Already a part of fabric {}'.format(control_network)}
+        message += ' %s: Configured fabric control network to %s \n' % (current_switch, control_network)
         CHANGED_FLAG.append(True)
     else:
-        message += ' %s: Fabric is already in %s control network \n' % (
-            current_switch, control_network)
+        json_msg = {'switch': current_switch, 'output': u'Fabric is already in {} control network'.format(control_network)}
+        message += ' %s: Fabric is already in %s control network \n' % (current_switch, control_network)
+    results.append(json_msg)
 
     # Enable web api if flag is True
     if module.params['pn_web_api']:
@@ -591,44 +589,60 @@ def main():
 
     # Disable STP
     if 'Success' in modify_stp_local(module, 'disable'):
+        json_msg = {'switch': current_switch, 'output': 'STP disabled'}
         message += ' %s: STP disabled \n' % current_switch
         CHANGED_FLAG.append(True)
     else:
+        json_msg = {'switch': current_switch, 'output': 'STP is already disabled'}
         message += ' %s: STP is already disabled \n' % current_switch
+    results.append(json_msg)
 
     # Enable ports
     if 'Success' in enable_ports(module):
+        json_msg = {'switch': current_switch, 'output': 'Ports enabled'}
         message += ' %s: Ports enabled \n' % current_switch
         CHANGED_FLAG.append(True)
     else:
+        json_msg = {'switch': current_switch, 'output': 'Ports are already enabled'}
         message += ' %s: Ports are already enabled \n' % current_switch
+    results.append(json_msg)
 
     # Toggle 40g ports to 10g
     if toggle_40g_flag:
         if toggle_40g_local(module):
+            json_msg = {'switch': current_switch, 'output': 'Toggled 40G ports to 10G'}
             message += ' %s: Toggled 40G ports to 10G \n' % current_switch
             CHANGED_FLAG.append(True)
+            results.append(json_msg)
 
     # Assign in-band ips.
     ip = assign_inband_ip(module, module.params['pn_inband_ip'])
     if ip is not None:
+        json_msg = {'switch': current_switch, 'output': u'Assigned in-band ip {}'.format(ip)}
         message += ' %s: Assigned in-band ip %s \n' % (current_switch, ip)
     else:
-        message += ' %s: In-band ip has already been assigned \n' % (
-            current_switch)
+        json_msg = {'switch': current_switch, 'output': 'In-band ip has already been assigned'}
+        message += ' %s: In-band ip has already been assigned \n' % current_switch
+    results.append(json_msg)
 
     # Enable STP if flag is True
     if module.params['pn_stp']:
         if 'Success' in modify_stp_local(module, 'enable'):
+            json_msg = {'switch': current_switch, 'output': 'STP enabled'}
             message += ' %s: STP enabled \n' % current_switch
             CHANGED_FLAG.append(True)
         else:
+            json_msg = {'switch': current_switch, 'output': 'STP is already enabled'}
             message += ' %s: STP is already enabled \n' % current_switch
+    results.append(json_msg)
 
     # Exit the module and return the required JSON
     module.exit_json(
-        stdout=message,
-        error='0',
+        unreachable=False,
+        msg = 'Module executed successfully',
+        summary=results,
+        exception='',
+        task='Auto accept EULA, Disable STP, enable ports and create/join fabric',
         failed=False,
         changed=True if True in CHANGED_FLAG else False
     )

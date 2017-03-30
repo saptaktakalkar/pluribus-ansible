@@ -45,8 +45,5 @@
       delay: 3
       ignore_errors: yes             # Flag to indicate if we should ignore errors if any.
 
-    - debug:
-        var: ztp_out.stdout_lines    # Print stdout_lines of register variable.
-
     - pause:
         seconds: 2                   # Pause playbook execution for specified amount of time.
