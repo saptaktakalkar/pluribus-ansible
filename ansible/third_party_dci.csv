@@ -1,0 +1,8 @@
+ansible-spine1, 172.168.1.2, 65000, 65001, ansible-leaf1
+ansible-spine1, 172.168.1.6, 65000, 65001, ansible-leaf2
+ansible-spine1, 172.168.1.14, 65000, 65002, ansible-leaf3
+ansible-spine1, 172.168.1.22, 65000, 65003, ansible-leaf4
+ansible-spine2, 172.168.1.30, 65000, 65001, ansible-leaf1
+ansible-spine2, 172.168.1.34, 65000, 65001, ansible-leaf2
+ansible-spine2, 172.168.1.42, 65000, 65002, ansible-leaf3
+ansible-spine2, 172.168.1.46, 65000, 65003, ansible-leaf4

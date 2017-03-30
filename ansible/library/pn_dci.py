@@ -19,7 +19,6 @@
 #
 
 from ansible.module_utils.basic import AnsibleModule
-import re
 import shlex
 import time
 
@@ -32,10 +31,10 @@ description:
     This module is to plan and implement a DCI architecture.
 options:
     pn_cliusername:
-        description:
-          - Provide login username if user is not root.
-        required: False
-        type: str
+      description:
+        - Provide login username if user is not root.
+      required: False
+      type: str
     pn_clipassword:
       description:
         - Provide login password if user is not root.
@@ -46,16 +45,41 @@ options:
         - Specify name of the fabric.
       required: False
       type: str
+    pn_current_switch:
+      description:
+        - Specify name of the current switch.
+      required: True
+      type: str
+    pn_run_initial_setup:
+      description:
+        - Flag to accept eula
+      required: True
+      type: bool
     pn_spine_list:
       description:
-        - Specify list of Spine hosts
+        - Specify list of third party spine switches.
       required: True
       type: list
     pn_leaf_list:
       description:
-        - Specify list of leaf hosts
+        - Specify list of all DC leaf switches.
       required: True
       type: list
+    pn_inband_ip:
+      description:
+        - Specify the inband ip address.
+      required: False
+      type: str
+    pn_loopback_ip:
+      description:
+        - Specify the loopback interface ip.
+      required: False
+      type: str
+    pn_bgp_ip:
+      description:
+        - Specify the bgp ip for creating neighbor.
+      required: False
+      type: str
     pn_bgp_redistribute:
       description:
         - Specify bgp_redistribute value to be added to vrouter.
@@ -69,51 +93,60 @@ options:
       required: False
       type: str
       default: '16'
-    pn_bgp_as_range:
+    pn_ibgp_vlan:
       description:
-        - Specify bgp_as_range value to be added to vrouter.
+        - Specify vlan for iBGP configuration.
       required: False
       type: str
-      default: '65000'
+      default: '4040'
+    pn_ibgp_ip_range:
+      description:
+        - Specify iBGP ip range to assigned during iBGP configuration.
+      required: False
+      type: str
+      default: '75.75.75.0/30'
     pn_csv_data:
       description:
-        - Specify commands to be run on the switches
-        required: True
-        type: str
-    pn_current_switch:
+        - Specify VRRP and vxlan config data in the form of csv.
+      required: False
+      type: str
+    pn_third_party_bgp_data:
       description:
-        - Specify name of the current switch
-        required: True
-        type: str
-    pn_inband_ip:
-      description:
-        - Specify the inband ip address
-        required: False
-        type: str
-    pn_bgp_ip:
-      description:
-        - Specify the bgp ip for creating neighbor
-        required: False
-        type: str
-    pn_accept_eula:
-      description:
-        - Flag to accept eula
-        required: True
-        type: bool
+        - Specify third party bgp config data in the form of csv.
+      required: False
+      type: str
 """
 
 EXAMPLES = """
-- name: Implement DCI
+- name: Accept EULA, Join Fabric, Configure eBGP
   pn_dci:
-    pn_accept_eula: False
     pn_cliusername: "{{ USERNAME }}"
     pn_clipassword: "{{ PASSWORD }}"
-    pn_fabric_name: 'dci_fabric'
+    pn_fabric_name: 'ansible_dci_fabric'
+    pn_current_switch: "{{ inventory_hostname }}"
+    pn_run_initial_setup: True
     pn_spine_list: "{{ groups['spine'] }}"
     pn_leaf_list: "{{ groups['leaf'] }}"
+    pn_inband_ip: '172.18.0.0/24'
+    pn_loopback_ip: '108.108.108.0/24'
+    pn_bgp_ip: '100.1.1.0/30'
+    pn_csv_data: "{{ lookup('file', '{{ dci_file }}') }}"
+    pn_third_party_bgp_data: "{{ lookup('file', '{{ third_party_file }}') }}"
+
+- name: Configure iBGP, VRRP and Vxlan
+  pn_dci:
+    pn_cliusername: "{{ USERNAME }}"
+    pn_clipassword: "{{ PASSWORD }}"
+    pn_fabric_name: 'ansible_dci_fabric'
     pn_current_switch: "{{ inventory_hostname }}"
-    pn_inband_ip: '172.16.0.0/24'
-    pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"
+    pn_run_initial_setup: False
+    pn_spine_list: "{{ groups['spine'] }}"
+    pn_leaf_list: "{{ groups['leaf'] }}"
+    pn_inband_ip: '172.18.0.0/24'
+    pn_loopback_ip: '108.108.108.0/24'
+    pn_bgp_ip: '100.1.1.0/30'
+    pn_csv_data: "{{ lookup('file', '{{ dci_file }}') }}"
+    pn_third_party_bgp_data: "{{ lookup('file', '{{ third_party_file }}') }}"
 """
 
 RETURN = """
@@ -222,30 +255,53 @@ def assign_inband_ip(module):
     :return: String describing if in-band ip got assigned or not.
     """
     global CHANGED_FLAG
-    supernet = 4
     inband_ip = module.params['pn_inband_ip']
     leaf_list = module.params['pn_leaf_list']
     current_switch = module.params['pn_current_switch']
-
-    switch_position = int(leaf_list.index(current_switch))
-    ip_count = (supernet * switch_position) + 1
+    switch_position = leaf_list.index(current_switch) + 1
 
     address = inband_ip.split('.')
     static_part = str(address[0]) + '.' + str(address[1]) + '.'
-    static_part += str(address[2]) + '.'
     last_octet = str(address[3]).split('/')
     subnet = last_octet[1]
 
-    ip = static_part + str(ip_count) + '/' + subnet
+    ip = static_part + str(switch_position) + '.'
+    ip += str(switch_position) + '/' + subnet
 
     cli = pn_cli(module)
     cli += 'switch-setup-modify in-band-ip %s ' % ip
 
     if 'Setup completed successfully' in run_cli(module, cli):
         CHANGED_FLAG.append(True)
-        return '%s: In-band ip assigned with ip %s \n' % (current_switch, ip)
+        return ' %s: In-band ip assigned with ip %s \n' % (current_switch, ip)
 
     return ''
+
+
+def create_switch_routes(module, inband_ip):
+    """
+    Method to create a switch routes
+    :param module: The Ansible module to fetch input parameters.
+    :param inband_ip: in-band ip of the switch.
+    """
+    inband_address = inband_ip.split(':')[1].split('.')
+    static_part = str(inband_address[0]) + '.' + str(inband_address[1]) + '.'
+    gateway_static_part = static_part + str(inband_address[2]) + '.'
+    last_octet = str(inband_address[3]).split('/')
+    subnet = last_octet[1]
+    gateway_ip = gateway_static_part + str(int(last_octet[0]) + 1)
+    switch_count = 1
+
+    while switch_count <= len(module.params['pn_leaf_list']):
+        network_ip = static_part + str(switch_count) + '.' + str(0)
+        network_ip += '/' + subnet
+        cli = pn_cli(module)
+        cli += ' switch-route-create network %s gateway-ip %s ' % (
+            network_ip, gateway_ip
+        )
+        switch_count += 1
+        cli = shlex.split(cli)
+        module.run_command(cli)
 
 
 def configure_fabric(module, switch):
@@ -262,7 +318,6 @@ def configure_fabric(module, switch):
 
     address = module.params['pn_inband_ip'].split('.')
     inband_static_part = str(address[0]) + '.' + str(address[1]) + '.'
-    inband_static_part += str(address[2]) + '.'
     last_octet = str(address[3]).split('/')
     subnet = last_octet[1]
 
@@ -277,17 +332,18 @@ def configure_fabric(module, switch):
             cli = clicopy
             cli += 'fabric-create name %s ' % fabric_name
             cli += ' fabric-network in-band control-network in-band '
-            output += ' %s: %s ' % (switch, run_cli(module, cli))
+            run_cli(module, cli)
+            output += ' %s: Fabric %s created \n' % (switch, fabric_name)
             CHANGED_FLAG.append(True)
         else:
-            output += ' %s: Fabric already exists\n' % switch
+            output += ' %s: Fabric %s already exists \n' % (switch, fabric_name)
 
         # Indicate all subnets of the in-band interfaces of switches,
         # that will be part of the fabric.
         output += fabric_inband_net_create(module, inband_static_part,
                                            subnet, switch)
     else:
-        switch_ip = inband_static_part + str(1)
+        switch_ip = inband_static_part + str(1) + '.' + str(1)
         # Join existing fabric.
         if 'Already' in join_fabric(module, switch_ip):
             output += ' %s: Already part of fabric %s \n' % (switch,
@@ -306,7 +362,8 @@ def find_clustered_switches(module):
     :return: It returns a dict whose first value is list of pairs of cluster
     and second is list of switches in cluster.
     """
-    csv_data = module.params['pn_csv_data'].replace(' ', '')
+    csv_data = module.params['pn_csv_data']
+    csv_data = csv_data.replace(' ', '')
     csv_data = csv_data.split('\n')
     cluster_dict_info = {}
     cluster_list = []
@@ -318,7 +375,7 @@ def find_clustered_switches(module):
             cluster_node_1 = line[2]
             cluster_node_2 = line[3]
 
-            if cluster_node_2 != '':
+            if not cluster_node_2.isdigit():
                 temp_list = [cluster_node_1, cluster_node_2]
                 if temp_list not in cluster_list:
                     cluster_switches.append(cluster_node_1)
@@ -335,21 +392,21 @@ def fabric_inband_net_create(module, inband_static_part, subnet, switch):
     """
     Method to create fabric in-band network.
     :param module: The Ansible module to fetch input parameters.
-    :param inband_static_part: In-band ip address till third octet.
+    :param inband_static_part: In-band ip address till second octet.
     :param subnet: Subnet mask of in-band ip address.
     :param switch: Name of the 1st switch in the DC.
     :return: String describing if fabric in-band network got created or not.
     """
     global CHANGED_FLAG
     output = ''
-    supernet = 4
-    switch_count = 0
+    leaf_list = module.params['pn_leaf_list']
     cli = pn_cli(module)
     clicopy = cli
 
-    while switch_count < len(module.params['pn_leaf_list']):
-        ip_count = (switch_count * supernet) + 1
-        inband_network_ip = inband_static_part + str(ip_count) + '/' + subnet
+    for leaf in leaf_list:
+        switch_position = leaf_list.index(leaf) + 1
+        inband_network_ip = inband_static_part + str(switch_position) + '.'
+        inband_network_ip += str(switch_position)
 
         cli = clicopy
         cli += 'fabric-in-band-network-show format network no-show-headers'
@@ -358,17 +415,16 @@ def fabric_inband_net_create(module, inband_static_part, subnet, switch):
         if inband_network_ip not in existing_networks:
             cli = clicopy
             cli += 'fabric-in-band-network-create network ' + inband_network_ip
+            cli += ' netmask ' + subnet
             if 'Success' in run_cli(module, cli):
                 output += ' %s: Fabric in-band network created for %s \n' % (
                     switch, inband_network_ip
                 )
                 CHANGED_FLAG.append(True)
         else:
-            output += ' %s: Fabric in-band network %s already exists\n' % (
+            output += ' %s: Fabric in-band network %s already exists \n' % (
                 switch, inband_network_ip
             )
-
-        switch_count += 1
 
     return output
 
@@ -391,7 +447,7 @@ def join_fabric(module, switch_ip):
         cli = clicopy
         cli += ' fabric-join switch-ip %s ' % switch_ip
     elif out:
-        return ' Already in a fabric\n'
+        return ' Already in a fabric \n'
 
     return run_cli(module, cli)
 
@@ -430,16 +486,13 @@ def create_vrouter(module, switch, bgp_as, router_id, bgp_nic_ip,
         cli += ' neighbor %s remote-as %s ' % (neighbor_ip, remote_as)
         cli += ' bfd in-band-nic-ip %s ' % in_band_nic_ip
         cli += ' in-band-nic-netmask %s ' % in_band_nic_netmask
-
-        if fabric_network_address is not None:
-            cli += ' fabric-network %s ' % fabric_network_address
-
+        cli += ' fabric-network %s ' % fabric_network_address
         cli += ' allowas-in '
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
         return ' %s: Created %s \n' % (switch, vrouter_name)
     else:
-        return ' %s: %s already exists\n' % (switch, vrouter_name)
+        return ' %s: %s already exists \n' % (switch, vrouter_name)
 
 
 def get_l3_port(module, neighbor_name):
@@ -478,18 +531,29 @@ def configure_loopback_interface(module, switch, router_id):
     global CHANGED_FLAG
     vrouter_name = switch + '-vrouter'
     cli = pn_cli(module)
-    cli += ' vrouter-loopback-interface-add vrouter-name %s ' % vrouter_name
-    cli += ' ip %s index 1 ' % router_id
-    run_cli(module, cli)
+    clicopy = cli
+    cli += ' vrouter-loopback-interface-show vrouter-name %s ' % vrouter_name
+    cli += ' format ip no-show-headers '
+    existing_ip = run_cli(module, cli)
 
-    cli = pn_cli(module)
-    cli += ' vrouter-bgp-network-add vrouter-name %s ' % vrouter_name
-    cli += ' network %s netmask 255.255.255.255 ' % router_id
-    run_cli(module, cli)
+    if router_id not in existing_ip:
+        cli = clicopy
+        cli += ' vrouter-loopback-interface-add vrouter-name %s ' % vrouter_name
+        cli += ' ip %s ' % router_id
+        run_cli(module, cli)
 
-    CHANGED_FLAG.append(True)
-    return ' %s: Configured loopback interface with ip %s \n' % (switch,
-                                                                 router_id)
+        cli = clicopy
+        cli += ' vrouter-bgp-network-add vrouter-name %s ' % vrouter_name
+        cli += ' network %s netmask 255.255.255.255 ' % router_id
+        run_cli(module, cli)
+
+        CHANGED_FLAG.append(True)
+        return ' %s: Configured loopback interface with ip %s \n' % (switch,
+                                                                     router_id)
+    else:
+        return ' %s: Loopback interface %s has been already configured \n' % (
+            switch, router_id
+        )
 
 
 def configure_ebgp_connections(module, switch, third_party_data, bgp_nic_ip):
@@ -509,43 +573,68 @@ def configure_ebgp_connections(module, switch, third_party_data, bgp_nic_ip):
     bgp_static_part = str(address[0]) + '.' + str(address[1]) + '.'
     bgp_static_part += str(address[2]) + '.'
     bgp_last_octet = str(address[3]).split('/')
-    bgp_count = int(bgp_last_octet[0])
     bgp_subnet = bgp_last_octet[1]
 
     for row in third_party_data:
         row = row.split(',')
-        if not skip_flag and row[3] == switch:
+        if not skip_flag and row[4] == switch:
             skip_flag = True
             continue
 
-        if skip_flag and row[3] == switch:
+        if skip_flag and row[4] == switch:
             neighbor_name = row[0]
             neighbor_ip = row[1]
             remote_as = row[2]
 
+            address = neighbor_ip.split('.')
+            static_part = str(address[0]) + '.' + str(address[1]) + '.'
+            static_part += str(address[2]) + '.'
+            last_octet = str(int(address[3]) - 1)
+            ip = static_part + last_octet + '/' + bgp_subnet
+
             l3_port = get_l3_port(module, neighbor_name)
-            bgp_count += 1
-            ip = bgp_static_part + str(bgp_count) + '/' + bgp_subnet
 
             cli = pn_cli(module)
             clicopy = cli
-            cli += ' vrouter-interface-add vrouter-name %s ' % vrouter_name
-            cli += ' l3-port %s ip %s ' % (l3_port, ip)
-            run_cli(module, cli)
-            output += ' %s: Added vrouter interface %s \n' % (switch, ip)
+            cli += ' vrouter-interface-show vrouter-name %s ' % vrouter_name
+            cli += ' format ip no-show-headers '
+            exisiting_ip = run_cli(module, cli).split()
+
+            if ip not in exisiting_ip:
+                cli = clicopy
+                cli += ' vrouter-interface-add vrouter-name %s ' % vrouter_name
+                cli += ' l3-port %s ip %s ' % (l3_port, ip)
+                run_cli(module, cli)
+                output += ' %s: Added vrouter interface %s \n' % (switch, ip)
+            else:
+                output += ' %s: Vrouter interface %s already added \n' % (
+                    switch, ip
+                )
 
             cli = clicopy
-            cli += ' vrouter-bgp-add vrouter-name %s ' % vrouter_name
-            cli += ' neighbor %s remote-as %s bfd ' % (neighbor_ip, remote_as)
-            cli += ' allowas-in '
-            run_cli(module, cli)
-            output += ' %s: Added eBGP neighbor %s \n' % (switch, neighbor_ip)
+            cli += ' vrouter-bgp-show vrouter-name %s ' % vrouter_name
+            cli += ' format neighbor no-show-headers '
+            exisiting_neighbor = run_cli(module, cli).split()
 
-            cli = clicopy
-            cli += ' vrouter-modify name %s ' % vrouter_name
-            cli += ' bgp-max-paths %s ' % module.params['pn_bgp_max_path']
-            cli += ' bgp-bestpath-as-path multipath-relax '
-            run_cli(module, cli)
+            if neighbor_ip not in exisiting_neighbor:
+                cli = clicopy
+                cli += ' vrouter-bgp-add vrouter-name %s ' % vrouter_name
+                cli += ' neighbor %s remote-as %s bfd ' % (neighbor_ip,
+                                                           remote_as)
+                cli += ' allowas-in '
+                run_cli(module, cli)
+                output += ' %s: Added eBGP neighbor %s \n' % (switch,
+                                                              neighbor_ip)
+
+                cli = clicopy
+                cli += ' vrouter-modify name %s ' % vrouter_name
+                cli += ' bgp-max-paths %s ' % module.params['pn_bgp_max_path']
+                cli += ' bgp-bestpath-as-path multipath-relax '
+                run_cli(module, cli)
+            else:
+                output += ' %s: eBGP neighbor %s already added \n' % (
+                    switch, neighbor_ip
+                )
 
     return output
 
@@ -572,12 +661,6 @@ def create_vlan(module, vlan_id, switch, scope):
                                                            scope)
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
-
-        cli = clicopy
-        cli += ' switch %s vlan-port-add vlan-id %s ports 128 tagged ' % (
-            switch, vlan_id
-        )
-        run_cli(module, cli)
 
         return ' %s: Vlan id %s with scope %s created \n' % (
             switch, vlan_id, scope
@@ -606,25 +689,45 @@ def configure_ibgp_connection(module, switch, local_ip, remote_ip, remote_as):
     cli = pn_cli(module)
     clicopy = cli
 
-    cli += ' vrouter-interface-add vrouter-name %s ' % vrouter_name
-    cli += ' ip %s vlan %s ' % (local_ip, vlan_id)
-    run_cli(module, cli)
+    cli += ' switch %s vrouter-interface-show vrouter-name %s ' % (switch,
+                                                                   vrouter_name)
+    cli += ' format ip no-show-headers '
+    exisiting_ip = run_cli(module, cli).split()
 
-    output += ' %s: Added vrouter interface with ip %s on %s \n' % (
-        switch, local_ip, vrouter_name
-    )
+    if local_ip not in exisiting_ip:
+        cli = clicopy
+        cli += ' switch %s vrouter-interface-add vrouter-name %s ' % (
+            switch, vrouter_name
+        )
+        cli += ' ip %s vlan %s ' % (local_ip, vlan_id)
+        run_cli(module, cli)
+        output += ' %s: Added vrouter interface with ip %s on %s \n' % (
+            switch, local_ip, vrouter_name
+        )
+        CHANGED_FLAG.append(True)
+    else:
+        output += ' %s: iBGP interface %s already added \n' % (switch, local_ip)
 
     remote_ip = remote_ip.split('/')[0]
     cli = clicopy
-    cli += ' vrouter-bgp-add vrouter-name %s ' % vrouter_name
-    cli += ' neighbor %s remote-as %s next-hop-self bfd ' % (remote_ip,
-                                                             remote_as)
-    run_cli(module, cli)
+    cli += ' switch %s vrouter-bgp-show vrouter-name %s ' % (switch,
+                                                             vrouter_name)
+    cli += ' format neighbor no-show-headers '
+    exisiting_neighbor = run_cli(module, cli).split()
 
-    output += ' %s: Added iBGP neighbor %s for %s \n' % (switch, remote_ip,
-                                                         vrouter_name)
+    if remote_ip not in exisiting_neighbor:
+        cli = clicopy
+        cli += ' switch %s vrouter-bgp-add vrouter-name %s ' % (switch,
+                                                                vrouter_name)
+        cli += ' neighbor %s remote-as %s next-hop-self bfd ' % (remote_ip,
+                                                                 remote_as)
+        run_cli(module, cli)
+        output += ' %s: Added iBGP neighbor %s for %s \n' % (switch, remote_ip,
+                                                             vrouter_name)
+        CHANGED_FLAG.append(True)
+    else:
+        output += ' %s: iBGP neighbor %s already added \n' % (switch, remote_ip)
 
-    CHANGED_FLAG.append(True)
     return output
 
 
@@ -668,10 +771,21 @@ def modify_vrouter(module, switch, vrrp_id):
     global CHANGED_FLAG
     vrouter_name = switch + '-vrouter'
     cli = pn_cli(module)
-    cli += ' switch %s vrouter-modify name %s ' % (switch, vrouter_name)
-    cli += ' hw-vrrp-id %s ' % vrrp_id
-    run_cli(module, cli)
-    return ' %s: Added vrrp_id %s to %s \n' % (switch, vrrp_id, vrouter_name)
+    clicopy = cli
+    cli += ' vrouter-show name %s format hw-vrrp-id ' % vrouter_name
+    cli += ' no-show-headers '
+    existing_vrrp_id = run_cli(module, cli).split()
+
+    if vrrp_id not in existing_vrrp_id:
+        cli = clicopy
+        cli += ' switch %s vrouter-modify name %s ' % (switch, vrouter_name)
+        cli += ' hw-vrrp-id %s ' % vrrp_id
+        run_cli(module, cli)
+        return ' %s: Assigned vrrp_id %s to %s \n' % (switch, vrrp_id,
+                                                      vrouter_name)
+    else:
+        return ' %s: Vrrp-id %s already assigned to %s \n' % (switch, vrrp_id,
+                                                              vrouter_name)
 
 
 def create_vrouter_interface(module, switch, vrrp_ip, vlan_id, vrrp_id,
@@ -790,7 +904,9 @@ def add_vrouter_interface_for_non_cluster_switch(module, vrrp_ip, switch,
 
     if vrouter_name not in existing_vrouter:
         cli = clicopy
-        cli += ' vrouter-interface-add vrouter-name ' + vrouter_name
+        cli += ' switch %s vrouter-interface-add vrouter-name %s ' % (
+            switch, vrouter_name
+        )
         cli += ' vlan ' + vlan_id
         cli += ' ip ' + gateway_ip
         run_cli(module, cli)
@@ -812,8 +928,10 @@ def configure_vrrp(module):
     :return: Output string of configuration.
     """
     output = ''
-    csv_data = module.params['pn_csv_data'].replace(" ", "")
+    csv_data = module.params['pn_csv_data']
+    csv_data = csv_data.replace(" ", "")
     csv_data_list = csv_data.split('\n')
+
     # Parse csv file data and configure VRRP.
     for row in csv_data_list:
         elements = row.split(',')
@@ -832,7 +950,7 @@ def configure_vrrp(module):
             host_count = 1
 
             # Create a cluster and vlan with scope cluster
-            output = create_cluster(module, cluster_name, cluster_list)
+            output += create_cluster(module, cluster_name, cluster_list)
             output += create_vlan(module, vlan_id, cluster_node1, 'cluster')
 
             for switch in cluster_list:
@@ -840,8 +958,8 @@ def configure_vrrp(module):
                 host_count += 1
                 vrrp_priority = '110' if switch == active_switch else '100'
                 output += create_vrouter_interface(module, switch, vrrp_ip,
-                                                   vlan_id,
-                                                   vrrp_id, str(host_count),
+                                                   vlan_id, vrrp_id,
+                                                   str(host_count),
                                                    vrrp_priority)
         else:
             # Configure VRRP for non clustered switches.
@@ -852,18 +970,30 @@ def configure_vrrp(module):
     return output
 
 
-def add_vxlan_to_vlan(module, vlan_id, vxlan):
+def add_vxlan_to_vlan(module, vlan_id, vxlan, switch):
     """
     Method to add vxlan mapping to vlan.
     :param module: The Ansible module to fetch input parameters.
     :param vlan_id: vlan id to be modified.
     :param vxlan: vxlan id to be assigned to vlan.
+    :param switch: Name of the switch on which vlan is present.
     :return: String describing if vxlan for added or not.
     """
+    global CHANGED_FLAG
     cli = pn_cli(module)
-    cli += ' vlan-modify id %s vxlan %s ' % (vlan_id, vxlan)
-    run_cli(module, cli)
-    return ' Added vxlan %s to vlan %s! ' % (vxlan, vlan_id)
+    cli += ' switch %s vlan-show id %s format vxlan ' % (switch, vlan_id)
+    cli += ' no-show-headers '
+    existing_vxlan = run_cli(module, cli).split()
+
+    if vxlan not in existing_vxlan:
+        cli = pn_cli(module)
+        cli += ' switch %s vlan-modify id %s vxlan %s ' % (switch, vlan_id,
+                                                           vxlan)
+        run_cli(module, cli)
+        return ' %s: Added vxlan %s to vlan %s \n' % (switch, vxlan, vlan_id)
+    else:
+        return ' %s: Vxlan %s has been added to vlan %s \n' % (switch, vxlan,
+                                                               vlan_id)
 
 
 def get_vrouter_interface_ip(module, switch, vlan):
@@ -876,14 +1006,16 @@ def get_vrouter_interface_ip(module, switch, vlan):
     """
     vrouter_name = switch + '-vrouter'
     cli = pn_cli(module)
-    cli += ' vrouter-interface-show vrouter-name ' + vrouter_name
+    cli += ' switch %s vrouter-interface-show vrouter-name %s ' % (switch,
+                                                                   vrouter_name)
     cli += ' vlan %s format ip no-show-headers ' % vlan
     output = run_cli(module, cli).split()
     output = list(set(output))
     output.remove(vrouter_name)
-    regex = re.compile(r'^\d.*1/')
-    ip_with_subnet = [ip for ip in output if not regex.match(ip)]
-    return ip_with_subnet[0].split('/')[0]
+    address = output[0].split('.')
+    ip = address[0] + '.' + address[1] + '.'
+    ip += address[2] + '.' + str(1)
+    return ip
 
 
 def create_tunnel(module, local_switch, tunnel_name, scope, local_ip, remote_ip,
@@ -977,11 +1109,15 @@ def configure_vxlan(module):
             leaf_switch_2 = elements[3]
             vxlan_id = elements[6]
             vxlan_switches_list.append([leaf_switch_1, leaf_switch_2, vlan_id])
-            output += add_vxlan_to_vlan(module, vlan_id, vxlan_id)
+            output += add_vxlan_to_vlan(module, vlan_id, vxlan_id,
+                                        leaf_switch_1)
+            output += add_vxlan_to_vlan(module, vlan_id, vxlan_id,
+                                        leaf_switch_2)
         elif len(elements) == 4:
             vxlan_id = elements[3]
             vxlan_switches_list.append([leaf_switch_1, vlan_id])
-            output += add_vxlan_to_vlan(module, vlan_id, vxlan_id)
+            output += add_vxlan_to_vlan(module, vlan_id, vxlan_id,
+                                        leaf_switch_1)
 
     for row in csv_data_list:
         elements = row.split(',')
@@ -1015,124 +1151,26 @@ def configure_vxlan(module):
                     remote_ip = get_vrouter_interface_ip(module, switches[0],
                                                          remote_vlan)
 
-                    output += create_tunnel(leaf_switch_1, tunnel_name, scope,
-                                            local_ip, remote_ip, leaf_switch_2)
+                    output += create_tunnel(module, leaf_switch_1, tunnel_name,
+                                            scope, local_ip, remote_ip,
+                                            leaf_switch_2)
 
                     output += add_vxlan_to_tunnel(module, vxlan_id, tunnel_name,
                                                   leaf_switch_1)
 
+    return output
 
-def implement_dci(module):
+
+def configure_ibgp_vrrp_vxlan(module):
     """
-    Method to implement DCI.
+    Method to configure iBGP, VRRP and Vxlan for DCI.
     :param module: The Ansible module to fetch input parameters.
-    :return: String describing details of DCI implementation.
+    :return: String describing details of all configurations.
     """
     global CHANGED_FLAG
     output = ''
-    supernet = 4
-    bgp_ip = module.params['pn_bgp_ip']
-    leaf_list = module.params['pn_leaf_list']
-    loopback_ip = module.params['pn_loopback_ip']
-    bgp_as_range = module.params['pn_bgp_as_range']
-    third_party_data = module.params['pn_third_party_data'].replace(' ', '')
-    third_party_data = third_party_data.split('\n')
-
-    address = bgp_ip.split('.')
-    bgp_static_part = str(address[0]) + '.' + str(address[1]) + '.'
-    bgp_static_part += str(address[2]) + '.'
-    bgp_last_octet = str(address[3]).split('/')
-    bgp_subnet = bgp_last_octet[1]
-
-    address = loopback_ip.split('.')
-    loopback_static_part = str(address[0]) + '.' + str(address[1]) + '.'
-    loopback_static_part += str(address[2]) + '.'
-
     cluster_dict_info = find_clustered_switches(module)
     cluster_list = cluster_dict_info[0]
-    cluster_switches = cluster_dict_info[1]
-    cluster_list = sorted(cluster_list)
-    non_clustered_switches = list(sorted(set(leaf_list) - set(
-        cluster_switches)))
-
-    # Calculate bgp-as value for all DC switches.
-    bgp_as_dict = {}
-    for switch in leaf_list:
-        if switch not in bgp_as_dict.keys():
-            if switch in non_clustered_switches:
-                bgp_as_dict[switch] = bgp_as_range
-            else:
-                bgp_as_dict[switch] = bgp_as_range
-                for cluster in cluster_list:
-                    if cluster[0] == switch:
-                        bgp_as_dict[cluster[1]] = bgp_as_range
-                        break
-                    elif cluster[1] == switch:
-                        bgp_as_dict[cluster[0]] = bgp_as_range
-                        break
-
-            bgp_as_range += supernet
-
-    for switch in leaf_list:
-        switch_index = leaf_list.index(switch)
-        # Calculate router-id to be assigned to vrouter.
-        router_id = loopback_static_part + str(switch_index + 1)
-
-        # Calculate bgp-nic-ip to be assigned while vrouter creation.
-        bgp_nic_ip_count = (switch_index * supernet) + 1
-        bgp_nic_ip = bgp_static_part + str(bgp_nic_ip_count) + '/' + bgp_subnet
-
-        # Calculate in-band-nic-ip and in-band-nic-netmask for vrouter creation.
-        cli = pn_cli(module)
-        cli += 'switch-setup-show format in-band-ip no-show-headers'
-        inband_ip = run_cli(module, cli)
-        address = inband_ip.split(':')[1]
-        address = address.replace(' ', '')
-        address = address.split('.')
-        inband_static_part = str(address[0]) + '.' + str(address[1]) + '.'
-        inband_static_part += str(address[2]) + '.'
-        inband_last_octet = str(address[3]).split('/')
-        inband_nic_ip = inband_static_part + str(int(inband_last_octet[0]) + 1)
-        inband_nic_netmask = inband_last_octet[1]
-
-        # Get the bgp-as value
-        bgp_as = bgp_as_dict[switch]
-
-        # Get the neighbor ip and remote-as value of the first neighbor
-        neighbor_name, neighbor_ip, remote_as = None, None, None
-        for row in third_party_data:
-            row = row.split(',')
-            if row[3] == switch:
-                neighbor_name = row[0]
-                neighbor_ip = row[1]
-                remote_as = row[2]
-                break
-
-        if neighbor_name is None or neighbor_ip is None or remote_as is None:
-            return ' %s: Could not find remote bgp data \n' % switch
-
-        # Calculate bgp-nic-l3-port number connected to first neighbor
-        bgp_nic_l3_port = get_l3_port(module, neighbor_name)
-
-        # Calculate fabric-network address
-        if switch_index != 0:
-            fabric_network_address = inband_static_part + str(0) + '/'
-            fabric_network_address += inband_nic_netmask
-        else:
-            fabric_network_address = None
-
-        # Create and configure vrouter on this switch.
-        output += create_vrouter(module, switch, bgp_as, router_id,
-                                 bgp_nic_ip, bgp_nic_l3_port, neighbor_ip,
-                                 remote_as, inband_nic_ip, inband_nic_netmask,
-                                 fabric_network_address)
-
-        # Configure other eBGP connection to third party switches
-        output += configure_ebgp_connections(module, switch, third_party_data,
-                                             bgp_nic_ip)
-
-        # Configure loopback interface for debugging purpose.
-        output += configure_loopback_interface(module, switch, router_id)
 
     # Configure iBGP connection between clusters
     for cluster in cluster_list:
@@ -1144,8 +1182,8 @@ def implement_dci(module):
         subnet_count = 0
 
         # Create local vlans on both cluster nodes.
-        output += create_vlan(module, cluster_node1, vlan_id, vlan_scope)
-        output += create_vlan(module, cluster_node2, vlan_id, vlan_scope)
+        output += create_vlan(module, vlan_id, cluster_node1, vlan_scope)
+        output += create_vlan(module, vlan_id, cluster_node2, vlan_scope)
 
         address = ibgp_ip_range.split('.')
         static_part = str(address[0]) + '.' + str(address[1]) + '.'
@@ -1158,20 +1196,125 @@ def implement_dci(module):
         node2_ip = static_part + str(ip_count + 2) + '/' + subnet
         subnet_count += 1
 
+        # Get the bgp-as values of cluster nodes.
+        third_party_data = module.params['pn_third_party_bgp_data'].replace(' ',
+                                                                            '')
+        third_party_data = third_party_data.split('\n')
+        for row in third_party_data:
+            row = row.split(',')
+            if row[4] == cluster_node1 or row[4] == cluster_node2:
+                bgp_as = row[3]
+                break
+
         # Configure iBGP connection.
         output += configure_ibgp_connection(module, cluster_node1, node1_ip,
-                                            node2_ip,
-                                            bgp_as_dict[cluster_node1])
+                                            node2_ip, bgp_as)
 
         output += configure_ibgp_connection(module, cluster_node2, node2_ip,
-                                            node1_ip,
-                                            bgp_as_dict[cluster_node1])
+                                            node1_ip, bgp_as)
 
     # Configure VRRP to be used for VTEP HA
     output += configure_vrrp(module)
 
     # Configure vxlan tunnels
     output += configure_vxlan(module)
+
+    return output
+
+
+def implement_dci(module):
+    """
+    Method to implement initial DCI setup: fabric creation/join and eBGP.
+    :param module: The Ansible module to fetch input parameters.
+    :return: String describing details of DCI implementation.
+    """
+    global CHANGED_FLAG
+    output = ''
+    current_switch = module.params['pn_current_switch']
+    bgp_ip = module.params['pn_bgp_ip']
+    leaf_list = module.params['pn_leaf_list']
+    loopback_ip = module.params['pn_loopback_ip']
+    third_party_data = module.params['pn_third_party_bgp_data'].replace(' ', '')
+    third_party_data = third_party_data.split('\n')
+
+    address = bgp_ip.split('.')
+    bgp_static_part = str(address[0]) + '.' + str(address[1]) + '.'
+    bgp_static_part += str(address[2]) + '.'
+    bgp_last_octet = str(address[3]).split('/')
+    bgp_subnet = bgp_last_octet[1]
+
+    address = loopback_ip.split('.')
+    loopback_static_part = str(address[0]) + '.' + str(address[1]) + '.'
+
+    # Calculate router-id to be assigned to vrouter.
+    switch_index = leaf_list.index(current_switch)
+    router_count = switch_index + 1
+    router_id = loopback_static_part + str(router_count) + '.'
+    router_id += str(router_count)
+
+    # Calculate in-band-nic-ip and in-band-nic-netmask for vrouter creation.
+    cli = pn_cli(module)
+    cli += ' switch-setup-show format in-band-ip no-show-headers '
+    inband_ip = run_cli(module, cli)
+    address = inband_ip.split(':')[1]
+    address = address.replace(' ', '')
+    address = address.split('.')
+    inband_static_part = str(address[0]) + '.' + str(address[1]) + '.'
+    inband_static_part += str(address[2]) + '.'
+    inband_last_octet = str(address[3]).split('/')
+    inband_nic_ip = inband_static_part + str(int(inband_last_octet[0]) + 1)
+    inband_nic_netmask = inband_last_octet[1]
+
+    # Get the neighbor ip and remote-as value of the first neighbor
+    # Third party csv format: (third party switch name, neighbor-ip,
+    # bgp-as of third party switch, remote-as, neighbor switch name)
+    neighbor_name, neighbor_ip, remote_as, bgp_as = None, None, None, None
+    for row in third_party_data:
+        row = row.split(',')
+        if row[4] == current_switch:
+            neighbor_name = row[0]
+            neighbor_ip = row[1]
+            remote_as = row[2]
+            bgp_as = row[3]
+            break
+
+    if neighbor_name is None or neighbor_ip is None or remote_as is None:
+        return ' %s: Could not find remote bgp data \n' % current_switch
+
+    # Calculate bgp-nic-l3-port number connected to first neighbor
+    bgp_nic_l3_port = get_l3_port(module, neighbor_name)
+
+    # Calculate fabric-network address
+    fabric_network_address = str(address[0]) + '.' + str(address[1]) + '.'
+    fabric_network_address += str(1) + '.' + str(0) + '/'
+    fabric_network_address += inband_nic_netmask
+
+    address = neighbor_ip.split('.')
+    n_static_part = str(address[0]) + '.' + str(address[1]) + '.'
+    n_static_part += str(address[2]) + '.'
+    n_last_octet = str(int(address[3]) - 1)
+    bgp_nic_ip = n_static_part + n_last_octet + '/' + bgp_subnet
+
+    # Create and configure vrouter on this switch.
+    output += create_vrouter(module, current_switch, bgp_as, router_id,
+                             bgp_nic_ip, bgp_nic_l3_port, neighbor_ip,
+                             remote_as, inband_nic_ip, inband_nic_netmask,
+                             fabric_network_address)
+
+    # Configure other eBGP connection to third party switches
+    output += configure_ebgp_connections(module, current_switch,
+                                         third_party_data, bgp_nic_ip)
+
+    # Configure loopback interface for debugging purpose.
+    output += configure_loopback_interface(module, current_switch, router_id)
+
+    # Create a switch routes to all other switches
+    if switch_index != 0:
+        create_switch_routes(module, inband_ip)
+        time.sleep(10)
+
+    # Configure fabric
+    output += configure_fabric(module, current_switch)
 
     return output
 
@@ -1237,16 +1380,15 @@ def main():
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_fabric_name=dict(required=False, type='str'),
+            pn_run_initial_setup=dict(required=True, type='bool'),
+            pn_current_switch=dict(required=False, type='str'),
             pn_spine_list=dict(required=True, type='list'),
             pn_leaf_list=dict(required=True, type='list'),
             pn_inband_ip=dict(required=False, type='str',
                               default='172.16.0.0/24'),
             pn_loopback_ip=dict(required=False, type='str',
                                 default='109.109.109.0/24'),
-            pn_current_switch=dict(required=False, type='str'),
-            pn_bgp_as_range=dict(required=False, type='str', default='65000'),
             pn_bgp_ip=dict(required=False, type='str', default='100.1.1.0/24'),
-            pn_accept_eula=dict(required=True, type='bool'),
             pn_bgp_redistribute=dict(required=False, type='str',
                                      default='connected'),
             pn_bgp_max_path=dict(required=False, type='str', default='16'),
@@ -1262,7 +1404,7 @@ def main():
     message = ''
     global CHANGED_FLAG
 
-    if module.params['pn_accept_eula']:
+    if module.params['pn_run_initial_setup']:
         # Auto accept EULA
         if 'Setup completed successfully' in auto_accept_eula(module):
             message += ' %s: EULA accepted \n' % current_switch
@@ -1282,11 +1424,11 @@ def main():
         # Assign in-band ip
         message += assign_inband_ip(module)
 
-        # Configure fabric
-        message += configure_fabric(module, current_switch)
-    else:
         # Implement Data Center Interconnect
         message += implement_dci(module)
+    else:
+        # Configure iBGP, VRRP and vxlan
+        message += configure_ibgp_vrrp_vxlan(module)
 
     # Exit the module and return the required JSON
     module.exit_json(
