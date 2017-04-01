@@ -208,7 +208,7 @@ def run_cli(module, cli):
             summary=results,
             task='Auto accept EULA, Disable STP, enable ports and create/join fabric',
             stderr=err.strip(),
-            msg='Operation Failed: ' + str(cli),
+            msg='Initial ZTP configuration failed',
             changed=False
         )
     else:
@@ -639,7 +639,7 @@ def main():
     # Exit the module and return the required JSON
     module.exit_json(
         unreachable=False,
-        msg = 'Module executed successfully',
+        msg = 'Initial ZTP configuration executed successfully',
         summary=results,
         exception='',
         task='Auto accept EULA, Disable STP, enable ports and create/join fabric',
