@@ -89,8 +89,8 @@ class CallbackModule(CallbackBase):
         output = {
             'plays': self.results,
         }
-
-        print(json.dumps(output, indent=4, sort_keys=True))
+        if self.results[-1]['tasks'][-1]['status'] != "Cannot determine":
+            print(json.dumps(output, indent=4, sort_keys=True))
 
     def v2_playbook_on_stats(self, stats):
         """Display info about playbook statistics"""
