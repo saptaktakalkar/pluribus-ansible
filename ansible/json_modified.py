@@ -49,7 +49,8 @@ class CallbackModule(CallbackBase):
                 'name': task.name,
                 'id': str(task._uuid)
             },
-            'hosts': {}
+            'hosts': {},
+            'status': {}
         }
 
     def v2_playbook_on_play_start(self, play):
@@ -64,7 +65,27 @@ class CallbackModule(CallbackBase):
 
     def v2_runner_on_ok(self, result, **kwargs):
         host = result._host
+        if 'task' not in result._result.keys():
+            result._result['task'] = ''
+        if 'summary' not in result._result.keys():
+            result._result['summary'] = ''
+        if 'msg' not in result._result.keys():
+            result._result['msg'] = ''
+        if 'failed' not in result._result.keys():
+            result._result['failed'] = ''
+        if 'exception' not in result._result.keys():
+            result._result['exception'] = ''
+        if 'unreachable' not in result._result.keys():
+            result._result['unreachable'] = ''
         self.results[-1]['tasks'][-1]['hosts'][host.name] = result._result
+
+        if result._result['unreachable'] == True or result._result['failed'] == True:
+            self.results[-1]['tasks'][-1]['status'] = 'Failed'
+        elif result._result['failed'] == False:
+            self.results[-1]['tasks'][-1]['status'] = 'Success'
+        else:
+            self.results[-1]['tasks'][-1]['status'] = 'Cannot determine'
+
         output = {
             'plays': self.results,
         }
