@@ -134,7 +134,7 @@ def run_cli(module, cli):
             summary=results,
             task='CLI command to configure L2 zero touch provisioning',
             stderr=err.strip(),
-            msg='Operation Failed: ' + str(cli),
+            msg='L2 ZTP configuration failed',
             changed=False
         )
     else:
@@ -538,7 +538,7 @@ def main():
     # Exit the module and return the required JSON.
     module.exit_json(
         unreachable=False,
-        msg = 'Module executed successfully',
+        msg = 'L2 ZTP configuration executed successfully',
         summary=results,
         exception='',
         failed=False,
