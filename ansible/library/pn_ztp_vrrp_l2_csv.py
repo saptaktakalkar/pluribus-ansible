@@ -134,7 +134,7 @@ def run_cli(module, cli):
             summary=results,
             task='CLI command to configure VRRP - Layer 2 Setup',
             stderr=err.strip(),
-            msg='Operation Failed: ' + str(cli),
+            msg='L2 VRRP configuration failed',
             changed=False
         )
     else:
@@ -382,7 +382,7 @@ def main():
     # Exit the module and return the required JSON.
     module.exit_json(
         unreachable=False,
-        msg = 'Module executed successfully',
+        msg = 'L2 VRRP configuration executed successfully',
         summary=results,
         exception='',
         task='CLI command to configure VRRP - Layer 2 Setup',
