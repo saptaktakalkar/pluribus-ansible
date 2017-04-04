@@ -80,9 +80,9 @@ class CallbackModule(CallbackBase):
         self.results[-1]['tasks'][-1]['hosts'][host.name] = result._result
 
         if result._result['unreachable'] == True or result._result['failed'] == True:
-            self.results[-1]['tasks'][-1]['status'] = 'Failed'
+            self.results[-1]['tasks'][-1]['status'] = '1'
         elif result._result['failed'] == False:
-            self.results[-1]['tasks'][-1]['status'] = 'Success'
+            self.results[-1]['tasks'][-1]['status'] = '0'
         else:
             self.results[-1]['tasks'][-1]['status'] = 'Cannot determine'
 
