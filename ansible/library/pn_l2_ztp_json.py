@@ -523,7 +523,6 @@ def main():
     if module.params['pn_stp']:
         message += modify_stp(module, 'enable')
 
-    # Exit the module and return the required JSON.
     message_string = message
     results = []
     switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
