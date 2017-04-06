@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" Tests for eBGP """
+""" Tests for eBGP/OSPF """
 
 #
 # This file is part of Ansible
@@ -23,9 +23,9 @@ import shlex
 
 DOCUMENTATION = """
 ---
-module: pn_test_ebgp
+module: pn_test_ebgp_ospf
 author: "Pluribus Networks (devops@pluribusnetworks.com)"
-short_description: Tests for eBGP.
+short_description: Tests for eBGP/OSPF.
 options:
     pn_cliusername:
         description:
@@ -47,11 +47,18 @@ options:
         - Number of leaf switches.
       required: False
       type: int
+    pn_routing_protocol:
+      description:
+        - Specify which routing protocol to specify.
+      required: False
+      type: str
+      choices: ['ebgp', 'ospf']
+      default: 'ebgp'
 """
 
 EXAMPLES = """
 - name: Test eBGP
-  pn_test_ebgp:
+  pn_test_ebgp_ospf:
   pn_cliusername: "{{ USERNAME }}"
   pn_clipassword: "{{ PASSWORD }}"
   pn_spine_count: "{{ spine_count }}"
@@ -180,6 +187,32 @@ def test_bgp_neighbor_assignement(module):
     return run_cli(module, cli, find_str, 'BGP Neighbor assignment')
 
 
+def test_ospf_neighbor_assignement(module):
+    """
+    Test ospf_neighbor assignment to vrouters.
+    :param module: The Ansible module to fetch input parameters.
+    :return: Output of run_cli() method.
+    """
+    find_str = 'Count: '
+    cli = pn_cli(module)
+    cli += ' vrouter-ospf-neighbor-show count-output '
+    return run_cli(module, cli, find_str, 'OSPF Neighbor assignment')
+
+
+def test_ospf_redistribute_assignement(module):
+    """
+    Test ospf_redistribute assignment to vrouters.
+    :param module: The Ansible module to fetch input parameters.
+    :return: Output of run_cli() method.
+    """
+    switch_count = module.params['pn_spine_count'] + module.params[
+        'pn_leaf_count']
+    find_str = 'Count: ' + str(switch_count)
+    cli = pn_cli(module)
+    cli += ' vrouter-show format ospf-redistribute count-output '
+    return run_cli(module, cli, find_str, 'OSPF-REDISTRIBUTE assignment')
+
+
 def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(
@@ -188,13 +221,21 @@ def main():
             pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_spine_count=dict(required=False, type='int'),
             pn_leaf_count=dict(required=False, type='int'),
+            pn_routing_protocol=dict(required=False, type='str',
+                                     choices=['ebgp', 'ospf'], default='ebgp'),
         )
     )
 
     msg = test_router_id_assignement(module)
-    msg += test_bgp_as_assignement(module)
-    msg += test_bgp_redistribute_assignement(module)
-    msg += test_bgp_max_paths_assignement(module)
+
+    if module.params['pn_routing_protocol'] == 'ebgp':
+        msg += test_bgp_as_assignement(module)
+        msg += test_bgp_redistribute_assignement(module)
+        msg += test_bgp_max_paths_assignement(module)
+        msg += test_bgp_neighbor_assignement(module)
+    else:
+        msg += test_ospf_neighbor_assignement(module)
+        msg += test_ospf_redistribute_assignement(module)
 
     module.exit_json(
         stdout=msg,
