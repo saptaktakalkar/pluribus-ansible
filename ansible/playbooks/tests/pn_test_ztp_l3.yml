@@ -43,9 +43,12 @@
   vars_files:
   - cli_vault.yml
 
+  vars:
+  - json_file_path: /etc/ansible/pluribus-ansible/ansible/output.json
+
   tasks:
     - name: Auto accept EULA, Disable STP, enable ports and create/join fabric
-      pn_initial_ztp:
+      pn_initial_ztp_json:
         pn_cliusername: "{{ USERNAME }}"               # Cli username (value comes from cli_vault.yml).
         pn_clipassword: "{{ PASSWORD }}"               # Cli password (value comes from cli_vault.yml).
         pn_fabric_name: 'test-l3-fabric'                   # Name of the fabric to create/join.
@@ -70,8 +73,15 @@
       delay: 3
       ignore_errors: yes             # Flag to indicate if we should ignore errors if any.
 
-    - debug:
-        var: ztp_out.stdout_lines    # Print stdout_lines of register variable.
+    # Copy the json output of the above task in a file
+    - local_action: copy content={{ ztp_out }} dest={{ json_file_path }}
+
+    # Validate the json output stored in the file
+    - local_action: command python validate_json.py {{ json_file_path }}
+      register: validate
+
+    # Remove the above created file
+    - local_action: file path={{ json_file_path }} state=absent
 
     - pause:
         seconds: 2                   # Pause playbook execution for specified amount of time.
@@ -90,11 +100,12 @@
   vars:
     spine_count: "{{ groups['spine'] | length }}"
     leaf_count: "{{ groups['leaf'] | length }}"
+    json_file_path: /etc/ansible/pluribus-ansible/ansible/output.json
 
   tasks:
     # L3 ZTP setup
     - name: Configure L3 ZTP (Auto configure link IPs)
-      pn_l3_ztp:
+      pn_l3_ztp_json:
         pn_cliusername: "{{ USERNAME }}"        # Cli username (value comes from cli_vault.yml).
         pn_clipassword: "{{ PASSWORD }}"        # Cli password (value comes from cli_vault.yml).
         pn_spine_list: "{{ groups['spine'] }}"  # List of all spine switches mentioned under [spine] grp in hosts file.
@@ -115,8 +126,15 @@
       delay: 1
       ignore_errors: yes                        # Flag to indicate if we should ignore errors if any.
 
-    - debug:
-        var: ztp_l3_out.stdout_lines            # Print stdout_lines of register variable.
+    # Copy the json output of the above task in a file
+    - local_action: copy content={{ ztp_l3_out }} dest={{ json_file_path }}
+
+    # Validate the json output stored in the file
+    - local_action: command python validate_json.py {{ json_file_path }}
+      register: validate
+
+    # Remove the above created file
+    - local_action: file path={{ json_file_path }} state=absent
 
     - pause:
         seconds: 2                              # Pause playbook execution for specified amount of time.
