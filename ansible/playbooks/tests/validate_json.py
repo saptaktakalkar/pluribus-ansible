@@ -21,7 +21,7 @@ json_data = json.dumps(data)
 exit_msg = ''
 for field in fields_to_check:
     if field not in json_data:
-        exit_msg += '{} is missing from the JSON output'.format(field)
+        exit_msg += '{} is missing from the JSON output '.format(field)
 
 if exit_msg == '':
     print('JSON Validation Successful')
