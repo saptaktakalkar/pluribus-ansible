@@ -41,7 +41,7 @@ The standard json object starts with a `plays` field. `plays` field is the highe
           * _1_ - for failure  
           * _Cannot determine_ - if there is a weird behaviour  
       * `task` field contains task name and task id of the task which is running.  
-      * `hosts` field contains the host name in which the execution is happening and host name contains the various attributes for a task which tells about the details on execution of a task in that host.  
+      * `hosts` field contains the host name where the task execution is happening and host name contains the various attributes for a task which tells about the details on execution of a task in that host.  
 
 ### There are 6 fixed attributes inside the hosts field which are:  
 
@@ -73,13 +73,13 @@ b) stdout\_callback = pn\_json
 ---
 ## Algorithm behind the working:  
 
-* Get the task name from task field  
-*  Then the status field has to be checked  
-  * if status field is ’1’:  
-     * Then take the short error message from the msg field. And detailed error message from either exception/summary/stderr/stdout field  
-   * elif status field is '0':  
-          * Then take the short success message from msg field. And the get the detailed output from the summary field.  
-    * else(‘status’ field is ‘Cannot determine’):  
+* Get the **task name** from `task` field  
+*  Then the `status` field has to be checked  
+  * if `status` field is ’1’:  
+     * Then take the **short error message** from the `msg` field. And **detailed error message** from either `exception/summary/stderr/stdout` field  
+   * elif `status` field is '0':  
+          * Then take the **short success message** from `msg` field. And the get the **detailed output** from the `summary` field.  
+    * else(‘`status`’ field is ‘Cannot determine’):  
       * It is some weird behaviour. Pluribus team to be notified.  
 
             
