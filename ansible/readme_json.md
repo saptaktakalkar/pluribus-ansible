@@ -1,8 +1,17 @@
+# Pluribus Networks - Ansible
 
+# Index
+  + [Synopsis](#synopsis)
+  + [Structure](#structure)
+  + [Code example](#code-example)
+  + [Configuration](#configuration)
+  + [Algorithm behind the working](#algorithm-behind-the-working)
 
-# Synopsis :  
+---
+# Synopsis:
 
 To have Ansible playbooks' results in json format with standard output payload  
+
 ---
 ## Structure:
 
@@ -52,6 +61,98 @@ The standard json object starts with a `plays` field. `plays` field is the highe
 `failed` - true/false depending upon the execution of the task  
 `exception` - in case of any exception while running the modules  
 `unreachable` - in case of connection issues or some entity is unreachable  
+
+---
+## Code example:
+
+**One of the example for the json object is:**
+```
+{
+    "plays": [
+        {
+            "play": {
+                "id": "d00eb3af-a4d3-4887-9cdb-2eb26d11ee69",
+                "name": "Zero Touch Provisioning - Initial setup"
+            },
+            "tasks": [
+                {
+                    "hosts": {
+                        "ansible-spine1": {
+                            "_ansible_no_log": false,
+                            "_ansible_parsed": true,
+                            "attempts": 1,
+                            "changed": true,
+                            "exception": "",
+                            "failed": false,
+                            "invocation": {
+                                "module_args": {
+                                    "pn_clipassword": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER",
+                                    "pn_cliusername": "network-admin",
+                                    "pn_current_switch": "ansible-spine1",
+                                    "pn_dns_ip": null,
+                                    "pn_dns_secondary_ip": null,
+                                    "pn_domain_name": null,
+                                    "pn_fabric_control_network": "mgmt",
+                                    "pn_fabric_name": "ztp-fabric",
+                                    "pn_fabric_network": "mgmt",
+                                    "pn_gateway_ip": null,
+                                    "pn_inband_ip": "172.16.0.0/24",
+                                    "pn_mgmt_ip": null,
+                                    "pn_mgmt_ip_subnet": null,
+                                    "pn_ntp_server": null,
+                                    "pn_static_setup": false,
+                                    "pn_stp": false,
+                                    "pn_toggle_40g": true,
+                                    "pn_web_api": true
+                                },
+                                "module_name": "pn_initial_ztp_json"
+                            },
+                            "msg": "Initial ZTP configuration executed successfully",
+                            "summary": [
+                                {
+                                    "output": "Eula has already been accepted",
+                                    "switch": "ansible-spine1"
+                                },
+                                {
+                                    "output": "Already a part of fabric ztp-fabric",
+                                    "switch": "ansible-spine1"
+                                },
+                                {
+                                    "output": "Fabric is already in mgmt control network",
+                                    "switch": "ansible-spine1"
+                                },
+                                {
+                                    "output": "STP is already disabled",
+                                    "switch": "ansible-spine1"
+                                },
+                                {
+                                    "output": "Ports enabled",
+                                    "switch": "ansible-spine1"
+                                },
+                                {
+                                    "output": "In-band ip has already been assigned",
+                                    "switch": "ansible-spine1"
+                                },
+                                {
+                                    "output": "In-band ip has already been assigned",
+                                    "switch": "ansible-spine1"
+                                }
+                            ],
+                            "task": "Auto accept EULA, Disable STP, enable ports and create/join fabric",
+                            "unreachable": false
+                        }
+                    },
+                    "status": "0",
+                    "task": {
+                        "id": "02f08ed7-b84c-4dcb-9b6e-58564636c423",
+                        "name": "Auto accept EULA, Disable STP, enable ports and create/join fabric"
+                    }
+                }
+            ]
+        }
+    ]
+}
+```
 
 ---
 ## Configuration:
