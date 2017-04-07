@@ -1,7 +1,8 @@
 
 
-Aim : To have Ansible playbooks’ results in json format with standard output payload
-===
+# Synopsis :
+
+To have Ansible playbooks' results in json format with standard output payload  
 ---
 ## Structure:
 
@@ -64,7 +65,7 @@ The name of json plugin is `pn_json.py` which can be found in the locations belo
 Then the `pn_json plugin` needs to be put in the following location:  
 1. **/usr/lib/python2.7/dist-packages/ansible/plugins/callback**  
 
-```Note: The plugin needs to be kept in the server machine from where the ansible execution is taking place.```  
+> Note: The plugin needs to be kept in the server machine from where the ansible execution is taking place.  
 
 Then the following changes have to be added in `/etc/ansible/ansible.cfg` configuration file:  
 a) gathering = explicit  
@@ -75,11 +76,10 @@ b) stdout\_callback = pn\_json
 
 * Get the **task name** from `task` field  
 *  Then the `status` field has to be checked  
-  * if `status` field is ’1’:  
+  * if `status` field is '1':  
      * Then take the **short error message** from the `msg` field. And **detailed error message** from either `exception/summary/stderr/stdout` field  
-   * elif `status` field is '0':  
-          * Then take the **short success message** from `msg` field. And the get the **detailed output** from the `summary` field.  
-    * else(‘`status`’ field is ‘Cannot determine’):  
-      * It is some weird behaviour. Pluribus team to be notified.  
-
-            
+  * elif `status` field is '0':  
+     * Then take the **short success message** from `msg` field. And the get the **detailed output** from the `summary` field.  
+  * else (`status` field is 'Cannot determine'):  
+     * It is some weird behaviour. Pluribus team to be notified.  
+---
