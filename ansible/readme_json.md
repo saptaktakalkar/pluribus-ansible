@@ -1,6 +1,6 @@
 
 
-# Synopsis :
+# Synopsis :  
 
 To have Ansible playbooks' results in json format with standard output payload  
 ---
