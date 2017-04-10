@@ -13,6 +13,7 @@
   + [Security](#security)
   + [Setup Key Based Authentication](#setup-key-based-authentication)
   + [Running Playbooks](#running-playbooks)
+  + [Repository](#repository)
   + [Troubleshooting Utilities!](#troubleshooting-utilities)
   
 # Ansible
@@ -424,6 +425,20 @@ Let's see the command with the various options/flags:
    
 Use the flags/options based on your requirements to run the playbooks. 
 
+# Repository
+  The modules, playbooks, module documentation and other related components are organised in various folders. This section provides a brief description of the directories and/or folders in this repository:
+  - [`./docs`](./docs) : This folder cantains module documentation.
+  - [`./ZTP`](./ZTP) : This folder contains ZTP bash script for installing DHCP, installing ONIE etc for configuring the system.
+  - [`./ansible`](./ansible) : This folder contains sub-folders for Pluribus ansible module library and Pluribus ansible playbooks.
+  - [`./ansible/library`](./ansible/library) : This folder contains the Pluribus Ansible modules. Make sure to include this as your library path in the ansible config file.
+  - [`./ansible/playbooks`](./ansible/playbooks) : This folder contains all the playbooks for ZTP configurations. 
+  - [`./ansible/roles`](./ansible/roles) : This folder contains all the playbooks for standalone modules.
+  - [`./ansible/playbooks/tests`](./ansible/playbooks/tests) : This folder contains playbooks for testing the ZTP configurations. 
+  - [`./ansible/playbooks/advance`](./ansible/playbooks/advance) : This folder contains playbooks specific to the VCF-Manager(GUI) based integration.
+  - [`./ansible/playbooks/advance/playbooks`](./ansible/playbooks/advance/playbooks) : This folder contains the GUI specific playbooks.
+  - [`./ansible/playbooks/advance/playbookvariables`](./ansible/playbooks/advance/playbookvariables) : This folder contains vars files for GUI specific playbooks.
+
+
 # Troubleshooting Utilities
   In this section, we describe certain linux utilities that can come in handy while troubleshooting for issues.
   
@@ -464,9 +479,4 @@ Use the flags/options based on your requirements to run the playbooks.
   user	6m33.070s
   sys	0m57.437s
  ```
-  
-  
-  
-  
-  
-  
+ 
