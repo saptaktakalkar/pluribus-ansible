@@ -24,6 +24,8 @@
         pn_clipassword: "{{ PASSWORD }}"               # Cli password (value comes from cli_vault.yml).
         pn_fabric_name: 'ansible_bgp_fabric'           # Name of the fabric to create/join.
         pn_current_switch: "{{ inventory_hostname }}"  # Name of the switch on which this task is currently getting executed.
+        pn_spine_list: "{{ groups['spine'] }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
+        pn_leaf_list: "{{ groups['leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
       register: ztp_out              # Variable to hold/register output of the above tasks.
       until: ztp_out.failed != true  # If the above code fails it will retry the code
       retries: 3                     # This is the retries count

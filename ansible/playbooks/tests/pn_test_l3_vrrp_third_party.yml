@@ -57,6 +57,7 @@
         pn_fabric_name: 'test-vrrp-third-party'        # Name of the fabric to create/join.
         pn_current_switch: "{{ inventory_hostname }}"  # Name of the switch on which this task is currently getting executed.
         pn_toggle_40g: True                            # Flag to indicate if 40g ports should be converted to 10g ports or not.
+        pn_leaf_list: "{{ groups['leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
         # pn_inband_ip: '172.16.1.0/24'                # Inband ips to be assigned to switches starting with this value. Default: 172.16.0.0/24.
         # pn_fabric_network: 'mgmt'                    # Choices: in-band or mgmt.  Default: mgmt
         # pn_fabric_control_network: 'mgmt'            # Choices: in-band or mgmt.  Default: mgmt
