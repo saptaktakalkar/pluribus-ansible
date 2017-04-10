@@ -20,9 +20,10 @@
       pn_initial_ztp:
         pn_cliusername: "{{ USERNAME }}"               # Cli username (value comes from cli_vault.yml).
         pn_clipassword: "{{ PASSWORD }}"               # Cli password (value comes from cli_vault.yml).
-        pn_fabric_name: 'ospf-fabric-leaf'                   # Name of the fabric to create/join.
+        pn_fabric_name: 'ospf-fabric-leaf'             # Name of the fabric to create/join.
         pn_current_switch: "{{ inventory_hostname }}"  # Name of the switch on which this task is currently getting executed.
-        pn_toggle_40g: True                          # Flag to indicate if 40g ports should be converted to 10g ports or not.
+        pn_leaf_list: "{{ groups['leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
+        pn_toggle_40g: True                            # Flag to indicate if 40g ports should be converted to 10g ports or not.
         # pn_inband_ip: '172.16.1.0/24'                # Inband ips to be assigned to switches starting with this value. Default: 172.16.0.0/24.
         # pn_fabric_network: 'mgmt'                    # Choices: in-band or mgmt.  Default: mgmt
         # pn_fabric_control_network: 'mgmt'            # Choices: in-band or mgmt.  Default: mgmt
@@ -70,8 +71,8 @@
   tasks:
     - name: Configure VRRP L3 setup
       pn_ztp_vrrp_l3_thirdparty:
-        pn_cliusername: "{{ USERNAME }}"  # Cli username (value comes from cli_vault.yml).
-        pn_clipassword: "{{ PASSWORD }}"  # Cli password (value comes from cli_vault.yml).
+        pn_cliusername: "{{ USERNAME }}"        # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ PASSWORD }}"        # Cli password (value comes from cli_vault.yml).
         pn_leaf_list: "{{ groups['leaf'] }}"    # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"  # VRRP Layer3 data specified in CSV file.
       register: vrrp_out               # Variable to hold/register output of the above tasks.
@@ -111,7 +112,7 @@
         pn_cidr: '24'                           # Subnet mask required to calculate link IPs for layer3 fabric.
         pn_supernet: '30'                       # Supernet mask required to calculate link IPs for layer3 fabric.
         pn_assign_loopback: True                # Flag to indicate if loopback ips should be assigned to vrouters in layer3 fabric. Default: False.
-        pn_loopback_ip: '109.109.108.0/24'    # Loopback ip value for vrouters in layer3 fabric. Default: 109.109.109.0/24.
+        pn_loopback_ip: '109.109.108.0/24'      # Loopback ip value for vrouters in layer3 fabric. Default: 109.109.109.0/24.
         # pn_bfd: True                          # Flag to indicate if BFD config should be added to vrouter interfaces in case of layer3 fabric. Default: False.
         # pn_bfd_min_rx: 200                    # BFD-MIN-RX value required for adding BFD configuration to vrouter interfaces.
         # pn_bfd_multiplier: 3                  # BFD_MULTIPLIER value required for adding BFD configuration to vrouter interfaces.
@@ -167,15 +168,15 @@
         # >>> Ebgp parameters end here
       register: ospf_out                         # Variable to hold/register output of the above tasks.
       until: ospf_out.failed != true             # If the above code fails it will retry the code
-      retries: 3                                # This is the retries count
+      retries: 3                                 # This is the retries count
       delay: 1
-      ignore_errors: yes                        # Flag to indicate if we should ignore errors if any.
+      ignore_errors: yes                         # Flag to indicate if we should ignore errors if any.
 
     - debug:
         var: ospf_out.stdout_lines               # Print stdout_lines of register variable.
 
     - pause:
-        seconds: 2                              # Pause playbook execution for specified amount of time.
+        seconds: 2                               # Pause playbook execution for specified amount of time.
 
 
 # This task is to disable ports using pn_run_cli_commands module from library/ directory.

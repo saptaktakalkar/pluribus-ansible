@@ -72,6 +72,16 @@ options:
       required: False
       default: True
       type: bool
+    pn_spine_list:
+      description:
+        - Specify list of Spine hosts
+      required: False
+      type: list
+    pn_leaf_list:
+      description:
+        - Specify list of leaf hosts
+      required: False
+      type: list
     pn_inband_ip:
       description:
         - Inband ips to be assigned to switches starting with this value.
@@ -146,6 +156,8 @@ EXAMPLES = """
       pn_clipassword: "{{ PASSWORD }}"
       pn_fabric_name: 'ztp-fabric'
       pn_current_switch: "{{ inventory_hostname }}"
+      pn_spine_list: "{{ groups['spine'] }}"
+      pn_leaf_list: "{{ groups['leaf'] }}"
 """
 
 RETURN = """
@@ -162,7 +174,6 @@ failed:
   returned: always
   type: bool
 """
-
 
 CHANGED_FLAG = []
 
@@ -443,19 +454,19 @@ def toggle_40g_local(module):
             if '.2' in bezel_port:
                 end_port = int(port) + 3
                 range_port = port + '-' + str(end_port)
-    
+
                 cli = clicopy
                 cli += ' switch-local port-config-modify port %s ' % port
                 cli += ' disable '
                 output += 'port ' + port + ' disabled'
                 output += run_cli(module, cli)
-    
+
                 cli = clicopy
                 cli += ' switch-local port-config-modify port %s ' % port
                 cli += ' speed 10g '
                 output += 'port ' + port + ' converted to 10g'
                 output += run_cli(module, cli)
-    
+
                 cli = clicopy
                 cli += ' switch-local port-config-modify port %s ' % range_port
                 cli += ' enable '
@@ -467,49 +478,52 @@ def toggle_40g_local(module):
     return output
 
 
-def assign_inband_ip(module, inband_address):
+def assign_inband_ip(module):
     """
     Method to assign in-band ips to switches.
     :param module: The Ansible module to fetch input parameters.
-    :param inband_address: The network ip for the in-band ips.
-    :return: Assigned inband ip or None.
+    :return: String describing in-band ip got assigned or not.
     """
-    address = inband_address.split('.')
+    global CHANGED_FLAG
+    address = module.params['pn_inband_ip'].split('.')
     static_part = str(address[0]) + '.' + str(address[1]) + '.'
     static_part += str(address[2]) + '.'
     last_octet = str(address[3]).split('/')
     subnet = last_octet[1]
 
-    cli = pn_cli(module)
-    clicopy = cli
-    ip_count = 1
-    ip = static_part + str(ip_count) + '/' + subnet
+    switches_list = []
+    spines = module.params['pn_spine_list']
+    leafs = module.params['pn_leaf_list']
+    switch = module.params['pn_current_switch']
 
-    # Get existing in-band ip.
-    cli += ' switch-local switch-setup-show format in-band-ip '
-    existing_inband_ip = run_cli(module, cli)
-    # If existing in-band ip is not the same then assign new ip.
-    if ip not in existing_inband_ip:
-        cli = clicopy
-        cli += ' fabric-node-show format in-band-ip '
-        cli += ' no-show-headers '
-        assigned_ips = run_cli(module, cli).split()
-        # Make sure ip has not been assigned to any of the switches.
-        while ip in assigned_ips:
-            # If ip is not unique, increase the ip count by 1.
-            ip_count += 1
-            ip = static_part + str(ip_count) + '/' + subnet
-            if ip in existing_inband_ip:
-                return None
+    if spines:
+        switches_list += spines
 
-        # Assign unique in-band ip to the switch.
-        cli = clicopy
-        cli += ' switch-local switch-setup-modify '
-        cli += ' in-band-ip ' + ip
-        if 'Setup completed successfully' in run_cli(module, cli):
-            return ip
+    if leafs:
+        switches_list += leafs
 
-    return None
+    if switches_list:
+        ip_count = switches_list.index(switch) + 1
+        ip = static_part + str(ip_count) + '/' + subnet
+
+        # Get existing in-band ip.
+        cli = pn_cli(module)
+        clicopy = cli
+        cli += ' switch-local switch-setup-show format in-band-ip '
+        existing_inband_ip = run_cli(module, cli)
+
+        if ip not in existing_inband_ip:
+            cli = clicopy
+            cli += ' switch-local switch-setup-modify '
+            cli += ' in-band-ip ' + ip
+            run_cli(module, cli)
+            CHANGED_FLAG.append(True)
+            return ' %s: Assigned in-band ip %s \n' % (switch, ip)
+        else:
+            return ' %s: In-band ip %s has been already assigned \n' % (switch,
+                                                                        ip)
+
+    return ' %s: Could not assign in-band ip \n' % switch
 
 
 def main():
@@ -526,6 +540,8 @@ def main():
                                            choices=['mgmt', 'in-band'],
                                            default='mgmt'),
             pn_toggle_40g=dict(required=False, type='bool', default=True),
+            pn_spine_list=dict(required=False, type='list', default=[]),
+            pn_leaf_list=dict(required=False, type='list', default=[]),
             pn_inband_ip=dict(required=False, type='str',
                               default='172.16.0.0/24'),
             pn_current_switch=dict(required=False, type='str'),
@@ -610,12 +626,7 @@ def main():
             CHANGED_FLAG.append(True)
 
     # Assign in-band ips.
-    ip = assign_inband_ip(module, module.params['pn_inband_ip'])
-    if ip is not None:
-        message += ' %s: Assigned in-band ip %s \n' % (current_switch, ip)
-    else:
-        message += ' %s: In-band ip has already been assigned \n' % (
-            current_switch)
+    message += assign_inband_ip(module)
 
     # Enable STP if flag is True
     if module.params['pn_stp']:
