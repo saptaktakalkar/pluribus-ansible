@@ -263,7 +263,10 @@ def make_switch_setup_static(module):
     """
     Method to assign static values to different switch setup parameters.
     :param module: The Ansible module to fetch input parameters.
+    :return: String describing modified switch setup values.
     """
+    global CHANGED_FLAG
+    switch = module.params['pn_current_switch']
     mgmt_ip = module.params['pn_mgmt_ip']
     mgmt_ip_subnet = module.params['pn_mgmt_ip_subnet']
     gateway_ip = module.params['pn_gateway_ip']
@@ -273,29 +276,44 @@ def make_switch_setup_static(module):
     ntp_server = module.params['pn_ntp_server']
     cli = pn_cli(module)
     cli += ' switch-setup-modify '
+    output = ''
 
-    if mgmt_ip:
+    if mgmt_ip and mgmt_ip_subnet:
         ip = mgmt_ip + '/' + mgmt_ip_subnet
         cli += ' mgmt-ip ' + ip
+        output += ' %s: Modified switch mgmt-ip to %s \n' % (switch, ip)
 
     if gateway_ip:
         cli += ' gateway-ip ' + gateway_ip
+        output += ' %s: Modified switch gateway-ip to %s \n' % (switch,
+                                                                gateway_ip)
 
     if dns_ip:
         cli += ' dns-ip ' + dns_ip
+        output += ' %s: Modified switch dns-ip to %s \n' % (switch, dns_ip)
 
     if dns_secondary_ip:
         cli += ' dns-secondary-ip ' + dns_secondary_ip
+        output += ' %s: Modified switch dns-secondary-ip to %s \n' % (
+            switch, dns_secondary_ip
+        )
 
     if domain_name:
         cli += ' domain-name ' + domain_name
+        output += ' %s: Modified switch domain-name to %s \n' % (switch,
+                                                                 domain_name)
 
     if ntp_server:
         cli += ' ntp-server ' + ntp_server
+        output += ' %s: Modified switch ntp-server to %s \n' % (switch,
+                                                                ntp_server)
 
     clicopy = cli
     if clicopy.split('switch-setup-modify')[1] != ' ':
         run_cli(module, cli)
+        CHANGED_FLAG.append(True)
+
+    return output
 
 
 def modify_stp_local(module, modify_flag):
@@ -545,7 +563,7 @@ def main():
             pn_inband_ip=dict(required=False, type='str',
                               default='172.16.0.0/24'),
             pn_current_switch=dict(required=False, type='str'),
-            pn_static_setup=dict(required=False, type='bool', default=False),
+            pn_static_setup=dict(required=False, type='bool', default=True),
             pn_mgmt_ip=dict(required=False, type='str'),
             pn_mgmt_ip_subnet=dict(required=False, type='str'),
             pn_gateway_ip=dict(required=False, type='str'),
@@ -580,7 +598,9 @@ def main():
 
     # Make switch setup static
     if module.params['pn_static_setup']:
-        make_switch_setup_static(module)
+        output = make_switch_setup_static(module)
+        if output != '':
+            message += output
 
     # Create/join fabric
     if 'already in the fabric' in create_or_join_fabric(module, fabric_name,
