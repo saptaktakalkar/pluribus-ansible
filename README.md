@@ -208,6 +208,8 @@ Now you can begin working on your branch.
         pn_clipassword: "{{ PASSWORD }}"                              # Cli password (value comes from cli_vault.yml).
         pn_fabric_name: "{{ pn_fabric_name }}"                        # Name of the fabric to create/join.
         pn_current_switch: "{{ inventory_hostname }}"                 # Name of the switch on which this task is currently getting executed.
+        pn_spine_list: "{{ groups['spine'] }}"                        # List of all spine switches mentioned under [spine] grp in hosts file.
+        pn_leaf_list: "{{ groups['leaf'] }}"                          # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_toggle_40g: "{{ pn_toggle_40g }}"                          # Flag to indicate if 40g ports should be converted to 10g ports or not.
         pn_inband_ip: "{{ pn_inband_ip }}"                            # Inband ips to be assigned to switches starting with this value. Default: 172.16.0.0/24.
         pn_fabric_network: "{{ pn_fabric_network }}"                  # Choices: in-band or mgmt.  Default: mgmt
