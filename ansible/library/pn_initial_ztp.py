@@ -24,7 +24,7 @@ import time
 
 DOCUMENTATION = """
 ---
-module: pn_initial_ztp_json
+module: pn_initial_ztp
 author: 'Pluribus Networks (devops@pluribusnetworks.com)'
 short_description: CLI command to do zero touch provisioning.
 description:
@@ -350,38 +350,43 @@ def enable_ports(module):
     """
     Method to enable all ports of a switch.
     :param module: The Ansible module to fetch input parameters.
-    :return: The output of run_cli() method.
+    :return: The output of run_cli() method or None.
     """
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' port-config-show format port no-show-headers '
-    out = run_cli(module, cli)
+    cli += ' switch-local port-config-show format enable no-show-headers '
+    if 'off' in run_cli(module, cli).split():
+        cli = clicopy
+        cli += ' switch-local port-config-show format port no-show-headers '
+        out = run_cli(module, cli)
 
-    cli = clicopy
-    cli += ' port-config-show format port speed 40g no-show-headers '
-    out_40g = run_cli(module, cli)
-    out_remove10g = []
+        cli = clicopy
+        cli += ' switch-local port-config-show format port speed 40g '
+        cli += ' no-show-headers '
+        out_40g = run_cli(module, cli)
+        out_remove10g = []
 
-    if len(out_40g) > 0 and out_40g != 'Success':
-        out_40g = out_40g.split()
-        out_40g = list(set(out_40g))
-        if len(out_40g) > 0:
-            for port_number in out_40g:
-                out_remove10g.append(str(int(port_number) + int(1)))
-                out_remove10g.append(str(int(port_number) + int(2)))
-                out_remove10g.append(str(int(port_number) + int(3)))
+        if len(out_40g) > 0 and out_40g != 'Success':
+            out_40g = out_40g.split()
+            out_40g = list(set(out_40g))
+            if len(out_40g) > 0:
+                for port_number in out_40g:
+                    out_remove10g.append(str(int(port_number) + int(1)))
+                    out_remove10g.append(str(int(port_number) + int(2)))
+                    out_remove10g.append(str(int(port_number) + int(3)))
 
-    if out:
-        out = out.split()
-        out = set(out) - set(out_remove10g)
-        out = list(out)
         if out:
-            ports = ','.join(out)
-            cli = clicopy
-            cli += ' port-config-modify port %s enable ' % ports
-            return run_cli(module, cli)
+            out = out.split()
+            out = set(out) - set(out_remove10g)
+            out = list(out)
+            if out:
+                ports = ','.join(out)
+                cli = clicopy
+                cli += ' switch-local port-config-modify port %s enable ' % (
+                    ports)
+                return run_cli(module, cli)
     else:
-        return out
+        return None
 
 
 def create_or_join_fabric(module, fabric_name, fabric_network):
@@ -661,7 +666,7 @@ def main():
     results.append(json_msg)
 
     # Enable ports
-    if 'Success' in enable_ports(module):
+    if enable_ports(module):
         json_msg = {
             'switch': current_switch,
             'output': 'Ports enabled'
