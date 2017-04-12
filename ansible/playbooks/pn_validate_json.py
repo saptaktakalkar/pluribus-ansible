@@ -62,9 +62,7 @@ for json_object in json_object_list:
     except ValueError:
         exit('Result: Output of {} is an INVALID JSON object'.format(playbook))
 
-    fields_to_check = [r'"task":', r'"summary":', r'"msg":', r'"unreachable":',
-                       r'"exception":', r'"failed":', r'"changed":',
-                       r'"status":']
+    fields_to_check = [r'"task":', r'"summary":', r'"msg":', r'"status":']
     extra_fields = [r'"output":', r'"switch":']
 
     if r'"status": "0"' in json_object:
