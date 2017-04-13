@@ -214,7 +214,7 @@ def run_cli(module, cli):
             error='1',
             failed=True,
             stderr=err.strip(),
-            msg='Operation Failed: ' + str(cli),
+            msg='Operation Failed: ' + ' '.join(cli),
             changed=False
         )
     else:
