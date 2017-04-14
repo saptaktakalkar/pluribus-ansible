@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI VRRP L2 """
+""" PN CLI L2 VRRP """
 
 #
 # This file is part of Ansible
@@ -18,9 +18,9 @@
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from ansible.module_utils.basic import AnsibleModule
 import shlex
-import json
+
+from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
 ---
@@ -31,10 +31,10 @@ short_description: CLI command to configure VRRP - Layer 2 Setup
 description: Virtual Router Redundancy Protocol (VRRP) - Layer 2 Setup
 options:
     pn_cliusername:
-        description:
-          - Provide login username if user is not root.
-        required: False
-        type: str
+      description:
+        - Provide login username if user is not root.
+      required: False
+      type: str
     pn_clipassword:
       description:
         - Provide login password if user is not root.
@@ -64,29 +64,45 @@ options:
 """
 
 EXAMPLES = """
-    - name: Configure VRRP L2 setup
-      pn_ztp_vrrp_l2_csv:
-        pn_cliusername: "{{ USERNAME }}"
-        pn_clipassword: "{{ PASSWORD }}"
-        pn_spine_list: "{{ groups['spine'] }}"
-        pn_leaf_list: "{{ groups['leaf'] }}"
-        pn_vrrp_id: '18'
-        pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"
+- name: Configure VRRP L2 setup
+  pn_ztp_vrrp_l2_csv:
+    pn_cliusername: "{{ USERNAME }}"
+    pn_clipassword: "{{ PASSWORD }}"
+    pn_spine_list: "{{ groups['spine'] }}"
+    pn_leaf_list: "{{ groups['leaf'] }}"
+    pn_vrrp_id: '18'
+    pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"
 """
 
 RETURN = """
-stdout:
-  description: The set of responses for each command.
+summary:
+  description: It contains output of each configuration along with switch name.
   returned: always
   type: str
 changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
   type: bool
+unreachable:
+  description: Indicates whether switch was unreachable to connect.
+  returned: always
+  type: bool
 failed:
   description: Indicates whether or not the execution failed on the target.
   returned: always
   type: bool
+exception:
+  description: Describes error/exception occurred while executing CLI command.
+  returned: always
+  type: str
+task:
+  description: Name of the task getting executed on switch.
+  returned: always
+  type: str
+msg:
+  description: Indicates whether configuration made was successful or failed.
+  returned: always
+  type: str
 """
 
 
@@ -125,15 +141,17 @@ def run_cli(module, cli):
         return out
 
     if err:
-        json_msg = {'switch': '', 'output': u'Operation Failed: {}'.format(str(cli))}
+        json_msg = {
+            'switch': '',
+            'output': u'Operation Failed: {}'.format(' '.join(cli))
+        }
         results.append(json_msg)
         module.exit_json(
             unreachable=False,
             failed=True,
-            exception='',
+            exception=err.strip(),
             summary=results,
-            task='CLI command to configure VRRP - Layer 2 Setup',
-            stderr=err.strip(),
+            task='Configure L2 VRRP',
             msg='L2 VRRP configuration failed',
             changed=False
         )
@@ -162,7 +180,7 @@ def create_vlan(module, vlan_id, switch):
         cli += ' vlan-create id %s scope fabric ' % vlan_id
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
-        return ' %s: Vlan id %s with scope fabric created successfully \n' % (
+        return ' %s: Created vlan with id %s and scope fabric \n' % (
             switch, vlan_id
         )
     else:
@@ -190,6 +208,7 @@ def create_vrouter(module, switch, vrrp_id, vnet_name):
     :param module: The Ansible module to fetch input parameters.
     :param switch: The switch name on which vrouter will be created.
     :param vrrp_id: The vrrp_id to be assigned.
+    :param vnet_name: Vnet name required for vrouter creation.
     :return: The output string informing details of vrouter created and
     interface added or if vrouter already exists.
     """
@@ -211,10 +230,10 @@ def create_vrouter(module, switch, vrrp_id, vnet_name):
         )
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
-        return ' %s: Created vrouter with name %s \n' % (switch, vrouter_name)
+        return " %s: Created vrouter with name '%s' \n" % (switch, vrouter_name)
     else:
-        return ' %s: Vrouter with name %s already exists \n' % (switch,
-                                                                vrouter_name)
+        return " %s: Vrouter with name '%s' already exists \n" % (switch,
+                                                                  vrouter_name)
 
 
 def create_vrouter_interface(module, switch, ip, vlan_id, vrrp_id, ip_count,
@@ -365,31 +384,34 @@ def main():
     )
 
     global CHANGED_FLAG
+
+    # Configure L2 VRRP
     message = configure_vrrp_l2(module, module.params['pn_csv_data'],
                                 module.params['pn_vrrp_id'])
 
-    message_string = message
     results = []
     switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
+
     for switch in switch_list:
         replace_string = switch + ': '
-
-        for line in message_string.splitlines():
+        for line in message.splitlines():
             if replace_string in line:
-                json_msg = {'switch' : switch , 'output' : (line.replace(replace_string, '')).strip() }
+                json_msg = {
+                    'switch': switch,
+                    'output': (line.replace(replace_string, '')).strip()
+                }
                 results.append(json_msg)
 
     # Exit the module and return the required JSON.
     module.exit_json(
         unreachable=False,
-        msg = 'L2 VRRP configuration executed successfully',
+        msg='L2 VRRP configuration succeeded',
         summary=results,
         exception='',
-        task='CLI command to configure VRRP - Layer 2 Setup',
+        task='Configure L2 VRRP',
         failed=False,
         changed=True if True in CHANGED_FLAG else False
     )
-
 
 if __name__ == '__main__':
     main()
