@@ -520,13 +520,13 @@ def assign_inband_ip(module):
     leafs = module.params['pn_leaf_list']
     new_spines = module.params['pn_new_spine_list']
     new_leafs = module.params['pn_new_leaf_list']
-    switch = module.params['pn_current_switch']
     old_switch_count = int(len(spines)) + int(len(leafs))
+    switch = module.params['pn_current_switch']
 
-    if spines:
+    if new_spines:
         switches_list += new_spines
 
-    if leafs:
+    if new_leafs:
         switches_list += new_leafs
 
     if switches_list:

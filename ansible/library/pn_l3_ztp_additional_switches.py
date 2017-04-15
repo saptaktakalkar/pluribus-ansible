@@ -495,16 +495,13 @@ def auto_configure_link_ips(module):
     fabric_loopback = module.params['pn_assign_loopback']
     supernet = module.params['pn_supernet']
     output = ''
-
+    total_leaf_list = new_leaf_list + leaf_list
     cli = pn_cli(module)
     clicopy = cli
 
-
-    ####This is the change
     switch_list = []
     switch_list += new_spine_list
     switch_list += new_leaf_list
-    ####Ends here
 
     cli = pn_cli(module)
     clicopy = cli
@@ -570,7 +567,7 @@ def auto_configure_link_ips(module):
 
     if len(new_spine_list) > 0:
         for spine in new_spine_list:
-            for leaf in leaf_list:
+            for leaf in total_leaf_list:
                 cli = clicopy
                 cli += ' switch %s port-show hostname %s ' % (leaf, spine)
                 cli += ' format port no-show-headers '
