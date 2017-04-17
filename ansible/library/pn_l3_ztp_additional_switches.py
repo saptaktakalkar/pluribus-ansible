@@ -495,13 +495,14 @@ def auto_configure_link_ips(module):
     fabric_loopback = module.params['pn_assign_loopback']
     supernet = module.params['pn_supernet']
     output = ''
-    total_leaf_list = new_leaf_list + leaf_list
     cli = pn_cli(module)
     clicopy = cli
 
     switch_list = []
-    switch_list += new_spine_list
-    switch_list += new_leaf_list
+    switch_list = new_spine_list + new_leaf_list
+
+    total_leaf_list = []
+    total_leaf_list = new_leaf_list + leaf_list
 
     cli = pn_cli(module)
     clicopy = cli
@@ -513,8 +514,39 @@ def auto_configure_link_ips(module):
     for switch in switch_names:
         modify_auto_trunk_setting(module, switch, 'disable')
 
+    net_address = module.params['pn_new_net_address']
+
     # Get the list of available link ips to assign.
-    available_ips = calculate_link_ip_addresses(module.params['pn_net_address'],
+    if module.params['pn_use_old_ip_range_flag']:
+        count_ports = 0
+        run_once_flag = 0
+        for spine in spine_list:
+            for leaf in leaf_list:
+                cli = clicopy
+                cli += ' switch %s port-show hostname %s ' % (spine, leaf)
+                cli += ' format port no-show-headers'
+                port_list = run_cli(module, cli).split()
+    
+                if 'Success' not in port_list and len(port_list) > 0:
+                    count_ports += int(len(port_list))
+ 
+                    if run_once_flag == 0:
+                        vrouter = spine + '-vrouter'
+                        cli = clicopy
+                        cli += ' vrouter-interface-show vrouter-name %s ' % vrouter
+                        cli += ' l3-port %s format ip no-show-headers' % port_list[0]
+                        ip_address = run_cli(module, cli).split()
+                        ip_address = list(set(ip_address))
+                        ip_address.remove(vrouter)
+                        run_once_flag = 1
+
+        supernet_length = 1 << (32 - int(supernet))
+        ip_range_start = count_ports * supernet_length
+        ip_address = ip_address[0].split('.')
+        net_address = ip_address[0] + '.' + ip_address[1] + '.'
+        net_address += ip_address[2] + '.' + str(ip_range_start)
+
+    available_ips = calculate_link_ip_addresses(net_address,
                                                 module.params['pn_cidr'],
                                                 supernet)
 
@@ -620,7 +652,7 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_net_address=dict(required=False, type='str'),
+            pn_new_net_address=dict(required=False, type='str'),
             pn_cidr=dict(required=False, type='str'),
             pn_supernet=dict(required=False, type='str'),
             pn_spine_list=dict(required=False, type='list'),
@@ -636,6 +668,7 @@ def main():
             pn_stp=dict(required=False, type='bool', default=False),
             pn_new_spine_list=dict(required=False, type='list'),
             pn_new_leaf_list=dict(required=False, type='list'),
+            pn_use_old_ip_range_flag=dict(required=False, type='bool', default=False),
         )
     )
 

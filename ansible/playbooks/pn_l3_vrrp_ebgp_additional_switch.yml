@@ -116,10 +116,11 @@
         pn_leaf_list: "{{ groups['leaf'] }}"    # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_new_spine_list: "{{ groups['new_spine'] }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_new_leaf_list: "{{ groups['new_leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
-        pn_net_address: '172.169.1.0'           # Network address required to calculate link IPs for layer3 fabric.
+        pn_new_net_address: '172.169.1.0'           # Network address required to calculate link IPs for layer3 fabric.
         pn_cidr: '24'                           # Subnet mask required to calculate link IPs for layer3 fabric.
         pn_supernet: '30'                       # Supernet mask required to calculate link IPs for layer3 fabric.
         pn_assign_loopback: True                # Flag to indicate if loopback ips should be assigned to vrouters in layer3 fabric. Default: False.
+        pn_use_old_ip_range_flag: True          # Flag to indicate whether to use old ip range or new.
         # pn_loopback_ip: '109.109.109.0/24'    # Loopback ip value for vrouters in layer3 fabric. Default: 109.109.109.0/24.
         # pn_bfd: True                          # Flag to indicate if BFD config should be added to vrouter interfaces in case of layer3 fabric. Default: False.
         # pn_bfd_min_rx: 200                    # BFD-MIN-RX value required for adding BFD configuration to vrouter interfaces.
