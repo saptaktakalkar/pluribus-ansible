@@ -18,9 +18,9 @@
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from ansible.module_utils.basic import AnsibleModule
 import shlex
-import json
+
+from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
 ---
@@ -32,10 +32,10 @@ description:
     network automatically, without manual intervention.
 options:
     pn_cliusername:
-        description:
-          - Provide login username if user is not root.
-        required: False
-        type: str
+      description:
+        - Provide login username if user is not root.
+      required: False
+      type: str
     pn_clipassword:
       description:
         - Provide login password if user is not root.
@@ -75,20 +75,35 @@ EXAMPLES = """
 """
 
 RETURN = """
-stdout:
-  description: The set of responses for each command.
+summary:
+  description: It contains output of each configuration along with switch name.
   returned: always
   type: str
 changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
   type: bool
+unreachable:
+  description: Indicates whether switch was unreachable to connect.
+  returned: always
+  type: bool
 failed:
   description: Indicates whether or not the execution failed on the target.
   returned: always
   type: bool
+exception:
+  description: Describes error/exception occurred while executing CLI command.
+  returned: always
+  type: str
+task:
+  description: Name of the task getting executed on switch.
+  returned: always
+  type: str
+msg:
+  description: Indicates whether configuration made was successful or failed.
+  returned: always
+  type: str
 """
-
 
 CHANGED_FLAG = []
 
@@ -125,15 +140,17 @@ def run_cli(module, cli):
         return out
 
     if err:
-        json_msg = {'switch': '', 'output': u'Operation Failed: {}'.format(str(cli))}
+        json_msg = {
+            'switch': '',
+            'output': u'Operation Failed: {}'.format(' '.join(cli))
+        }
         results.append(json_msg)
         module.exit_json(
             unreachable=False,
             failed=True,
-            exception='',
+            exception=err.strip(),
             summary=results,
-            task='CLI command to configure L2 zero touch provisioning',
-            stderr=err.strip(),
+            task='Configure L2 ZTP (Auto vLags)',
             msg='L2 ZTP configuration failed',
             changed=False
         )
@@ -192,7 +209,7 @@ def create_cluster(module, switch, name, node1, node2):
         cli += ' cluster-node-1 %s cluster-node-2 %s ' % (node1, node2)
         if 'Success' in run_cli(module, cli):
             CHANGED_FLAG.append(True)
-            return ' %s: %s created successfully \n' % (switch, name)
+            return ' %s: Created %s \n' % (switch, name)
     else:
         return ' %s: %s already exists \n' % (switch, name)
 
@@ -223,7 +240,6 @@ def create_trunk(module, switch, name, ports):
     global CHANGED_FLAG
     cli = pn_cli(module)
     clicopy = cli
-    msg  = ''
     cli += ' switch %s trunk-show format name no-show-headers ' % switch
     trunk_list = run_cli(module, cli).split()
     if name not in trunk_list:
@@ -233,7 +249,7 @@ def create_trunk(module, switch, name, ports):
         cli += ' ports %s ' % ports_string
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
-        return ' %s: %s trunk created successfully \n' % (switch, name)
+        return ' %s: Created trunk %s \n' % (switch, name)
     else:
         return ' %s: %s trunk already exists \n' % (switch, name)
 
@@ -281,7 +297,7 @@ def create_vlag(module, switch, name, peer_switch, port, peer_port):
                                                                     peer_port)
         if 'Success' in run_cli(module, cli):
             CHANGED_FLAG.append(True)
-            return ' %s: %s vlag configured successfully \n' % (switch, name)
+            return ' %s: Configured vLag %s \n' % (switch, name)
     else:
         return ' %s: %s vlag is already configured \n' % (switch, name)
 
@@ -364,8 +380,10 @@ def configure_trunk_vlag_for_clustered_leafs(module, non_clustered_leafs,
                     non_clustered_leafs.remove(node2)
 
                     # Trunk creation (leaf to spines)
-                    trunk_message1 = configure_trunk(module, node1, spine_list).split('\n')
-                    trunk_message2 = configure_trunk(module, node2, spine_list).split('\n')
+                    trunk_message1 = configure_trunk(module, node1,
+                                                     spine_list).split('\n')
+                    trunk_message2 = configure_trunk(module, node2,
+                                                     spine_list).split('\n')
                     trunk_name1 = trunk_message1[1]
                     trunk_name2 = trunk_message2[1]
                     output += trunk_message1[0] + '\n'
@@ -383,15 +401,17 @@ def configure_trunk_vlag_for_clustered_leafs(module, non_clustered_leafs,
                     spine2 = str(spine_list[1])
 
                     # Trunk creation (spine to leafs)
-                    trunk_message1 = configure_trunk(module, spine1, leafs_list).split('\n')
-                    trunk_message2 = configure_trunk(module, spine2, leafs_list).split('\n')
+                    trunk_message1 = configure_trunk(module, spine1,
+                                                     leafs_list).split('\n')
+                    trunk_message2 = configure_trunk(module, spine2,
+                                                     leafs_list).split('\n')
                     trunk_name1 = trunk_message1[1]
                     trunk_name2 = trunk_message2[1]
                     output += trunk_message1[0] + '\n'
                     output += trunk_message2[0] + '\n'
 
                     # Vlag creation (spine to leafs)
-                    name =  'spine-to-' + node1 + '-' + node2
+                    name = 'spine-to-' + node1 + '-' + node2
                     if len(name) > 59:
                         name = name[:59]
 
@@ -512,7 +532,7 @@ def main():
 
     global CHANGED_FLAG
 
-    # L2 setup (auto-vlag).
+    # L2 setup (auto vLags).
     message = configure_auto_vlag(module)
 
     # Update fabric network to in-band if flag is True.
@@ -523,29 +543,29 @@ def main():
     if module.params['pn_stp']:
         message += modify_stp(module, 'enable')
 
-    # Exit the module and return the required JSON.
-    message_string = message
     results = []
     switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
+
     for switch in switch_list:
         replace_string = switch + ': '
-        
-        for line in message_string.splitlines():
+        for line in message.splitlines():
             if replace_string in line:
-                json_msg = {'switch' : switch , 'output' : (line.replace(replace_string, '')).strip() }
+                json_msg = {
+                    'switch': switch,
+                    'output': (line.replace(replace_string, '')).strip()
+                }
                 results.append(json_msg)
 
     # Exit the module and return the required JSON.
     module.exit_json(
         unreachable=False,
-        msg = 'L2 ZTP configuration executed successfully',
+        msg='L2 ZTP configuration succeeded',
         summary=results,
         exception='',
         failed=False,
         changed=True if True in CHANGED_FLAG else False,
-        task='CLI command to configure L2 zero touch provisioning'
+        task='Configure L2 ZTP (Auto vLags)'
     )
-
 
 if __name__ == '__main__':
     main()

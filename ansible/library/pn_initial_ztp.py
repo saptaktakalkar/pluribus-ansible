@@ -18,9 +18,10 @@
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from ansible.module_utils.basic import AnsibleModule
 import shlex
 import time
+
+from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
 ---
@@ -38,10 +39,10 @@ description:
         - Enable STP
 options:
     pn_cliusername:
-        description:
-          - Provide login username if user is not root.
-        required: False
-        type: str
+      description:
+        - Provide login username if user is not root.
+      required: False
+      type: str
     pn_clipassword:
       description:
         - Provide login password if user is not root.
@@ -161,18 +162,34 @@ EXAMPLES = """
 """
 
 RETURN = """
-stdout:
-  description: The set of responses for each command.
+summary:
+  description: It contains output of each configuration along with switch name.
   returned: always
   type: str
 changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
   type: bool
+unreachable:
+  description: Indicates whether switch was unreachable to connect.
+  returned: always
+  type: bool
 failed:
   description: Indicates whether or not the execution failed on the target.
   returned: always
   type: bool
+exception:
+  description: Describes error/exception occurred while executing CLI command.
+  returned: always
+  type: str
+task:
+  description: Name of the task getting executed on switch.
+  returned: always
+  type: str
+msg:
+  description: Indicates whether configuration made was successful or failed.
+  returned: always
+  type: str
 """
 
 CHANGED_FLAG = []
@@ -203,7 +220,7 @@ def run_cli(module, cli):
     :param cli: The complete cli string to be executed on the target node(s).
     :return: Output/Error or Success msg depending upon the response from cli.
     """
-    task = 'Accept EULA, Disable STP, enable ports and create/join fabric'
+    task = 'Accept EULA, Disable STP, Enable ports and Create/join fabric'
     results = []
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
@@ -213,17 +230,16 @@ def run_cli(module, cli):
     if err:
         json_msg = {
             'switch': module.params['pn_current_switch'],
-            'output': u'Operation Failed: {}'.format(str(cli))
+            'output': u'Operation Failed: {}'.format(' '.join(cli))
         }
         results.append(json_msg)
         module.exit_json(
             unreachable=False,
             failed=True,
-            exception='',
+            exception=err.strip(),
             summary=results,
             task=task,
-            stderr=err.strip(),
-            msg='Initial ZTP configuration failed',
+            msg='Fabric creation failed',
             changed=False
         )
     else:
@@ -535,7 +551,7 @@ def assign_inband_ip(module):
             CHANGED_FLAG.append(True)
             return 'Assigned in-band ip ' + ip
         else:
-            return 'In-band ip %s has been already assigned' % ip
+            return 'In-band ip %s is already assigned' % ip
 
     return 'Could not assign in-band ip'
 
@@ -582,16 +598,16 @@ def main():
     if 'Setup completed successfully' in auto_accept_eula(module):
         json_msg = {
             'switch': current_switch,
-            'output': 'Eula accepted'
+            'output': 'EULA accepted'
         }
         message += ' %s: EULA accepted \n' % current_switch
         CHANGED_FLAG.append(True)
     else:
         json_msg = {
             'switch': current_switch,
-            'output': 'Eula has already been accepted'
+            'output': 'EULA is already accepted'
         }
-        message += ' %s: EULA has already been accepted \n' % current_switch
+        message += ' %s: EULA is already accepted \n' % current_switch
 
     results.append(json_msg)
 
@@ -608,16 +624,16 @@ def main():
                                                         fabric_network):
         json_msg = {
             'switch': current_switch,
-            'output': u'Already a part of fabric {}'.format(fabric_name)
+            'output': u"Already a part of fabric '{}'".format(fabric_name)
         }
-        message += ' %s: Already a part of fabric %s \n' % (current_switch,
-                                                            fabric_name)
+        message += " %s: Already a part of fabric '%s' \n" % (current_switch,
+                                                              fabric_name)
     else:
         json_msg = {
             'switch': current_switch,
-            'output': u'Joined fabric {}'.format(fabric_name)
+            'output': u"Joined fabric '{}'".format(fabric_name)
         }
-        message += ' %s: Joined fabric %s \n' % (current_switch, fabric_name)
+        message += " %s: Joined fabric '%s' \n" % (current_switch, fabric_name)
         CHANGED_FLAG.append(True)
 
     results.append(json_msg)
@@ -626,19 +642,22 @@ def main():
     if 'Success' in configure_control_network(module, control_network):
         json_msg = {
             'switch': current_switch,
-            'output': u'Already a part of fabric {}'.format(control_network)
+            'output': u"Configured fabric control network to '{}'".format(
+                control_network
+            )
         }
-        message += ' %s: Configured fabric control network to %s \n' % (
+        message += " %s: Configured fabric control network to '%s' \n" % (
             current_switch, control_network
         )
         CHANGED_FLAG.append(True)
     else:
         json_msg = {
             'switch': current_switch,
-            'output': u'Fabric is already in {} control network'.format(
-                control_network)
+            'output': u"Fabric is already in '{}' control network".format(
+                control_network
+            )
         }
-        message += ' %s: Fabric is already in %s control network \n' % (
+        message += " %s: Fabric is already in '%s' control network \n" % (
             current_switch, control_network
         )
 
@@ -723,10 +742,10 @@ def main():
     # Exit the module and return the required JSON
     module.exit_json(
         unreachable=False,
-        msg='Initial ZTP configuration executed successfully',
+        msg='Fabric creation succeeded',
         summary=results,
         exception='',
-        task='Accept EULA, Disable STP, enable ports and create/join fabric',
+        task='Accept EULA, Disable STP, Enable ports and Create/join fabric',
         failed=False,
         changed=True if True in CHANGED_FLAG else False
     )
