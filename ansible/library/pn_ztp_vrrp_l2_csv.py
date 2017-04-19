@@ -360,12 +360,15 @@ def configure_vrrp_l2(module, csv_data, vrrp_id):
     csv_data = csv_data.replace(" ", "")
     csv_data_list = csv_data.split('\n')
     for row in csv_data_list:
-        elements = row.split(',')
-        vrrp_ip = elements[0]
-        vlan_id = elements[1]
-        active_switch = str(elements[2])
-        output += configure_vrrp(module, vrrp_id, vrrp_ip, active_switch,
-                                 vlan_id)
+        if row.startswith('#'):
+            continue
+        else:
+            elements = row.split(',')
+            vrrp_ip = elements[0]
+            vlan_id = elements[1]
+            active_switch = str(elements[2])
+            output += configure_vrrp(module, vrrp_id, vrrp_ip, active_switch,
+                                     vlan_id)
 
     return output
 
