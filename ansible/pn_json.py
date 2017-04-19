@@ -114,4 +114,3 @@ class CallbackModule(CallbackBase):
     v2_runner_on_failed = v2_runner_on_ok
     v2_runner_on_unreachable = v2_runner_on_ok
     v2_runner_on_skipped = v2_runner_on_ok
-
