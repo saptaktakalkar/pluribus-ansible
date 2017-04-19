@@ -6,7 +6,7 @@
 # pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 # If the tasks fails then it will retry as specified by retries count.
 - name: Zero Touch Provisioning - Initial setup
-  hosts: new_spine, new_leaf
+  hosts: new_leaf, new_spine
   serial: 1
   become: true
   become_method: su
@@ -20,13 +20,13 @@
       pn_initial_ztp_additional_switches:
         pn_cliusername: "{{ USERNAME }}"               # Cli username (value comes from cli_vault.yml).
         pn_clipassword: "{{ PASSWORD }}"               # Cli password (value comes from cli_vault.yml).
-        pn_fabric_name: 'bgp-fabric'                   # Name of the fabric to create/join.
+        pn_fabric_name: 'ospf-fabric'                  # Name of the fabric to create/join.
         pn_current_switch: "{{ inventory_hostname }}"  # Name of the switch on which this task is currently getting executed.
         pn_spine_list: "{{ groups['spine'] }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_leaf_list: "{{ groups['leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_new_spine_list: "{{ groups['new_spine'] }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_new_leaf_list: "{{ groups['new_leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
-        # pn_toggle_40g: True                          # Flag to indicate if 40g ports should be converted to 10g ports or not.
+        pn_toggle_40g: True                            # Flag to indicate if 40g ports should be converted to 10g ports or not.
         # pn_inband_ip: '172.16.1.0/24'                # Inband ips to be assigned to switches starting with this value. Default: 172.16.0.0/24.
         # pn_fabric_network: 'mgmt'                    # Choices: in-band or mgmt.  Default: mgmt
         # pn_fabric_control_network: 'mgmt'            # Choices: in-band or mgmt.  Default: mgmt
@@ -140,13 +140,13 @@
         seconds: 2                              # Pause playbook execution for specified amount of time.
 
 
-# This task is to configure eBGP.
+# This task is to configure OSPF.
 # It uses pn_ebgp_ospf.py module from library/ directory.
 # pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
-# If you don't specify values for pn_bgp_maxpath, pn_bgp_redistribute, pn_bgp_as_range,
+# If you don't specify values for pn_ospf_area_id,
 # then it will take the default values specified in the pn_ebgp_ospf.py module.
 # If the tasks fails then it will retry as specified by retries count.
-- name: Zero Touch Provisioning - BGP setup
+- name: Zero Touch Provisioning - OSPF setup
   hosts: spine[0]
   become: true
   become_method: su
@@ -156,7 +156,7 @@
   - cli_vault.yml
 
   tasks:
-    - name: Configure eBGP
+    - name: Configure OSPF
       pn_ebgp_ospf_additional_switches:
         pn_cliusername: "{{ USERNAME }}"                   # Cli username (value comes from cli_vault.yml).
         pn_clipassword: "{{ PASSWORD }}"                   # Cli password (value comes from cli_vault.yml).
@@ -165,29 +165,29 @@
         pn_new_spine_list: "{{ groups['new_spine'] }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_new_leaf_list: "{{ groups['new_leaf'] }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_bfd: True                                       # Flag to indicate if BFD config should be added to eBGP/ospf. Default: False.
-        pn_routing_protocol: 'ebgp'                        # Routing protocol to configure. Choices are ['ebgp', 'ospf']
-        pn_bgp_maxpath: '16'                               # BGP-MAXPATH value to be assigned to vrouters. Default: 16
-        pn_bgp_redistribute: 'connected'                   # BGP-REDISTRIBUTE value to be assigned to vrouters. Chocies: none, static, connected, rip, ospf. Default: connected
-        pn_bgp_as_range: '75000'                           # BGP-AS-RANGE value to be assigned to vrouters. Default: 65000
-        pn_ibgp_ip_range: '76.75.75.0/24'                  # iBGP IP range to be assigned to interfaces. Default: '75.75.75.0/24'
-        pn_ibgp_vlan: '4040'                               # iBGP vlan value to be assigned to interfaces. Default 4040
-        # <<< Following attributes are not needed for eBGP but since OSPF and eBGP are configured using same Ansible module, we are including it here. (Should always be commented out)
-        # pn_routing_protocol: 'ospf'                      # Routing protocol to configure. Choices are ['ebgp', 'ospf']
-        # pn_ospf_area_id: '0'                             # Area id to configure for ospf. Default: 0
+        pn_routing_protocol: 'ospf'                        # Routing protocol to configure. Choices are ['ebgp', 'ospf']
+        pn_ospf_area_id: '0'                               # Area id to configure for ospf. Default: 0
         # pn_iospf_ip_range: '75.75.75.0/24'               # Ip range for creating the interface between leaf clusters. Default:'75.75.75.0/24'
         # pn_iospf_vlan: '4040'                            # Vlan for creating the interface between leaf clusters. Default:'4040'
-        # >>> OSPF parameters end here
-      register: bgp_out                         # Variable to hold/register output of the above tasks.
-      until: bgp_out.failed != true             # If the above code fails it will retry the code
-      retries: 3                                # This is the retries count
+        # <<< Following attributes are not needed for OSPF but since OSPF and eBGP are configured using same Ansible module, we are including it here. (Should always be commented out)
+        # pn_routing_protocol: 'ebgp'                        # Routing protocol to configure. Choices are ['ebgp', 'ospf']
+        # pn_bgp_maxpath: '16'                               # BGP-MAXPATH value to be assigned to vrouters. Default: 16
+        # pn_bgp_redistribute: 'connected'                   # BGP-REDISTRIBUTE value to be assigned to vrouters. Chocies: none, static, connected, rip, ospf. Default: connected
+        # pn_bgp_as_range: '65000'                           # BGP-AS-RANGE value to be assigned to vrouters. Default: 65000
+        # pn_ibgp_ip_range: '75.75.75.0/24'                  # iBGP IP range to be assigned to interfaces. Default: '75.75.75.0/24'
+        # pn_ibgp_vlan: '4040'                               # iBGP vlan value to be assigned to interfaces. Default 4040
+        # >>> Ebgp parameters end here
+      register: ospf_out                         # Variable to hold/register output of the above tasks.
+      until: ospf_out.failed != true             # If the above code fails it will retry the code
+      retries: 3                                 # This is the retries count
       delay: 1
-      ignore_errors: yes                        # Flag to indicate if we should ignore errors if any.
+      ignore_errors: yes                         # Flag to indicate if we should ignore errors if any.
 
     - debug:
-        var: bgp_out.stdout_lines               # Print stdout_lines of register variable.
+        var: ospf_out.stdout_lines               # Print stdout_lines of register variable.
 
     - pause:
-        seconds: 2                              # Pause playbook execution for specified amount of time.
+        seconds: 2                               # Pause playbook execution for specified amount of time.
 
 
 # This task is to disable ports using pn_run_cli_commands module from library/ directory.
@@ -203,7 +203,7 @@
   - cli_vault.yml
 
   vars:
-  - command_file: /etc/ansible/pluribus-ansible/ansible/disable_ports.txt  # Commands file path.
+  - command_file: /etc/ansible/disable_ports.txt  # Commands file path.
 
   tasks:
     - name: Disable ports
