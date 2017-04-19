@@ -26,7 +26,7 @@ __metaclass__ = type
 class CallbackModule(CallbackBase):
     CALLBACK_VERSION = 2.0
     CALLBACK_TYPE = 'stdout'
-    CALLBACK_NAME = 'json'
+    CALLBACK_NAME = 'pn_json'
 
     def __init__(self, display=None):
         super(CallbackModule, self).__init__(display)
@@ -34,14 +34,13 @@ class CallbackModule(CallbackBase):
         self.results = []
 
     def _new_play(self, play):
-        return { 
+        return {
             'play': {
                 'name': play.name,
                 'id': str(play._uuid)
             },
             'tasks': [],
         }
-        
 
     def _new_task(self, task):
         return {
