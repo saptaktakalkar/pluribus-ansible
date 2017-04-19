@@ -17,11 +17,10 @@
 
 # Make coding more python3-ish
 from __future__ import (absolute_import, division, print_function)
-__metaclass__ = type
-
+from ansible.plugins.callback import CallbackBase
 import json
 
-from ansible.plugins.callback import CallbackBase
+__metaclass__ = type
 
 
 class CallbackModule(CallbackBase):
@@ -35,13 +34,14 @@ class CallbackModule(CallbackBase):
         self.results = []
 
     def _new_play(self, play):
-        return {
+        return { 
             'play': {
                 'name': play.name,
                 'id': str(play._uuid)
             },
-            'tasks': []
+            'tasks': [],
         }
+        
 
     def _new_task(self, task):
         return {
@@ -79,22 +79,26 @@ class CallbackModule(CallbackBase):
             result._result['unreachable'] = ''
         self.results[-1]['tasks'][-1]['hosts'][host.name] = result._result
 
-        if result._result['unreachable'] == True or result._result['failed'] == True:
+        if result._result['unreachable'] == True or result._result[
+            'failed'] == True:
             self.results[-1]['tasks'][-1]['status'] = '1'
         elif result._result['failed'] == False:
             self.results[-1]['tasks'][-1]['status'] = '0'
         else:
-            self.results[-1]['tasks'][-1]['status'] = 'Cannot determine'
+            self.results[-1]['tasks'][-1]['status'] = '-1'
 
         output = {
             'plays': self.results,
         }
-        if self.results[-1]['tasks'][-1]['status'] != "Cannot determine":
+
+        if self.results[-1]['tasks'][-1]['status'] != "-1":
+            print('__________ANSIBLE_TASK_BOUNDARY_STARTS__________')
             print(json.dumps(output, indent=4, sort_keys=True))
+            print('__________ANSIBLE_TASK_BOUNDARY_ENDS__________')
 
     def v2_playbook_on_stats(self, stats):
         """Display info about playbook statistics"""
-        
+
         hosts = sorted(stats.processed.keys())
 
         summary = {}
@@ -111,3 +115,4 @@ class CallbackModule(CallbackBase):
     v2_runner_on_failed = v2_runner_on_ok
     v2_runner_on_unreachable = v2_runner_on_ok
     v2_runner_on_skipped = v2_runner_on_ok
+
