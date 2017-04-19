@@ -2,6 +2,24 @@
 ---
 
 
+- name: Validate L2 VRRP csv file
+  hosts: localhost
+  become: true
+  become_method: su
+  become_user: root
+
+  tasks:
+    # This task is to validate L2 VRRP csv file.
+    - pn_l2_vrrp_csv_validation:
+        pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"
+      register: csv_out
+
+    # Playbook execution will fail if csv file is invalid.
+    - fail:
+        msg: "Invalid csv file"
+      when: csv_out.failed == true
+
+
 - name: Virtual Router Redundancy Protocol (VRRP) - Layer 2 Setup
   hosts: spine[0]
   become: true
