@@ -10,8 +10,8 @@
   hosts: all
   serial: 1
   become: true
-  become_method: su
-  become_user: root
+  # become_method: su
+  # become_user: root
 
   vars_files:
   - cli_vault.yml
