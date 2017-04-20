@@ -86,12 +86,15 @@ def main():
 
     output = ''
     line_count = 0
+    switch_vlan_dict = {}
     csv_data = module.params['pn_csv_data'].replace(' ', '')
     
     if csv_data:
         csv_data_list = csv_data.split('\n')
         for row in csv_data_list:
             line_count += 1
+            valid_vlan = False
+            valid_switch = False
             if row.startswith('#'):
                 # Skip comments which starts with '#'
                 continue
@@ -133,11 +136,30 @@ def main():
                                 int(vlan) not in range(2, 4093)):
                             output += 'Invalid VLAN ID {} '.format(vlan)
                             output += 'at line number {}\n'.format(line_count)
+                        else:
+                            valid_vlan = True
 
                         # Switch name validation
                         if switch.isdigit():
                             output += 'Invalid SWITCH NAME {} '.format(switch)
                             output += 'at line number {}\n'.format(line_count)
+                        else:
+                            valid_switch = True
+                            if switch not in switch_vlan_dict:
+                                switch_vlan_dict[switch] = []
+
+                        # Check for duplicate vlans.
+                        # A router can have only 1 interface per vlan.
+                        if valid_vlan and valid_switch:
+                            vlans_list = switch_vlan_dict[switch]
+                            if vlan not in vlans_list:
+                                vlans_list.append(vlan)
+                                switch_vlan_dict[switch] = vlans_list
+                            else:
+                                output += 'Duplicate vlan entry at '
+                                output += 'line number {}. '.format(line_count)
+                                output += 'A router can have only one '
+                                output += 'interface per vlan\n'
     else:
         output += 'Csv file should not be empty\n'
 
