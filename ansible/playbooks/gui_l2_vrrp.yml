@@ -24,6 +24,17 @@
         msg: "Only 1 spine or no leaf switches present. Please check hosts file."
       when: "{{ spine_count }} <= 1 or {{ leaf_count }} == 0"
 
+    # This task is to validate L2 VRRP csv file.
+    - name: Validate L2 VRRP csv file
+      pn_l2_vrrp_csv_validation:
+        pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"
+      register: csv_out
+
+    # Playbook execution will fail if csv file is invalid.
+    - fail:
+        msg: "Invalid csv file"
+      when: csv_out.failed == true
+
     # This task is to configure ZTP layer 2 setup.
     # It uses pn_l2_ztp.py module from library/ directory.
     # pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
