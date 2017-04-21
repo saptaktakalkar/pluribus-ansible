@@ -29,7 +29,7 @@
       until:  ztp_l2_out.failed != true         # If error pops up it will retry the code.
       retries: 3                                # This is the retries count.
       delay: 3
-      ignore_errors: yes                        # Flag to indicate if we should ignore errors if any.
+      # ignore_errors: yes                        # Flag to indicate if we should ignore errors if any.
 
     - pause:
         seconds: 2                              # Pause playbook execution for specified amount of time.
@@ -51,7 +51,7 @@
       until:  vrrp_out.failed != true           # If error pops up it will retry the code
       retries: 3                                # This is the retries count
       delay: 1
-      ignore_errors: yes                        # Flag to indicate if we should ignore errors if any.
+      # ignore_errors: yes                        # Flag to indicate if we should ignore errors if any.
 
     - pause:
         seconds: 2                              # Pause playbook execution for specified amount of time.
