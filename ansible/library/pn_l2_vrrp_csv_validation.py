@@ -45,7 +45,7 @@ EXAMPLES = """
 """
 
 RETURN = """
-summary:
+msg:
   description: It contains output of each validation.
   returned: always
   type: str
@@ -69,7 +69,7 @@ task:
   description: Name of the task getting executed.
   returned: always
   type: str
-msg:
+summary:
   description: Indicates whether csv file is valid or invalid.
   returned: always
   type: str
@@ -172,8 +172,8 @@ def main():
 
     module.exit_json(
         unreachable=False,
-        msg=msg,
-        summary=output,
+        msg=output,
+        summary=msg,
         exception='',
         failed=failed_flag,
         changed=False,
