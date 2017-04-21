@@ -35,7 +35,7 @@
                 <option> 172.16.0.0/24 </option>
             </choices>
             <key> pn_inband_ip </key>
-            <type> IP </type>
+            <type> IP-MASK </type>
             <tooltip> Inband ips to be assigned to switches starting with this value, Inband IP </tooltip>
         </guiProperties>
 
@@ -67,19 +67,6 @@
 
         <guiProperties>
             <tab> optional </tab>
-            <displayText>  Static Setup </displayText>
-            <value> False </value>
-            <choices>
-                <option> True </option>
-                <option> False </option>
-            </choices>
-            <key> pn_static_setup </key>
-            <type> boolean </type>
-            <tooltip> Flag to indicate if static values should be assigned to following switch setup parameters </tooltip>
-        </guiProperties>
-
-        <guiProperties>
-            <tab> optional </tab>
             <displayText> Mgmt IP Subnet </displayText>
             <value> 16 </value>
             <choices></choices>
@@ -94,7 +81,7 @@
             <value> 10.9.9.1 </value>
             <choices></choices>
             <key> pn_gateway_ip </key>
-            <type> text </type>
+            <type> IP </type>
             <tooltip> Specify gateway-ip to be assigned to switches </tooltip>
         </guiProperties>
 
@@ -124,7 +111,7 @@
             <value> pluribusnetworks.com </value>
             <choices></choices>
             <key> pn_domain_name </key>
-            <type> text </type>
+            <type> URL </type>
             <tooltip> Specify domain-name to be assigned to switches </tooltip>
         </guiProperties>
 
@@ -134,21 +121,8 @@
             <value> 0.us.pool.ntp.org </value>
             <choices></choices>
             <key> pn_ntp_server </key>
-            <type> text </type>
+            <type> URL </type>
             <tooltip> Specify ntp-server value to be assigned to switches </tooltip>
-        </guiProperties>
-
-        <guiProperties>
-            <tab> optional </tab>
-            <displayText> Web API </displayText>
-            <value> True </value>
-            <choices>
-                <option> True </option>
-                <option> False </option>
-            </choices>
-            <key> pn_web_api </key>
-            <type> boolean </type>
-            <tooltip> Flag to enable web api </tooltip>
         </guiProperties>
 
         <guiProperties>

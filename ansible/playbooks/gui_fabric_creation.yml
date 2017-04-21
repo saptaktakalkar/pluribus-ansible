@@ -30,7 +30,7 @@
         pn_inband_ip: "{{ pn_inband_ip }}"                            # Inband ips to be assigned to switches starting with this value. Default: 172.16.0.0/24.
         pn_fabric_network: "{{ pn_fabric_network }}"                  # Choices: in-band or mgmt.  Default: mgmt
         pn_fabric_control_network: "{{ pn_fabric_control_network }}"  # Choices: in-band or mgmt.  Default: mgmt
-        pn_static_setup: "{{ pn_static_setup }}"                      # Flag to indicate if static values should be assign to following switch setup params. Default: False.
+        pn_static_setup: True                                         # Flag to indicate if static values should be assign to following switch setup params. Default: True.
         pn_mgmt_ip: "{{ ansible_host }}"                              # Specify MGMT-IP value to be assign if pn_static_setup is True.
         pn_mgmt_ip_subnet: "{{ pn_mgmt_ip_subnet }}"                  # Specify subnet mask for MGMT-IP value to be assign if pn_static_setup is True.
         pn_gateway_ip: "{{ pn_gateway_ip }}"                          # Specify GATEWAY-IP value to be assign if pn_static_setup is True.
@@ -38,7 +38,6 @@
         pn_dns_secondary_ip: "{{ pn_dns_secondary_ip }}"              # Specify DNS-SECONDARY-IP value to be assign if pn_static_setup is True.
         pn_domain_name: "{{ pn_domain_name }}"                        # Specify DOMAIN-NAME value to be assign if pn_static_setup is True.
         pn_ntp_server: "{{ pn_ntp_server }}"                          # Specify NTP-SERVER value to be assign if pn_static_setup is True.
-        pn_web_api: "{{ pn_web_api }}"                                # Flag to enable web api. Default: True
         pn_stp: "{{ pn_stp }}"                                        # Specify True if you want to enable STP at the end. Default: False.
       register: ztp_out              # Variable to hold/register output of the above tasks.
       until: ztp_out.failed != true  # If the above code fails it will retry the code
