@@ -1,0 +1,24 @@
+#HOSTS Validation
+---
+
+
+- name: Validate HOSTS File
+  hosts: localhost
+  become: true
+  # become_method: su
+  # become_user: root
+
+  vars:
+  - hosts_file: /etc/ansible/playbooks/hosts
+
+  tasks:
+    # This task is to validate HOSTS file.
+    - name: Validate HOSTS file
+      pn_hosts_file_validation:
+        pn_hosts_file_data: "{{ lookup('file', '{{ hosts_file }}') }}"
+      register: hosts_out
+
+    # Playbook execution will fail if csv file is invalid.
+    - fail:
+        msg: "Invalid hosts file"
+      when: hosts_out.failed == true
