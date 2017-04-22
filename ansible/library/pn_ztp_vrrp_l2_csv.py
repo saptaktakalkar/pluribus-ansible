@@ -180,13 +180,9 @@ def create_vlan(module, vlan_id, switch):
         cli += ' vlan-create id %s scope fabric ' % vlan_id
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
-        return ' %s: Created vlan with id %s and scope fabric \n' % (
-            switch, vlan_id
-        )
-    else:
-        return ' %s: Vlan id %s with scope fabric already exists \n' % (
-            switch, vlan_id
-        )
+
+    return ' %s: Created vlan with id %s and scope fabric \n' % (switch,
+                                                                 vlan_id)
 
 
 def get_vrouter_name(module, switch_name):
@@ -230,10 +226,8 @@ def create_vrouter(module, switch, vrrp_id, vnet_name):
         )
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
-        return " %s: Created vrouter with name '%s' \n" % (switch, vrouter_name)
-    else:
-        return " %s: Vrouter with name '%s' already exists \n" % (switch,
-                                                                  vrouter_name)
+
+    return " %s: Created vrouter with name '%s' \n" % (switch, vrouter_name)
 
 
 def create_vrouter_interface(module, switch, ip, vlan_id, vrrp_id, ip_count,
@@ -273,14 +267,10 @@ def create_vrouter_interface(module, switch, ip, vlan_id, vrrp_id, ip_count,
         cli += ' ip ' + ip2
         cli += ' vlan %s if data ' % vlan_id
         run_cli(module, cli)
-        output = ' %s: Added vrouter interface with ip %s on %s \n' % (
-            switch, ip2, vrouter_name
-        )
         CHANGED_FLAG.append(True)
-    else:
-        output = ' %s: Vrouter interface %s already exists on %s \n' % (
-            switch, ip2, vrouter_name
-        )
+
+    output = ' %s: Added vrouter interface with ip %s on %s \n' % (switch, ip2,
+                                                                   vrouter_name)
 
     cli = clicopy
     cli += ' vrouter-interface-show vrouter-name %s ip %s vlan %s ' % (
@@ -306,15 +296,11 @@ def create_vrouter_interface(module, switch, ip, vlan_id, vrrp_id, ip_count,
         cli += ' vrrp-primary %s vrrp-priority %s ' % (eth_port[0],
                                                        vrrp_priority)
         run_cli(module, cli)
-        output += ' %s: Added vrouter interface with ip %s on %s \n' % (
-            switch, ip1, vrouter_name
-        )
         CHANGED_FLAG.append(True)
 
-    else:
-        output += ' %s: Vrouter interface %s already exists on %s \n' % (
-            switch, ip1, vrouter_name
-        )
+    output += ' %s: Added vrouter interface with ip %s on %s \n' % (
+        switch, ip1, vrouter_name
+    )
 
     return output
 
