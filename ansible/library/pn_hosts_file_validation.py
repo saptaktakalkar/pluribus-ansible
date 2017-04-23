@@ -87,7 +87,7 @@ def main():
     host_names = []
     ip_list = []
     output = ''
-    hosts_file_data = module.params['pn_hosts_file_data'].replace(' ', '')
+    hosts_file_data = module.params['pn_hosts_file_data']
 
     if hosts_file_data:
         input = hosts_file_data.split('\n')
@@ -115,7 +115,7 @@ def main():
                         output += 'It should have 2 elements (switch_name, ansible_host=ip_address)\n'
                     else:
                         if host_line[0] in host_names:
-                            output += 'Duplicate host name '
+                            output += 'Duplicate host name {0} '.format(host_line[0])
                             output += 'at line number {0}\n'.format(line_count + 1)
                         else:
                             ip = host_line[1].split('=')
@@ -169,3 +169,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
