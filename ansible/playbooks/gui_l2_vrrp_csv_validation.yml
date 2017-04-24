@@ -16,6 +16,7 @@
     - name: Validate L2 VRRP csv file
       pn_l2_vrrp_csv_validation:
         pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"
+        pn_spine_list: "{{ groups['spine'] }}"
       register: csv_out
 
     # Playbook execution will fail if csv file is invalid.

@@ -36,12 +36,17 @@ options:
       description: String containing L2 VRRP data parsed from csv file.
       required: True
       type: str
+    pn_leaf_list:
+      description: Specify list of spine switches.
+      required: True
+      type: list
 """
 
 EXAMPLES = """
 - name: Validate L2 VRRP csv file
   pn_l2_vrrp_csv_validation:
     pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"
+    pn_spine_list: "{{ groups['spine'] }}"
 """
 
 RETURN = """
@@ -81,6 +86,7 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             pn_csv_data=dict(required=True, type='str'),
+            pn_spine_list=dict(required=False, type='list'),
         )
     )
 
@@ -88,7 +94,7 @@ def main():
     line_count = 0
     switch_vlan_dict = {}
     csv_data = module.params['pn_csv_data'].replace(' ', '')
-    
+
     if csv_data:
         csv_data_list = csv_data.split('\n')
         for row in csv_data_list:
@@ -123,6 +129,10 @@ def main():
                                 address_with_subnet = ip.split('/')
                                 address = address_with_subnet[0]
                                 subnet = address_with_subnet[1]
+                                dot_count = address.count('.')
+                                if dot_count != 3:
+                                    raise socket.error
+
                                 socket.inet_aton(address)
                                 if (not subnet.isdigit() or
                                         int(subnet) not in range(1, 33)):
@@ -140,7 +150,8 @@ def main():
                             valid_vlan = True
 
                         # Switch name validation
-                        if switch.isdigit():
+                        if (switch.isdigit() or
+                                switch not in module.params['pn_spine_list']):
                             output += 'Invalid SWITCH NAME {} '.format(switch)
                             output += 'at line number {}\n'.format(line_count)
                         else:
@@ -179,6 +190,7 @@ def main():
         changed=False,
         task='Validate L2 VRRP csv file'
     )
+
 
 if __name__ == '__main__':
     main()
