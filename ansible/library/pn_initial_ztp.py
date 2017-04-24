@@ -549,7 +549,8 @@ def assign_inband_ip(module):
             cli += ' in-band-ip ' + ip
             run_cli(module, cli)
             CHANGED_FLAG.append(True)
-            return 'Assigned in-band ip ' + ip
+            
+        return 'Assigned in-band ip ' + ip
 
     return 'Could not assign in-band ip'
 
