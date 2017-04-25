@@ -690,7 +690,6 @@ def main():
         changed=True if True in CHANGED_FLAG else False
     )
 
-
 if __name__ == '__main__':
     main()
 
