@@ -276,7 +276,7 @@ def update_switch_names(module, switch_name):
     """
     cli = pn_cli(module)
     cli += ' switch-setup-show format switch-name '
-    if switch_name in run_cli(module, cli).split()[1]:
+    if switch_name == run_cli(module, cli).split()[1]:
         return ' Switch name is same as hostname! '
     else:
         cli = pn_cli(module)
@@ -549,7 +549,7 @@ def assign_inband_ip(module):
             cli += ' in-band-ip ' + ip
             run_cli(module, cli)
             CHANGED_FLAG.append(True)
-            
+
         return 'Assigned in-band ip ' + ip
 
     return 'Could not assign in-band ip'
