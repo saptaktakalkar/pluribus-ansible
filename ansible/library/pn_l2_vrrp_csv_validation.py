@@ -18,6 +18,7 @@
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+import re
 import socket
 
 from ansible.module_utils.basic import AnsibleModule
@@ -150,7 +151,7 @@ def main():
                             valid_vlan = True
 
                         # Switch name validation
-                        if (switch.isdigit() or
+                        if (re.match("^[a-zA-Z0-9_.:-]+$", switch) is None or
                                 switch not in module.params['pn_spine_list']):
                             output += 'Invalid SWITCH NAME {} '.format(switch)
                             output += 'at line number {}\n'.format(line_count)
