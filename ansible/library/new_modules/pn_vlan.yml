@@ -11,14 +11,14 @@
         pn_cliswitch: local
         pn_vlanid: '1002, 1404, 100-105'
         pn_scope: 'fabric'
-        pn_description: 'ansible-vlans'
-        pn_vxlan: 256
-        pn_vxlan_mode: 'standard'
-        pn_vnet: 'ansible-fabric-global'
-        pn_public_vlan: '1000'
-        pn_stats: True
-        pn_ports: '27'
-        pn_untagged_ports: '22'
+        # pn_description: 'ansible-vlans'
+        # pn_vxlan: 256
+        # pn_vxlan_mode: 'standard'
+        # pn_vnet: 'ansible-fabric-global'
+        # pn_public_vlan: '1000'
+        # pn_stats: True
+        # pn_ports: '27'
+        # pn_untagged_ports: '22'
         
       register: output
     - debug:
