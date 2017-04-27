@@ -22,7 +22,7 @@ from ansible.module_utils.basic import AnsibleModule
 DOCUMENTATION = """
 ---
 module: pn_vlan
-author: "Pluribus Networks"
+author: 'Pluribus Networks (devops@pluribusnetworks.com)'
 version: 2.0
 short_description: CLI command to create/delete/modify VLAN.
 description:
@@ -194,7 +194,7 @@ def run_cli(module, cli):
         return out
     if err:
         json_msg = {
-            'switch': module.params['pn_current_switch'],
+            'switch': module.params['pn_cliswitch'],
             'output': u'Operation Failed: ' + ' '.join(cli)
         }
         results.append(json_msg)
@@ -232,8 +232,12 @@ def get_existing_vlans(module):
     """
     cli = pn_cli(module)
     cli += 'vlan-show format id, no-show-headers'
-    existing_vlans = run_cli(module, cli)
-    return existing_vlans
+    existing_vlans = run_cli(module, cli).splitlines()
+    vlan_list = []
+    for vlan in existing_vlans:
+        vlan = vlan.strip()
+        vlan_list.append(vlan)
+    return vlan_list
 
 
 def expand_range(range_str):
@@ -371,6 +375,7 @@ def main():
     vlanid = module.params['pn_vlanid']
     existing_vlans = get_existing_vlans(module)
     vlan_list = expand_range(vlanid)
+    vlan_list = list(set(vlan_list))
     cliswitch = module.params['pn_cliswitch']
     results = []
     message = ''
@@ -412,6 +417,7 @@ def main():
                 pass_count += 1
                 results.append(json_msg)
                 CHANGED_FLAG.append(True)
+                existing_vlans.append(str(vlan_id))
             else:
                 message += 'VLAN {} already exists \n'.format(vlan_id)
                 json_msg = {
@@ -433,6 +439,7 @@ def main():
                 pass_count += 1
                 results.append(json_msg)
                 CHANGED_FLAG.append(True)
+                existing_vlans.remove(str(vlan_id))
             else:
                 message += 'VLAN {} does not exist \n'.format(vlan_id)
                 json_msg = {
