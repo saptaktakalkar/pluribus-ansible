@@ -1,0 +1,23 @@
+---
+
+
+- hosts: spine
+  become: yes
+
+  vars:
+  - sshd_config: /etc/ssh/sshd_config
+  - sshd: ssh
+  - password: $6$WHDGnzhE$8gOdEydSRlBYvm4m2e8Few/xWhZslnQUoTHTx0UxIKZrUvbDrit6vC2kWRc9A7MpoUTrJvEP3iPEUO7c1lbrY0
+
+  tasks:
+  - name: Disable empty password login
+    lineinfile: dest={{ sshd_config }} regexp="^#?PermitEmptyPasswords" line="PermitEmptyPasswords no"
+  
+  - name: Enable remote root login
+    lineinfile: dest={{ sshd_config }} regexp="^#?PermitRootLogin" line="PermitRootLogin yes"
+
+  - name: Restart ssh daemon
+    service: name={{ sshd }} state=restarted
+
+  - name: Change root password
+    user: name=root update_password=always password={{ password }}
