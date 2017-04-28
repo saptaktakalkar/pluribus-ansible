@@ -1,0 +1,159 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1404\cocoasubrtf470
+{\fonttbl\f0\fmodern\fcharset0 Courier-Bold;\f1\fmodern\fcharset0 Courier;}
+{\colortbl;\red255\green255\blue255;\red0\green68\blue254;\red0\green45\blue153;\red164\green8\blue0;
+\red0\green0\blue0;\red20\green0\blue65;\red41\green0\blue130;\red217\green11\blue0;\red63\green105\blue30;
+\red0\green61\blue204;\red32\green0\blue99;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww28600\viewh18000\viewkind0
+\deftab720
+\pard\pardeftab720\partightenfactor0
+
+\f0\b\fs48 \cf0 \expnd0\expndtw0\kerning0
+\ul \ulc0 pn_enable_root_ssh.yml
+\f1\b0\fs26 \ulnone \
+\
+\cf2 - hosts: spine\
+  become: yes\
+\
+  vars:\
+  - sshd_config: /etc/ssh/sshd_config\
+  - sshd: ssh\
+  - password: $6$WHDGnzhE$8gOdEydSRlBYvm4m2e8Few/xWhZslnQUoTHTx0UxIKZrUvbDrit6vC2kWRc9A7MpoUTrJvEP3iPEUO7c1lbrY0\
+\
+  tasks:\
+  - name: Disable empty password login\
+    lineinfile: dest=\{\{ sshd_config \}\} regexp="^#?PermitEmptyPasswords" line="PermitEmptyPasswords no"\
+  \
+  - name: Enable remote root login\
+    lineinfile: dest=\{\{ sshd_config \}\} regexp="^#?PermitRootLogin" line="PermitRootLogin yes"\
+\
+  - name: Restart ssh daemon\
+    service: name=\{\{ sshd \}\} state=restarted\
+\
+  - name: Change root password\
+    user: name=root update_password=always password=\{\{ password \}\}\cf0 \
+\
+\
+\
+
+\f0\b\fs36 \ul Command to run the above playbook:
+\f1\b0\fs26 \ulnone \
+\
+
+\f0\b \cf3 command\cf4  -> ansible-playbook -i \cf5 hostfile_name\cf4  \cf5 playbook_name\cf4  \'97ask-pass -u \cf5 username\cf4  -K
+\f1\b0 \cf0 \
+\
+1) hostfile_name: It is the location of the hosts file where the remote machines details are stored(name, ip, etc).\
+                  hosts file is discussed in detail in the document following this section.\
+\
+2) playbook_name: It is the name of the file where the above code is copied.\
+\
+3) username: It the name of the user used for doing ssh connection and executing the script in the remote location.\
+\
+\
+\cf6 Example of the command:\cf0 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f0\b \cf4 ansible-playbook -i \cf0 hosts\cf4  \cf0 pn_enable_root_ssh.yml\cf4  \'97ask-pass -u \cf0 pluribus\cf4  -K\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\b0 \cf0 \
+\
+
+\f0\b\fs36 \ul The different fields used above are discussed below:
+\f1\b0\fs26 \ulnone \
+\
+\
+
+\f0\b\fs36 \cf7 \ul \ulc7 hosts:
+\f1\b0\fs26 \cf0 \ulnone \
+\
+1) The 
+\fs28 \cf4 hosts
+\fs26 \cf0  field contains all the switches/sections where the playbook is expected to run. The hosts field take the switches name from the 
+\fs28 \cf3 hosts file
+\fs26 \cf0 .\
+   \cf3 Sample hosts file is as follow:\cf0 \
+\
+\cf3    [spine]\
+   ansible-spine1 ansible_host=10.7.55.111\
+\pard\pardeftab720\partightenfactor0
+\cf3    ansible-spine2 ansible_host=10.7.55.222\cf0 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f0\b \cf8 \ul \ulc8 ansible-spine1 is the name of the switch where the desired configuration is required and 10.7.55.111 is the mgmt-ip of the switch.
+\f1\b0 \
+\ulnone \
+Note: If other sections need to be added then change the value of hosts to all (\cf3 hosts: all\cf8 ) and follow the procedure given below:\
+\cf0 \
+\cf3 After changing the value of \cf8 hosts to all\cf3 . The playbook will look like:\
+\
+\pard\pardeftab720\partightenfactor0
+\cf3 - hosts: all\
+  become: yes\
+\
+  vars:\
+  - sshd_config: /etc/ssh/sshd_config\
+  - sshd: ssh\
+  - password: $6$WHDGnzhE$8gOdEydSRlBYvm4m2e8Few/xWhZslnQUoTHTx0UxIKZrUvbDrit6vC2kWRc9A7MpoUTrJvEP3iPEUO7c1lbrY0\
+\
+  tasks:\
+  - name: Disable empty password login\
+    lineinfile: dest=\{\{ sshd_config \}\} regexp="^#?PermitEmptyPasswords" line="PermitEmptyPasswords no"\
+  \
+  - name: Enable remote root login\
+    lineinfile: dest=\{\{ sshd_config \}\} regexp="^#?PermitRootLogin" line="PermitRootLogin yes"\
+\
+  - name: Restart ssh daemon\
+    service: name=\{\{ sshd \}\} state=restarted\
+\
+  - name: Change root password\
+    user: name=root update_password=always password=\{\{ password \}\}\
+\pard\pardeftab720\partightenfactor0
+\cf0 \
+\
+\cf9 Sample hosts file with added leaf section(random additional section):\
+\
+   [spine]\
+   ansible-spine1 ansible_host=10.7.55.111\
+\
+   [leaf]\
+   ansible-leaf1 ansible_host=10.7.55.111\
+\
+\cf4 Note: Any section can contain any number of switch/host entries.\cf0 \
+\
+\
+\
+
+\f0\b\fs36 \cf6 \ul \ulc6 vars:
+\f1\b0\fs26 \cf0 \ulnone \
+\
+The vars contain 3 fields:\
+\
+1) \cf3 sshd_config\cf0 : It is the ssh config file location.\
+2) \cf3 sshd\cf0 : It contains the name of the service which needs to be restart after the config file is changed.\
+3) \cf3 password\cf0 : It is the encrypted SHA-512 password for the root user. Currently it is test123 i.e., after running the above script, we can login using root user with the password    test123.\
+\
+\cf8 Note:\cf0 \
+\cf8 The encryption command used: \cf10 python -c \'91import crypt; print crypt.crypt(\'93my_pass\'94, \'93$6$Any_random_salt$\'93)\'92\cf8 \
+my_pass: It can be substituted with any desired root password.\
+\pard\pardeftab720\partightenfactor0
+\cf8 Any_random_salt: It can be substituted with any desired salt.\cf0 \
+\
+\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f0\b\fs36 \cf11 \ul \ulc11 tasks:
+\f1\b0\fs26 \cf0 \ulnone \
+\
+There are four tasks:\
+\
+1) Disable empty password login\
+2) Enable root login\
+3) Restart the ssh service after the ssh config file is changed.\
+4) Set the password for the root user.\
+\
+}
