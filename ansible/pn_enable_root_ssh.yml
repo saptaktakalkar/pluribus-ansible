@@ -1,13 +1,54 @@
+# PLAYBOOK TO ENABLE ROOT SSH LOGIN
+
+# The playbook does the following tasks:
+#   Disable the empty password login
+#   Enable the root login
+#   Resatart the ssh daemon
+#   Change/update the root-user password
+
+# ---- VARIABLES ----
+# The 2 local variables used are:
+#   sshd_config : This variable stores the path of the sshd_config file
+#   sshd: This variable stores the name of the ssh daemon process
+
+# ---- VARS_FILES ----
+# The vars_files contain the path of the ansible-vault file which contains the encrypted password for the root-user
+# The name of the ansible vault file is cli_vault.yml in the case below
+# The password can be retrieved using the variable name 'ROOT_PASSWORD' from the vault file
+# NOTE: WHILE USING DIFFERENT ROOT-USER PASSWORD(OTHER THAN DEFAULT),
+#       encrypted the root_password using a proper encryption technique and proper salt
+#       and assign the password to ROOT_PASSWORD in the vault file
+
+# ---- COMMAND ----
+# This playbook can be run using following command:
+#   ansible-playbook -i <hosts_file> <playbook_name> [--ask-pass] [--ask-vault-pass] [-u username] [-K]
+#   eg: ansible-playbook -i hosts pn_enable_root_ssh.yml --ask-pass --ask-vault-pass -u pluribus -K
+
+# --- HOSTS FILE ----
+# The content of the hosts file is as follow:
+#   <switch_name> <ansible_hosts=switch_ip_address>
+#   eg: ansible-spine1 ansible_hosts=10.10.10.10
+# NOTE: Hosts file can contain any number of the hosts
+
+# ---- STEPS TO DO BEFORE RUNNING THE PLAYBOOK ----
+# 1) make a hosts file and insert all the hosts-name and hosts-ip as shown above
+# 2) make a vault-file and encrypt the password to be used there
+# 3) assign path of ssh_config file to sshd_config local variable below
+# 4) assign the ssh daemon name to sshd local variable below
+# 5) run the command from above using the path of the hosts file from point 1
+
 ---
 
 
-- hosts: spine
+- hosts: all
   become: yes
+
+  vars_files:
+  - cli_vault.yml
 
   vars:
   - sshd_config: /etc/ssh/sshd_config
   - sshd: ssh
-  - password: $6$WHDGnzhE$8gOdEydSRlBYvm4m2e8Few/xWhZslnQUoTHTx0UxIKZrUvbDrit6vC2kWRc9A7MpoUTrJvEP3iPEUO7c1lbrY0
 
   tasks:
   - name: Disable empty password login
@@ -20,4 +61,4 @@
     service: name={{ sshd }} state=restarted
 
   - name: Change root password
-    user: name=root update_password=always password={{ password }}
+    user: name=root update_password=always password={{ ROOT_PASSWORD }}
