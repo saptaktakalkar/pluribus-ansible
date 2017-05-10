@@ -17,6 +17,7 @@ To have Ansible playbooks' results in json format with standard output payload
 
 **The high-level skeleton for json object is:**  
 ```  
+__________ANSIBLE_TASK_BOUNDARY_STARTS__________
 {  
     "plays": [  
         {  
@@ -37,7 +38,12 @@ To have Ansible playbooks' results in json format with standard output payload
         }  
     ]  
 }  
+__________ANSIBLE_TASK_BOUNDARY_ENDS__________
 ```
+
+Every json object is wrapped with 2 messages:  
+ * `__________ANSIBLE_TASK_BOUNDARY_STARTS__________` notifying the start of the json object  
+ * `__________ANSIBLE_TASK_BOUNDARY_ENDS__________` notifying the end of the json object  
 
 The standard json object starts with a `plays` field. `plays` field is the highest level field in the json object.  
  
@@ -67,6 +73,7 @@ The standard json object starts with a `plays` field. `plays` field is the highe
 
 **One of the example for the json object is:**
 ```
+__________ANSIBLE_TASK_BOUNDARY_STARTS__________
 {
     "plays": [
         {
@@ -152,6 +159,7 @@ The standard json object starts with a `plays` field. `plays` field is the highe
         }
     ]
 }
+__________ANSIBLE_TASK_BOUNDARY_ENDS__________
 ```
 
 ---
@@ -181,6 +189,6 @@ b) stdout\_callback = pn\_json
      * Then take the **short error message** from the `msg` field. And **detailed error message** from either `exception/summary/stderr/stdout` field  
   * elif `status` field is '0':  
      * Then take the **short success message** from `msg` field. And the get the **detailed output** from the `summary` field.  
-  * else (`status` field is 'Cannot determine'):  
-     * It is some weird behaviour. Pluribus team to be notified.  
+  * else (`status` field is '-1'):  
+     * It is some weird behaviour. Pluribus team needs to be notified.  
 ---
