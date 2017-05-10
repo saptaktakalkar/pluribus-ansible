@@ -95,7 +95,12 @@ def main():
     hosts_file_data = module.params['pn_hosts_file_data']
 
     if hosts_file_data:
-        hosts_file_data = hosts_file_data.split('\n')
+        hosts_file_data_temp = hosts_file_data.split('\n')
+        hosts_file_data = []
+        # To remove whitespace characters at the start and end of line
+        for row in hosts_file_data_temp:
+            hosts_file_data.append(row.strip())
+
         # [spine] and [leaf] group validation
         if '[spine]' not in hosts_file_data:
             output += '[spine] section is missing from the hosts file\n'

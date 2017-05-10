@@ -99,6 +99,7 @@ def main():
     if csv_data:
         csv_data_list = csv_data.split('\n')
         for row in csv_data_list:
+            row = row.strip()
             line_count += 1
             valid_vlan = False
             valid_switch = False
