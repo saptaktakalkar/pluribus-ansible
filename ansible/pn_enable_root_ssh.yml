@@ -12,12 +12,13 @@
 #   sshd: This variable stores the name of the ssh daemon process
 
 # ---- VARS_FILES ----
-# The vars_files contain the path of the ansible-vault file which contains the encrypted password for the root-user
+# The vars_files contain the path of the ansible-vault file which contains the password for the root-user
 # The name of the ansible vault file is cli_vault.yml in the case below
-# The password can be retrieved using the variable name 'ROOT_PASSWORD' from the vault file
+# The password can be retrieved using the variable name 'PASSWORD' from the vault file
 # NOTE: WHILE USING DIFFERENT ROOT-USER PASSWORD(OTHER THAN DEFAULT),
-#       encrypted the root_password using a proper encryption technique and proper salt
-#       and assign the password to ROOT_PASSWORD in the vault file
+#       assign the password to a new variable ROOT_PASSWORD in the vault file
+#       and replace {{ PASSWORD | password_hash('sha512') }} with
+#       {{ ROOT_PASSWORD | password_hash('sha512') }} in this playbook in the last task below
 
 # ---- COMMAND ----
 # This playbook can be run using following command:
@@ -32,10 +33,10 @@
 
 # ---- STEPS TO DO BEFORE RUNNING THE PLAYBOOK ----
 # 1) make a hosts file and insert all the hosts-name and hosts-ip as shown above
-# 2) make a vault-file and encrypt the password to be used there
-# 3) assign path of ssh_config file to sshd_config local variable below
-# 4) assign the ssh daemon name to sshd local variable below
-# 5) run the command from above using the path of the hosts file from point 1
+# 2) assign path of ssh_config file to sshd_config local variable below
+# 3) assign the ssh daemon name to sshd local variable below
+# 4) run the command from above using the path of the hosts file from point 1
+# NOTE: Do the needed for the root-password as directed in the VARS_FILES section above
 
 ---
 
@@ -61,4 +62,4 @@
     service: name={{ sshd }} state=restarted
 
   - name: Change root password
-    user: name=root update_password=always password={{ ROOT_PASSWORD }}
+    user: name=root update_password=always password={{ PASSWORD | password_hash('sha512') }}
