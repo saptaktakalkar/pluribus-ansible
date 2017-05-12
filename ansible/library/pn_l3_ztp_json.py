@@ -23,7 +23,7 @@ import shlex
 
 DOCUMENTATION = """
 ---
-module: pn_l3_ztp
+module: pn_l3_ztp_json
 author: 'Pluribus Networks (devops@pluribusnetworks.com)'
 short_description: CLI command to configure L3 zero touch provisioning.
 description:
@@ -122,20 +122,35 @@ EXAMPLES = """
 """
 
 RETURN = """
-stdout:
-  description: The set of responses for each command.
+summary:
+  description: It contains output of each configuration along with switch name.
   returned: always
   type: str
 changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
   type: bool
+unreachable:
+  description: Indicates whether switch was unreachable to connect.
+  returned: always
+  type: bool
 failed:
   description: Indicates whether or not the execution failed on the target.
   returned: always
   type: bool
+exception:
+  description: Describes error/exception occurred while executing CLI command.
+  returned: always
+  type: str
+task:
+  description: Name of the task getting executed on switch.
+  returned: always
+  type: str
+msg:
+  description: Indicates whether configuration made was successful or failed.
+  returned: always
+  type: str
 """
-
 
 CHANGED_FLAG = []
 
@@ -172,7 +187,10 @@ def run_cli(module, cli):
         return out
 
     if err:
-        json_msg = {'switch': '', 'output': u'Operation Failed: {}'.format(str(cli))}
+        json_msg = {
+            'switch': '',
+             'output': u'Operation Failed: {}'.format(' '.join(cli))
+        }
         results.append(json_msg)
         module.exit_json(
             unreachable=False,
@@ -180,7 +198,6 @@ def run_cli(module, cli):
             exception='',
             summary=results,
             task='CLI commands to configure L3 zero touch provisioning',
-            stderr=err.strip(),
             msg='L3 ZTP configuration failed',
             changed=False
         )
@@ -430,6 +447,7 @@ def delete_trunk(module, switch, switch_port, peer_switch):
     """
     cli = pn_cli(module)
     clicopy = cli
+
     cli += ' switch %s port-show port %s hostname %s ' % (switch, switch_port,
                                                           peer_switch)
     cli += ' format trunk no-show-headers '
@@ -458,43 +476,35 @@ def assign_loopback_ip(module, loopback_address):
 
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' vrouter-show format name no-show-headers '
-    vrouter_names = run_cli(module, cli).split()
+    switch_list = module.params['pn_spine_list']
+    switch_list += module.params['pn_leaf_list']
 
-    if len(vrouter_names) > 0:
-        vrouter_count = 1
-        for vrouter in vrouter_names:
-            if vrouter_count <= 255:
-                ip = static_part + str(vrouter_count)
-                cli = clicopy
-                cli += ' vrouter-show name ' + vrouter
-                cli += ' format location no-show-headers '
-                switch = run_cli(module, cli).split()[0]
-                cli = clicopy
-                cli += ' vrouter-loopback-interface-show ip ' + ip
-                cli += ' format switch no-show-headers '
-                existing_vrouter = run_cli(module, cli).split()
+    vrouter_count = 1
+    for switch in switch_list:
+        vrouter = switch + '-vrouter'
+        ip = static_part + str(vrouter_count)
 
-                if vrouter not in existing_vrouter:
-                    cli = clicopy
-                    cli += ' vrouter-loopback-interface-add vrouter-name '
-                    cli += vrouter
-                    cli += ' ip ' + ip
-                    run_cli(module, cli)
-                    output += ' %s: Added loopback ip %s to %s \n' % (
-                        switch, ip, vrouter
-                    )
-                    CHANGED_FLAG.append(True)
-                else:
-                    output += ' %s: Loopback ip %s for %s already exists \n' % (
-                        switch, ip, vrouter
-                    )
+        cli = clicopy
+        cli += ' vrouter-loopback-interface-show ip ' + ip
+        cli += ' format switch no-show-headers '
+        existing_vrouter = run_cli(module, cli).split()
 
-                vrouter_count += 1
-            else:
-                output += ' Not enough loopback ips available for vrouters \n'
-    else:
-        output += ' No vrouters exists to assign loopback ips \n'
+        if vrouter not in existing_vrouter:
+            cli = clicopy
+            cli += ' vrouter-loopback-interface-add vrouter-name '
+            cli += vrouter
+            cli += ' ip ' + ip
+            run_cli(module, cli)
+            output += ' %s: Added loopback ip %s to %s \n' % (
+                switch, ip, vrouter
+            )
+            CHANGED_FLAG.append(True)
+        else:
+            output += ' %s: Loopback ip %s for %s already exists \n' % (
+                switch, ip, vrouter
+            )
+
+        vrouter_count += 1
 
     return output
 
@@ -542,6 +552,7 @@ def auto_configure_link_ips(module):
             cli += ' switch %s port-show hostname %s ' % (leaf, spine)
             cli += ' format port no-show-headers '
             leaf_port = run_cli(module, cli).split()
+            leaf_port = list(set(leaf_port))
 
             if 'Success' in leaf_port:
                 continue
@@ -559,7 +570,9 @@ def auto_configure_link_ips(module):
                 cli = clicopy
                 cli += ' switch %s port-show port %s ' % (leaf, lport)
                 cli += ' format rport no-show-headers '
-                rport = run_cli(module, cli)
+                rport = run_cli(module, cli).split()
+                rport = list(set(rport))
+                rport = rport[0]
 
                 delete_trunk(module, spine, rport, leaf)
                 output += create_interface(module, spine, ip, rport)
@@ -622,23 +635,26 @@ def main():
     message_string = message
     results = []
     switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
+
     for switch in switch_list:
         replace_string = switch + ': '
-
         for line in message_string.splitlines():
             if replace_string in line:
-                json_msg = {'switch' : switch , 'output' : (line.replace(replace_string, '')).strip() }
+                json_msg = {
+                    'switch' : switch,
+                    'output' : (line.replace(replace_string, '')).strip()
+                }
                 results.append(json_msg)
 
     # Exit the module and return the required JSON.
     module.exit_json(
         unreachable=False,
-        msg = 'L3 ZTP configuration executed successfully',
+        msg = 'L3 ZTP configuration succeeded',
         summary=results,
         exception='',
         failed=False,
         changed=True if True in CHANGED_FLAG else False,
-        task='CLI commands to configure L3 zero touch provisioning'
+        task='Configure L3 ZTP'
     )
 
 
