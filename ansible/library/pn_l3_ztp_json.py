@@ -476,43 +476,35 @@ def assign_loopback_ip(module, loopback_address):
 
     cli = pn_cli(module)
     clicopy = cli
-    cli += ' vrouter-show format name no-show-headers '
-    vrouter_names = run_cli(module, cli).split()
+    switch_list = module.params['pn_spine_list']
+    switch_list += module.params['pn_leaf_list']
 
-    if len(vrouter_names) > 0:
-        vrouter_count = 1
-        for vrouter in vrouter_names:
-            if vrouter_count <= 255:
-                ip = static_part + str(vrouter_count)
-                cli = clicopy
-                cli += ' vrouter-show name ' + vrouter
-                cli += ' format location no-show-headers '
-                switch = run_cli(module, cli).split()[0]
-                cli = clicopy
-                cli += ' vrouter-loopback-interface-show ip ' + ip
-                cli += ' format switch no-show-headers '
-                existing_vrouter = run_cli(module, cli).split()
+    vrouter_count = 1
+    for switch in switch_list:
+        vrouter = switch + '-vrouter'
+        ip = static_part + str(vrouter_count)
 
-                if vrouter not in existing_vrouter:
-                    cli = clicopy
-                    cli += ' vrouter-loopback-interface-add vrouter-name '
-                    cli += vrouter
-                    cli += ' ip ' + ip
-                    run_cli(module, cli)
-                    output += ' %s: Added loopback ip %s to %s \n' % (
-                        switch, ip, vrouter
-                    )
-                    CHANGED_FLAG.append(True)
-                else:
-                    output += ' %s: Loopback ip %s for %s already exists \n' % (
-                        switch, ip, vrouter
-                    )
+        cli = clicopy
+        cli += ' vrouter-loopback-interface-show ip ' + ip
+        cli += ' format switch no-show-headers '
+        existing_vrouter = run_cli(module, cli).split()
 
-                vrouter_count += 1
-            else:
-                output += ' Not enough loopback ips available for vrouters \n'
-    else:
-        output += ' No vrouters exists to assign loopback ips \n'
+        if vrouter not in existing_vrouter:
+            cli = clicopy
+            cli += ' vrouter-loopback-interface-add vrouter-name '
+            cli += vrouter
+            cli += ' ip ' + ip
+            run_cli(module, cli)
+            output += ' %s: Added loopback ip %s to %s \n' % (
+                switch, ip, vrouter
+            )
+            CHANGED_FLAG.append(True)
+        else:
+            output += ' %s: Loopback ip %s for %s already exists \n' % (
+                switch, ip, vrouter
+            )
+
+        vrouter_count += 1
 
     return output
 
