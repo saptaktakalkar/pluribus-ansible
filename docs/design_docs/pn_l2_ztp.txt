@@ -80,9 +80,15 @@ Output msg: 'STP enabled'
 Output/Return:
 This module return following fields in JSON format.
 1. summary: Contains output of each configuration/commands along with switch name on which it got executed. In case of failure, this will contain a message, 'Operation failed: %s', with failed command replacing %s.
-2. changed: Indicates whether the CLI caused changes on switches.
-3. unreachable: Indicates whether switch was unreachable to connect.
-4. failed: Indicates whether the execution of commands failed on switches.
+2. changed: Indicates whether the CLI caused changes on switches, using True/False.
+3. unreachable: Indicates whether switch was unreachable to connect, using True/False.
+4. failed: Indicates whether the execution of commands failed on switches, using True/False.
 5. exception: Describe error/exception occurred during execution of commands.
-6. task: Name of the task getting executed on switches.
-7. msg: Indicates whether configuration made was successful or failed.
+6. task: 'Configure L2 ZTP (Auto vLags)'
+7. msg: On success: 'L2 ZTP configuration succeeded'
+On failure: 'L2 ZTP configuration failed'
+On ssh connection error: 'Failed to connect to host via ssh: ssh: connect to host %s port 22: No route to host' (Note: %s will get replaced by the mgmt ip of unreachable switch)
+On exception failure: 'Unexpected failure during module execution'
+On incorrect login credentials: 'MODULE FAILURE'
+
+Note: On success, summary field is of primary importance, as it shows what configuration has happened on each switch and on failure, msg field provides exact details on why it failed.
