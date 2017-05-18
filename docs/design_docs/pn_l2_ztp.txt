@@ -1,0 +1,88 @@
+Module Name: pn_l2_ztp
+
+Description: 
+This module is extension of pn_initial_ztp module to configure vLags for Layer2 fabric. This module will create spine cluster and clusters between leafs which are physically connected to each other, followed by required trunk and vlag creations. 
+
+Input: 
+User provides following inputs to this module.
+1. pn_cliusername: Username to use to login into cli.
+2. pn_clipassword: Password to use for above username to login into cli.
+3. pn_spine_list: List of spine switches.
+4. pn_leaf_list: List of leaf switches.
+5. pn_update_fabric_to_inband: Flag to indicate if fabric network should be updated to in-band. Default=False. 
+6. pn_stp: Flag to decide if stp (spanning tree protocol) should be enabled at the end. Default=False.
+
+Steps/Commands: 
+This module performs following steps.
+(Note: %s values in below commands get substituted with appropriate values provided by the user.)
+
+1. Create a cluster between two spine switches
+cluster-create name %s cluster-node-1 %s cluster-node-2 %s
+Output msg: 'Created %s' 
+
+2. Create clusters between physically connected leaf switches
+cluster-create name %s cluster-node-1 %s cluster-node-2 %s
+Note: A switch can be part of one and only one cluster. If leaf1 is connected to leaf2 and leaf3, and if we form the cluster between leaf1 and leaf2, then we cannot form cluster between leaf1 and leaf3, even though they are physically connected.
+Output msg: 'Created %s'
+
+3. Get the list of ports that are connected from clustered leaf to spine switches
+port-show hostname %s format port no-show-headers
+
+4. Create trunk from clustered leaf to spine switches using above ports
+trunk-create name %s ports %s
+Output msg: 'Created trunk %s'
+
+5. Configure vLag from clustered leaf to spine switches
+vlag-create name %s port %s peer-switch %s peer-port %s mode active-active
+Output msg: 'Configured vLag %s'
+
+6. Get the list of ports that are connected from spine to clustered leaf switches
+port-show hostname %s format port no-show-headers
+
+7. Create trunk from spine to clustered leaf switches using above ports
+trunk-create name %s ports %s
+Output msg: 'Created trunk %s'
+
+8. Configure vLag from spine to clustered leaf switches
+vlag-create name %s port %s peer-switch %s peer-port %s mode active-active
+Output msg: 'Configured vLag %s'
+
+9. Find leaf switches that are not part of any cluster (non-clustered leaf switches)
+First get the list of leaf switches that are part of clusters using: cluster-show format cluster-node-1,cluster-node-2 no-show-headers
+Now, using pn_leaf_list, check which all leaf switches are not part of the above cluster switches list and create a list of non-clustered leaf switches from this.
+
+10. Get the list of ports that are connected from non-clustered leaf to spine switches
+port-show hostname %s format port no-show-headers
+
+11. Create trunk from non-clustered leaf to spine switches using above ports
+trunk-create name %s ports %s
+Output msg: 'Created trunk %s'
+
+11. Get the list of ports that are connected from spine to non-clustered leaf switches
+port-show hostname %s format port no-show-headers
+
+12. Create trunk from spine to non-clustered leaf switches using above ports
+trunk-create name %s ports %s
+Output msg: 'Created trunk %s'
+
+13. Configure vLag from spine to non-clustered leaf switches
+vlag-create name %s port %s peer-switch %s peer-port %s mode active-active
+Output msg: 'Configured vLag %s'
+
+14. Update fabric network to in-band for all switches if pn_update_fabric_to_inband flag is True
+fabric-local-modify fabric-network in-band
+Output msg: 'Updated fabric network to in-band'
+
+15. Enable STP (spanning tree protocol) on all switches if pn_stp flag is True
+stp-modify enable
+Output msg: 'STP enabled'
+
+Output/Return:
+This module return following fields in JSON format.
+1. summary: Contains output of each configuration/commands along with switch name on which it got executed. In case of failure, this will contain a message, 'Operation failed: %s', with failed command replacing %s.
+2. changed: Indicates whether the CLI caused changes on switches.
+3. unreachable: Indicates whether switch was unreachable to connect.
+4. failed: Indicates whether the execution of commands failed on switches.
+5. exception: Describe error/exception occurred during execution of commands.
+6. task: Name of the task getting executed on switches.
+7. msg: Indicates whether configuration made was successful or failed.
