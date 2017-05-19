@@ -1,0 +1,84 @@
+Module Name: pn_ztp_vrrp_l2_csv
+
+Description:
+This module is extension of pn_initial_ztp module to configure vrrp for Layer2 fabric. This module will create vrouter, vrouter-interface and vip interface in the each spine switches using the input from a user-defined csv-file.
+
+Input:
+User provides following inputs to this module.
+1. pn_cliusername: Username to use to login into cli.
+2. pn_clipassword: Password to use for above username to login into cli.
+3. pn_spine_list: List of spine switches.
+4. pn_leaf_list: List of leaf switches.
+5. pn_vrrp_id: VRRP ID to be assigned. Default: 18.
+6. pn_csv_data: VRRP layer2 data specified in csv file. Format: vrrp_ip, vlan_id, active_switch.
+
+Steps/Commands:
+This module performs following steps.
+(Note: %s values in below commands get substituted with appropriate values provided by the user or csv-file.
+       The setup should contain only 2 spine switches.)
+
+1. Create vrouters in spine switches
+vrouter-create name %s vnet %s hw-vrrp-id %s enable
+output msg: 'Created vrouter with name '%s''
+
+2. Parse the data from the csv file
+The format of the csv file is as follow:
+   vrrp_ip, vlan_id, active_switch (eg: 101.108.102.0/24, 102, gui-spine1)
+   a) vrrp_ip: The first element of each row in the csv file. It is the vrrp ip range to be used to create the vrouter-interfaces.
+   b) vlan_id: The second element of each row in the csv file. It is the vlan id to be used to create the vrrp interface.
+   c) active_switch: The third element of each row in the csv file. It is the name of the active spine switch.
+
+NOTE: THE BELOW STEPS ARE TO BE REPEATED FOR EACH VALID ROW/LINE IN THE CSV FILE (Step 3 & 4):
+KEY POINTS:  Extracted vrrp-ip from csv file and stored it in variable vrrp_ip
+             Extracted vlan-id from csv file and stored it in variable vlan_id
+             Extracted active switch name from csv file and stored it in variable active_switch
+
+3. Create vlan using the vlan id(vlan_id) taken from the csv file
+vlan-create id %s scope fabric
+Output msg: 'Created vlan with id %s and scope fabric'
+
+4. For every spine switches:
+   3 ips are formed using vrrp-ip(vrrp_ip) from the csv file:
+   Vip: The vip constitute of ip with .1 in the last octet to make a vrouter-interface
+   Ip1: Ip for the active spine with .2 in the last octet to make a vrouter-interface
+   Ip2: Ip for the non-active spine with .3 in the last octet to make a vrouter-interface
+     eg: Let the vrrp_ip be 101.108.102.0/24 from the csv file then
+         Vip = 101.108.102.1
+         Ip1 = 101.108.102.2
+         Ip2 = 101.108.102.3
+
+   4.a. Create a vrouter-interface using the vlan id(vlan_id) from csv file
+        vrouter-interface-add vrouter-name %s ip %s vlan %s if data
+          vlan is the vlan_id from the csv file
+          ip is Ip1(from above) if switch is active switch otherwise Ip2
+        Output msg: 'Added vrouter interface with ip %s on %s'
+
+   4.b. Find out the nic of the interface added in point 4.a.
+        vrouter-interface-show vrouter-name %s ip %s vlan %s format nic
+          vlan is the vlan_id from the csv file
+
+   4.c. Create a vrrp interface
+        vrouter-interface-add vrouter-name %s ip %s vlan %s if data vrrp-id %s vrrp-primary %s vrrp-priority %s
+          vrrp-priority is '110' if the spine is active switch else '109'
+          vrrp-primary is the nic from point 4.b.
+          vrrp-id is the vrrp_id from csv file
+          vlan is the vlan_id from the csv file
+          vrouter-name is the vrouter in the spine switch
+          ip is Vip(from above)
+        Output msg: 'Added vrouter interface with ip %s on %s'
+
+Output/Return:
+This module return following fields in JSON format.
+1. summary: Contains output of each configuration/commands along with switch name on which it got executed. In case of failure, this will contain a message, 'Operation failed: %s', with failed command replacing %s.
+2. changed: Indicates whether the CLI caused changes on switches, using True/False.
+3. unreachable: Indicates whether switch was unreachable to connect, using True/False.
+4. failed: Indicates whether the execution of commands failed on switches, using True/False.
+5. exception: Describe error/exception occurred during execution of commands.
+6. task: 'Configure L2 VRRP'.
+7. msg: On success: 'L2 VRRP configuration succeeded'.
+On failure: 'L2 VRRP configuration failed'.
+On ssh connection error: 'Failed to connect to host via ssh: ssh: connect to host %s port 22: No route to host' (Note: %s will get replaced by the mgmt ip of unreachable switch)
+On exception failure: 'Unexpected failure during module execution'
+On incorrect login credentials: 'MODULE FAILURE'
+
+Note: On success, summary field is of primary importance, as it shows what configuration has happened on each switch and on failure, msg field provides exact details on why it failed.
