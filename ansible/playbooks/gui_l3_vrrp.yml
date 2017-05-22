@@ -1,0 +1,34 @@
+#L3 VRRP
+---
+
+
+- name: Virtual Router Redundancy Protocol (VRRP) - Layer 3 Setup
+  hosts: spine[0]
+  become: true
+  # become_method: su
+  # become_user: root
+
+  vars_files:
+  - cli_vault.yml
+  - playbook-variable.yml
+  
+  tasks:
+    # This task is to configure VRRP for Layer 3 fabric.
+    # It takes required VRRP config data from csv file.
+    # It uses pn_l3_vrrp.py module from library/ directory.
+    # pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+    - name: Configure L3 vrrp
+      pn_l3_vrrp:
+        pn_cliusername: "{{ USERNAME }}"        # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ PASSWORD }}"        # Cli password (value comes from cli_vault.yml).
+        pn_spine_list: "{{ groups['spine'] }}"  # List of all spine switches mentioned under [spine] grp in hosts file.
+        pn_leaf_list: "{{ groups['leaf'] }}"    # List of all leaf switches mentioned under [leaf] grp in hosts file.
+        pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"  # Csv file containing L3 vrrp data.
+      register: vrrp_out                        # Variable to hold/register output of the above tasks.
+      until:  vrrp_out.failed != true           # If error pops up it will retry the code
+      retries: 3                                # This is the retries count
+      delay: 1
+      # ignore_errors: yes                      # Flag to indicate if we should ignore errors if any.
+
+    - pause:
+        seconds: 2                              # Pause playbook execution for specified amount of time.
