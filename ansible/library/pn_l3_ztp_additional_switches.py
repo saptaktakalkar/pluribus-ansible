@@ -167,15 +167,21 @@ def run_cli(module, cli):
     """
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
+    results = []
     if out:
         return out
 
     if err:
+        json_msg = {'switch': '', 'output': u'Operation Failed: {}'.format(str(cli))}
+        results.append(json_msg)
         module.exit_json(
-            error='1',
+            unreachable=False,
             failed=True,
+            exception='',
+            summary=results,
+            task='CLI commands to configure L3 zero touch provisioning',
             stderr=err.strip(),
-            msg='Operation Failed: ' + str(cli),
+            msg='L3 ZTP configuration failed',
             changed=False
         )
     else:
@@ -526,6 +532,7 @@ def auto_configure_link_ips(module):
                 cli += ' switch %s port-show hostname %s ' % (spine, leaf)
                 cli += ' format port no-show-headers'
                 port_list = run_cli(module, cli).split()
+                port_list = list(set(port_list))
     
                 if 'Success' not in port_list and len(port_list) > 0:
                     count_ports += int(len(port_list))
@@ -567,6 +574,7 @@ def auto_configure_link_ips(module):
                 cli += ' switch %s port-show hostname %s ' % (leaf, spine)
                 cli += ' format port no-show-headers '
                 leaf_port = run_cli(module, cli).split()
+                leaf_port = list(set(leaf_port))
     
                 if 'Success' in leaf_port:
                     continue
@@ -584,7 +592,9 @@ def auto_configure_link_ips(module):
                     cli = clicopy
                     cli += ' switch %s port-show port %s ' % (leaf, lport)
                     cli += ' format rport no-show-headers '
-                    rport = run_cli(module, cli)
+                    rport = run_cli(module, cli).split()
+                    rport = list(set(rport))
+                    rport = rport[0]
     
                     delete_trunk(module, spine, rport, leaf)
                     output += create_interface(module, spine, ip, rport)
@@ -604,6 +614,7 @@ def auto_configure_link_ips(module):
                 cli += ' switch %s port-show hostname %s ' % (leaf, spine)
                 cli += ' format port no-show-headers '
                 leaf_port = run_cli(module, cli).split()
+                leaf_port = list(set(leaf_port))
 
                 if 'Success' in leaf_port:
                     continue
@@ -621,7 +632,9 @@ def auto_configure_link_ips(module):
                     cli = clicopy
                     cli += ' switch %s port-show port %s ' % (leaf, lport)
                     cli += ' format rport no-show-headers '
-                    rport = run_cli(module, cli)
+                    rport = run_cli(module, cli).split()
+                    rport = list(set(rport))
+                    rport = rport[0]
 
                     delete_trunk(module, spine, rport, leaf)
                     output += create_interface(module, spine, ip, rport)
@@ -686,12 +699,29 @@ def main():
         message += modify_stp(module, 'enable')
 
     # Exit the module and return the required JSON
+    message_string = message
+    results = []
+    switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
+    switch_list += module.params['pn_new_spine_list'] + module.params['pn_new_leaf_list']
+    for switch in switch_list:
+        replace_string = switch + ': '
+
+        for line in message_string.splitlines():
+            if replace_string in line:
+                json_msg = {'switch' : switch , 'output' : (line.replace(replace_string, '')).strip() }
+                results.append(json_msg)
+
+    # Exit the module and return the required JSON.
     module.exit_json(
-        stdout=message,
-        error='0',
+        unreachable=False,
+        msg = 'L3 ZTP configuration executed successfully',
+        summary=results,
+        exception='',
         failed=False,
-        changed=True if True in CHANGED_FLAG else False
+        changed=True if True in CHANGED_FLAG else False,
+        task='CLI commands to configure L3 zero touch provisioning'
     )
+
 
 if __name__ == '__main__':
     main()

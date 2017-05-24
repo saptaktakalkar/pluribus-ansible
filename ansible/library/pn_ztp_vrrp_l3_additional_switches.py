@@ -38,14 +38,14 @@ options:
         - Provide login password if user is not root.
       required: False
       type: str
-    pn_spine_list:
+    pn_new_spine_list:
       description:
-        - Specify list of Spine hosts
+        - Specify list of additional Spine hosts
       required: False
       type: list
-    pn_leaf_list:
+    pn_new_leaf_list:
       description:
-        - Specify list of leaf hosts
+        - Specify list of additional leaf hosts
       required: False
       type: list
     pn_csv_data:
@@ -60,8 +60,8 @@ EXAMPLES = """
       pn_ztp_vrrp_l3:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_spine_list: "{{ groups['spine'] }}"
-        pn_leaf_list: "{{ groups['leaf'] }}"
+        pn_new_spine_list: "{{ groups['new_spine'] }}"
+        pn_new_leaf_list: "{{ groups['new_leaf'] }}"
         pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"
 """
 
@@ -106,20 +106,25 @@ def run_cli(module, cli):
     output.
     :param module: The Ansible module to fetch input parameters.
     :param cli: The complete cli string to be executed on the target node(s).
-    :return: Output/Error or Success message depending upon.
-    the response from cli.
+    :return: Output/Error or Success msg depending upon the response from cli.
     """
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
+    results = []
     if out:
         return out
 
     if err:
+        json_msg = {'switch': '', 'output': u'Operation Failed: {}'.format(str(cli))}
+        results.append(json_msg)
         module.exit_json(
-            error="1",
+            unreachable=False,
             failed=True,
+            exception='',
+            summary=results,
+            task='CLI commands to configure L3 VRRP zero touch provisioning',
             stderr=err.strip(),
-            msg="Operation Failed: " + str(cli),
+            msg='L3 VRRP configuration failed',
             changed=False
         )
     else:
@@ -513,8 +518,6 @@ def main():
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_new_spine_list=dict(required=False, type='list'),
-            pn_leaf_list=dict(required=False, type='list'),
-            pn_spine_list=dict(required=False, type='list'),
             pn_new_leaf_list=dict(required=False, type='list'),
             pn_csv_data=dict(required=True, type='str'),
         )
@@ -522,12 +525,28 @@ def main():
 
     global CHANGED_FLAG
     message = configure_vrrp(module, module.params['pn_csv_data'])
+    
+    # Exit the module and return the required JSON.
+    message_string = message
+    results = []
+    switch_list = module.params['pn_new_spine_list'] + module.params['pn_new_leaf_list']
+    for switch in switch_list:
+        replace_string = switch + ': '
 
+        for line in message_string.splitlines():
+            if replace_string in line:
+                json_msg = {'switch' : switch , 'output' : (line.replace(replace_string, '')).strip() }
+                results.append(json_msg)
+
+    # Exit the module and return the required JSON.
     module.exit_json(
-        stdout=message,
-        error='0',
+        unreachable=False,
+        msg = 'L3 VRRP configuration executed successfully',
+        summary=results,
+        exception='',
         failed=False,
-        changed=True if True in CHANGED_FLAG else False
+        changed=True if True in CHANGED_FLAG else False,
+        task='CLI commands to configure L3 VRRP zero touch provisioning'
     )
 
 
