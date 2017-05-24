@@ -169,15 +169,21 @@ def run_cli(module, cli):
     """
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
+    results = []
     if out:
         return out
 
     if err:
+        json_msg = {'switch': '', 'output': u'Operation Failed: {}'.format(str(cli))}
+        results.append(json_msg)
         module.exit_json(
-            error='1',
+            unreachable=False,
             failed=True,
+            exception='',
+            summary=results,
+            task='CLI commands to configure eBGP/OSPF zero touch provisioning',
             stderr=err.strip(),
-            msg='Operation Failed: ' + str(cli),
+            msg='eBGP/OSPF ZTP configuration failed',
             changed=False
         )
     else:
@@ -1393,11 +1399,27 @@ def main():
         message += add_ospf_redistribute(module, vrouter_names)
         message += assign_leafcluster_ospf_interface(module, dict_area_id)
 
+    message_string = message
+    results = []
+    switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
+    switch_list += module.params['pn_new_spine_list'] + module.params['pn_new_leaf_list']
+    for switch in switch_list:
+        replace_string = switch + ': '
+
+        for line in message_string.splitlines():
+            if replace_string in line:
+                json_msg = {'switch' : switch , 'output' : (line.replace(replace_string, '')).strip() }
+                results.append(json_msg)
+
+    # Exit the module and return the required JSON.
     module.exit_json(
-        stdout=message,
-        error='0',
+        unreachable=False,
+        msg = 'eBGP/OSPF configuration executed successfully',
+        summary=results,
+        exception='',
         failed=False,
-        changed=True if True in CHANGED_FLAG else False
+        changed=True if True in CHANGED_FLAG else False,
+        task='CLI commands to configure eBGP/OSPF zero touch provisioning'
     )
 
 
