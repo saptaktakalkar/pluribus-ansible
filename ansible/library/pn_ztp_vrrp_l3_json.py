@@ -419,7 +419,7 @@ def configure_vrrp_for_clustered_switches(module, vrrp_id, vrrp_ip,
     """
     node1 = switch_list[0]
     node2 = switch_list[1]
-    name = node1 + '-to-' + node2 + '-cluster'
+    name = (node1 + '-to-' + node2 + '-cluster')[:59]
     host_count = 1
 
     output = create_cluster(module, node2, name, node1, node2)

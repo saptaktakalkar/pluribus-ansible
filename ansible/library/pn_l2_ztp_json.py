@@ -354,9 +354,7 @@ def configure_trunk_vlag_for_clustered_leafs(module, non_clustered_leafs,
                 node2 = system_names[node_count]
                 if node2 in non_clustered_leafs:
                     # Cluster creation
-                    cluster_name = node1 + '-to-' + node2 + '-cluster'
-                    if len(cluster_name) > 59:
-                        cluster_name = cluster_name[:59]
+                    cluster_name = (node1 + '-to-' + node2 + '-cluster')[:59]
 
                     output += create_cluster(module, node2, cluster_name,
                                              node1, node2)
@@ -371,9 +369,7 @@ def configure_trunk_vlag_for_clustered_leafs(module, non_clustered_leafs,
                     output += trunk_message1[0] + '\n'
                     output += trunk_message2[0] + '\n'
                     # Vlag creation (leaf to spines)
-                    vlag_name = node1 + '-' + node2 + '-to-' + 'spine'
-                    if len(vlag_name) > 59:
-                        vlag_name = vlag_name[:59]
+                    vlag_name = (node1 + '-' + node2 + '-to-' + 'spine')[:59]
 
                     output += create_vlag(module, node1, vlag_name, node2,
                                           trunk_name1, trunk_name2)
@@ -391,9 +387,7 @@ def configure_trunk_vlag_for_clustered_leafs(module, non_clustered_leafs,
                     output += trunk_message2[0] + '\n'
 
                     # Vlag creation (spine to leafs)
-                    name =  'spine-to-' + node1 + '-' + node2
-                    if len(name) > 59:
-                        name = name[:59]
+                    name =  ('spine-to-' + node1 + '-' + node2)[:59]
 
                     output += create_vlag(module, spine1, name, spine2,
                                           trunk_name1, trunk_name2)
@@ -431,9 +425,7 @@ def configure_trunk_non_clustered_leafs(module, non_clustered_leafs,
         output += trunk_message2[0] + '\n'
 
         # Vlag creation (spine to leafs)
-        name = 'spine-to-' + leaf
-        if len(name) > 59:
-            name = name[:59]
+        name = ('spine-to-' + leaf)[:59]
 
         output += create_vlag(module, spine1, name, spine2, trunk_name1,
                               trunk_name2)
