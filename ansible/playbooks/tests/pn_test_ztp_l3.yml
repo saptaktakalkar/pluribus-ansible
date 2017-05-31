@@ -22,7 +22,7 @@
     - name: Wait for nvOSd to reboot
       pause:                             # Pause playbook execution for specified amount of time.
         minutes: 3
-      when: reset_out.stdout_lines != ["Switch has been already reset."]
+      when: reset_out.msg != "Switch has been already reset."
 
     - name: Check nvOSd status (Retry until it's online)
       command: service svc-nvOSd status
@@ -44,7 +44,7 @@
   - cli_vault.yml
 
   vars:
-  - json_file_path: /etc/ansible/pluribus-ansible/ansible/output.json
+  - json_file_path: /tmp/output.json
 
   tasks:
     - name: Auto accept EULA, Disable STP, enable ports and create/join fabric
@@ -85,6 +85,10 @@
     # Remove the above created file
     - local_action: file path={{ json_file_path }} state=absent
 
+    - fail:
+        msg: "JSON validation failed"
+      when: validate.stdout != "JSON Validation Successful"
+
     - pause:
         seconds: 2                   # Pause playbook execution for specified amount of time.
 
@@ -102,7 +106,7 @@
   vars:
     spine_count: "{{ groups['spine'] | length }}"
     leaf_count: "{{ groups['leaf'] | length }}"
-    json_file_path: /etc/ansible/pluribus-ansible/ansible/output.json
+    json_file_path: /tmp/output.json
 
   tasks:
     # L3 ZTP setup
@@ -137,6 +141,10 @@
 
     # Remove the above created file
     - local_action: file path={{ json_file_path }} state=absent
+
+    - fail:
+        msg: "JSON validation failed"
+      when: validate.stdout != "JSON Validation Successful"
 
     - pause:
         seconds: 2                              # Pause playbook execution for specified amount of time.
