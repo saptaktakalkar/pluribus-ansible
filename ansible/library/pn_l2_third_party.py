@@ -173,8 +173,7 @@ def modify_stp(module, modify_flag):
     cli = pn_cli(module)
     clicopy = cli
 
-    for switch in (module.params['pn_spine_list'] +
-                   module.params['pn_leaf_list']):
+    for switch in module.params['pn_leaf_list']:
         cli = clicopy
         cli += ' switch %s stp-show format enable ' % switch
         current_state = run_cli(module, cli).split()[1]
@@ -202,8 +201,7 @@ def update_fabric_network_to_inband(module):
     cli = pn_cli(module)
     clicopy = cli
 
-    for switch in (module.params['pn_spine_list'] +
-                   module.params['pn_leaf_list']):
+    for switch in module.params['pn_leaf_list']:
         cli = clicopy
         cli += ' fabric-info format fabric-network '
         fabric_network = run_cli(module, cli).split()[1]
@@ -478,7 +476,7 @@ def main():
             pn_leaf_list=dict(required=False, type='list'),
             pn_update_fabric_to_inband=dict(required=False, type='bool',
                                             default=False),
-            pn_stp=dict(required=False, type='bool', default=True),
+            pn_stp=dict(required=False, type='bool', default=False),
         )
     )
 
