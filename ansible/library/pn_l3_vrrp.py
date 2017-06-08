@@ -478,27 +478,29 @@ def configure_vrrp(module, csv_data):
     csv_data_list = csv_data.split('\n')
     # Parse csv file data and configure VRRP.
     for row in csv_data_list:
-        elements = row.split(',')
-        switch_list = []
-        vlan_id = elements[0]
-        vrrp_ip = elements[1]
-        leaf_switch_1 = str(elements[2])
-        if len(elements) > 5:
-            leaf_switch_2 = str(elements[3])
-            vrrp_id = elements[4]
-            active_switch = str(elements[5])
-            switch_list.append(leaf_switch_1)
-            switch_list.append(leaf_switch_2)
-            output += configure_vrrp_for_clustered_switches(module, vrrp_id,
-                                                            vrrp_ip,
-                                                            active_switch,
-                                                            vlan_id,
-                                                            switch_list)
-
+        if row.startswith('#'):
+            continue
         else:
-            output += configure_vrrp_for_non_clustered_switches(module, vlan_id,
+            elements = row.split(',')
+            switch_list = []
+            vlan_id = elements[0]
+            vrrp_ip = elements[1]
+            leaf_switch_1 = str(elements[2])
+            if len(elements) > 5:
+                leaf_switch_2 = str(elements[3])
+                vrrp_id = elements[4]
+                active_switch = str(elements[5])
+                switch_list.append(leaf_switch_1)
+                switch_list.append(leaf_switch_2)
+                output += configure_vrrp_for_clustered_switches(module, vrrp_id,
                                                                 vrrp_ip,
-                                                                leaf_switch_1)
+                                                                active_switch,
+                                                                vlan_id,
+                                                                switch_list)
+
+            else:
+                output += configure_vrrp_for_non_clustered_switches(
+                    module, vlan_id, vrrp_ip, leaf_switch_1)
 
     return output
 
