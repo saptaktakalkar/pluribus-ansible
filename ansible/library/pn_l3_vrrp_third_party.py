@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI L3 VRRP """
+""" PN CLI L3 VRRP with third party switches"""
 
 #
 # This file is part of Ansible
@@ -24,10 +24,13 @@ from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
 ---
-module: pn_l3_vrrp
+module: pn_l3_vrrp_third_party
 author: 'Pluribus Networks (devops@pluribusnetworks.com)'
-short_description: CLI command to configure VRRP - Layer 3 Setup
-description: Virtual Router Redundancy Protocol (VRRP) - Layer 3 Setup
+short_description: CLI command to configure L3 vrrp with 3rd party switches.
+description:
+    Virtual Router Redundancy Protocol (VRRP) - Layer 3 Setup. It will
+    configure vrrp on all leaf switches, with spines being third party
+    (non PN) switches.
 options:
     pn_cliusername:
       description:
@@ -39,11 +42,6 @@ options:
         - Provide login password if user is not root.
       required: False
       type: str
-    pn_spine_list:
-      description:
-        - Specify list of Spine hosts
-      required: False
-      type: list
     pn_leaf_list:
       description:
         - Specify list of leaf hosts
@@ -57,11 +55,10 @@ options:
 """
 
 EXAMPLES = """
-- name: Configure L3 VRRP
-  pn_l3_vrrp:
+- name: Configure L3 VRRP with 3rd party switches
+  pn_l3_vrrp_third_party:
     pn_cliusername: "{{ USERNAME }}"
     pn_clipassword: "{{ PASSWORD }}"
-    pn_spine_list: "{{ groups['spine'] }}"
     pn_leaf_list: "{{ groups['leaf'] }}"
     pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"
 """
@@ -142,7 +139,7 @@ def run_cli(module, cli):
             failed=True,
             exception=err.strip(),
             summary=results,
-            task='Configure L3 vrrp',
+            task='Configure L3 vrrp with existing spine switches',
             msg='L3 vrrp configuration failed',
             changed=False
         )
@@ -470,10 +467,6 @@ def configure_vrrp(module, csv_data):
     :return: Output string of configuration.
     """
     output = ''
-    vnet_name = get_global_vnet_name(module)
-    for switch in module.params['pn_spine_list']:
-        output += create_vrouter_without_vrrp(module, switch, vnet_name)
-
     csv_data = csv_data.replace(" ", "")
     csv_data_list = csv_data.split('\n')
     # Parse csv file data and configure VRRP.
@@ -523,7 +516,6 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_spine_list=dict(required=False, type='list'),
             pn_leaf_list=dict(required=False, type='list'),
             pn_csv_data=dict(required=True, type='str'),
         )
@@ -533,13 +525,11 @@ def main():
     message = configure_vrrp(module, module.params['pn_csv_data'])
 
     # Exit the module and return the required JSON.
-    message_string = message
     results = []
-    switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
-    for switch in switch_list:
+    for switch in module.params['pn_leaf_list']:
         replace_string = switch + ': '
 
-        for line in message_string.splitlines():
+        for line in message.splitlines():
             if replace_string in line:
                 json_msg = {
                     'switch': switch,
@@ -550,7 +540,7 @@ def main():
     # Exit the module and return the required JSON.
     module.exit_json(
         unreachable=False,
-        task='Configure L3 vrrp',
+        task='Configure L3 vrrp with existing spine switches',
         msg='L3 vrrp configuration succeeded',
         summary=results,
         exception='',
