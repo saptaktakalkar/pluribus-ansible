@@ -186,7 +186,6 @@
     - debug:
         var: test_out.stdout_lines             # Print stdout_lines of register variable.
 
-
     # Test L2 VRRP configuration
     - name: Test Layer2 VRRP
       pn_test_l2_vrrp:
@@ -200,3 +199,11 @@
     - debug:
         var: test_l2_out.stdout_lines          # Print stdout_lines of register variable.
 
+    # Full-mesh vrouter ping test
+    - name: Full mesh vrouter-ping test
+      pn_vrouter_ping_test:
+        pn_cliusername: "{{ USERNAME }}"  # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ PASSWORD }}"  # Cli password (value comes from cli_vault.yml).
+
+    - pause:
+        seconds: 2                        # Pause playbook execution for specified amount of time.
