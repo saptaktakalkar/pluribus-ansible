@@ -199,4 +199,4 @@
 
     - debug:
         var: test_l2_out.stdout_lines          # Print stdout_lines of register variable.
-        
+
