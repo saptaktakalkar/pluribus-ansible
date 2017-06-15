@@ -73,13 +73,6 @@ options:
       required: False
       default: False
       type: bool
-    pn_assign_loopback:
-      description:
-        - Flag to indicate if loopback ips should be assigned to vrouters
-        in layer3 fabric.
-      required: False
-      default: False
-      type: bool
     pn_loopback_ip:
       description:
         - Loopback ip value for vrouters in layer3 fabric.
@@ -508,7 +501,6 @@ def auto_configure_link_ips(module):
     """
     spine_list = module.params['pn_spine_list']
     leaf_list = module.params['pn_leaf_list']
-    fabric_loopback = module.params['pn_assign_loopback']
     supernet = module.params['pn_supernet']
     output = ''
 
@@ -576,9 +568,8 @@ def auto_configure_link_ips(module):
                     available_ips.pop(0)
                     ip_count += 1
 
-    if fabric_loopback:
-        # Assign loopback ip to vrouters.
-        output += assign_loopback_ip(module, module.params['pn_loopback_ip'])
+    # Assign loopback ip to vrouters.
+    output += assign_loopback_ip(module, module.params['pn_loopback_ip'])
 
     for switch in switch_names:
         # Enable auto trunk.
@@ -600,7 +591,6 @@ def main():
             pn_leaf_list=dict(required=False, type='list'),
             pn_update_fabric_to_inband=dict(required=False, type='bool',
                                             default=False),
-            pn_assign_loopback=dict(required=False, type='bool', default=False),
             pn_loopback_ip=dict(required=False, type='str',
                                 default='109.109.109.0/24'),
             pn_bfd=dict(required=False, type='bool', default=False),
