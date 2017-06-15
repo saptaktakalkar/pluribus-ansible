@@ -204,6 +204,10 @@
       pn_vrouter_ping_test:
         pn_cliusername: "{{ USERNAME }}"  # Cli username (value comes from cli_vault.yml).
         pn_clipassword: "{{ PASSWORD }}"  # Cli password (value comes from cli_vault.yml).
+      register: ping_out
+
+    - debug:
+        var: ping_out.msg          # Print stdout_lines of register variable.
 
     - pause:
         seconds: 2                        # Pause playbook execution for specified amount of time.
