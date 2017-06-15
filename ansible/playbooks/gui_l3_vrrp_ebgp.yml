@@ -47,7 +47,6 @@
         pn_net_address: "{{ pn_net_address }}"          # Network address required to calculate link IPs for layer3 fabric.
         pn_cidr: "{{ pn_cidr }}"                        # Subnet mask required to calculate link IPs for layer3 fabric.
         pn_supernet: "{{ pn_supernet }}"                # Supernet mask required to calculate link IPs for layer3 fabric.
-        pn_assign_loopback: "{{ pn_assign_loopback }}"  # Flag to indicate if loopback ips should be assigned to vrouters. Default: False.
         pn_loopback_ip: "{{ pn_loopback_ip }}"          # Loopback ip starting value for vrouters. Default: 109.109.109.0/24.
         pn_bfd: "{{ pn_bfd }}"                          # Flag to indicate if BFD config should be added to vrouter interfaces. Default: False.
         pn_bfd_min_rx: "{{ pn_bfd_min_rx }}"            # BFD-MIN-RX value required for adding BFD configuration to vrouter interfaces.
