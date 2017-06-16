@@ -461,21 +461,23 @@ def assign_router_id(module, vrouter_names):
             cli += ' vrouter-loopback-interface-show vrouter-name ' + vrouter
             cli += ' format ip no-show-headers '
             loopback_ip = run_cli(module, cli).split()
-            loopback_ip.remove(vrouter)
 
-            cli = clicopy
-            cli += ' vrouter-modify name %s router-id %s ' % (vrouter,
-                                                              loopback_ip[0])
-            if 'Success' in run_cli(module, cli):
+            if 'Success' not in loopback_ip and len(loopback_ip) > 0:
+                loopback_ip.remove(vrouter)
                 cli = clicopy
-                cli += ' vrouter-show name ' + vrouter
-                cli += ' format location no-show-headers '
-                switch = run_cli(module, cli).split()[0]
+                cli += ' vrouter-modify name %s router-id %s ' % (
+                    vrouter, loopback_ip[0])
 
-                output += ' %s: Added router id %s to %s \n' % (switch,
-                                                                loopback_ip[0],
-                                                                vrouter)
-                CHANGED_FLAG.append(True)
+                if 'Success' in run_cli(module, cli):
+                    cli = clicopy
+                    cli += ' vrouter-show name ' + vrouter
+                    cli += ' format location no-show-headers '
+                    switch = run_cli(module, cli).split()[0]
+
+                    output += ' %s: Added router id %s to %s \n' % (
+                        switch, loopback_ip[0], vrouter)
+
+                    CHANGED_FLAG.append(True)
 
     return output
 
