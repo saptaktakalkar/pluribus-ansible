@@ -300,6 +300,7 @@ class Connection(ConnectionBase):
                          width=int(os.getenv('COLUMNS', 0)),
                          height=int(os.getenv('LINES', 0)))
 
+        cmd = cmd.replace("/bin/sh -c", "/bin/sh \-c")
         display.vvv("EXEC %s" % cmd, host=self._play_context.remote_addr)
 
         cmd = to_bytes(cmd, errors='surrogate_or_strict')
@@ -309,7 +310,7 @@ class Connection(ConnectionBase):
         become_output = b''
 
         try:
-            chan.exec_command("shell {}".format(cmd))
+            chan.exec_command("shell %s" % cmd)
             if self._play_context.prompt:
                 passprompt = False
                 become_sucess = False
