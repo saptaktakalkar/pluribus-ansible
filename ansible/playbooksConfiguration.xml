@@ -1,520 +1,1022 @@
 <playbooks>
     <playbook>
-        <name> Fabric creation </name>
+        <name>Fabric creation</name>
         <image>  </image>
-        <description> Fabric creation playbook. This playbook creates fabric from the host file. </description>
+        <description>Fabric creation playbook. This playbook creates fabric from the host file.</description>
         <csvValidationFileName></csvValidationFileName>
-        <playbookFileName> gui_fabric_creation.yml </playbookFileName>
+        <playbookFileName>gui_fabric_creation.yml</playbookFileName>
 
         <guiProperties>
-            <tab> mandatory </tab>
-            <displayText> Fabric Name</displayText>
-            <value> gui-fabric </value>
+            <tab>mandatory</tab>
+            <displayText>Fabric Creation</displayText>
+            <value>gui-fabric</value>
             <choices></choices>
-            <key> pn_fabric_name </key>
-            <type> text </type>
-            <tooltip> Enter Fabric Name </tooltip>
+            <key>pn_fabric_name</key>
+            <type>text</type>
+            <tooltip>Enter Fabric Name</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> optional </tab>
-            <displayText> Toggle 40G </displayText>
-            <value> True </value>
+            <tab>optional</tab>
+            <displayText>Toggle 40G</displayText>
+            <value>True</value>
             <choices>
-		<option> True </option>
-                <option> False </option>
-	    </choices>
-            <key> pn_toggle_40g </key>
-            <type> boolean </type>
-            <tooltip> Flag to toggle/convert 40g ports to 10g ports, Toggle 40g, boolean </tooltip>
+		        <option>True</option>
+                <option>False</option>
+	        </choices>
+            <key>pn_toggle_40g</key>
+            <type>boolean</type>
+            <tooltip>Flag to toggle/convert 40g ports to 10g ports, Toggle 40g, boolean</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> optional </tab>
-            <displayText> Inband IP </displayText>
-            <value> 172.16.1.0/24 </value>
+            <tab>optional</tab>
+            <displayText>Inband IP</displayText>
+            <value>172.16.1.0/24</value>
+            <choices></choices>
+            <key>pn_inband_ip</key>
+            <type>IP-MASK</type>
+            <tooltip>Inband ips to be assigned to switches starting with this value, Inband IP</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Fabric Network</displayText>
+            <value>mgmt</value>
             <choices>
-                <option> 172.16.0.0/24 </option>
+                <option>in-band</option>
+                <option>mgmt</option>
             </choices>
-            <key> pn_inband_ip </key>
-            <type> IP-MASK </type>
-            <tooltip> Inband ips to be assigned to switches starting with this value, Inband IP </tooltip>
+            <key>pn_fabric_network</key>
+            <type>boolean</type>
+            <tooltip>Select fabric network type</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> optional </tab>
-            <displayText> Fabric Network </displayText>
-            <value> mgmt </value>
+            <tab>optional</tab>
+            <displayText>Fabric Control Network</displayText>
+            <value>mgmt</value>
             <choices>
-                <option> in-band </option>
-                <option> mgmt </option>
+                <option>in-band</option>
+                <option>mgmt</option>
             </choices>
-            <key> pn_fabric_network </key>
-            <type> boolean </type>
-            <tooltip> Select fabric network type </tooltip>
+            <key>pn_fabric_control_network</key>
+            <type>boolean</type>
+            <tooltip>Select fabric control network</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> optional </tab>
-            <displayText> Fabric Control Network </displayText>
-            <value> mgmt </value>
+            <tab>optional</tab>
+            <displayText>Mgmt IP Subnet</displayText>
+            <value>16</value>
+            <choices></choices>
+            <key>pn_mgmt_ip_subnet</key>
+            <type>text</type>
+            <tooltip>Specify subnet mask for mgmt-ip to be assigned to switches</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Gateway IP</displayText>
+            <value>10.9.9.1</value>
+            <choices></choices>
+            <key>pn_gateway_ip</key>
+            <type>IP</type>
+            <tooltip>Specify gateway-ip to be assigned to switches</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>DNS IP</displayText>
+            <value>10.20.41.1</value>
+            <choices></choices>
+            <key>pn_dns_ip</key>
+            <type>IP</type>
+            <tooltip>Specify dns-ip to be assigned to switches</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>DNS Secondary IP</displayText>
+            <value>10.20.4.1</value>
+            <choices></choices>
+            <key>pn_dns_secondary_ip</key>
+            <type>IP</type>
+            <tooltip>Specify dns-secondary-ip to be assigned to switches</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Domain Name</displayText>
+            <value>pluribusnetworks.com</value>
+            <choices></choices>
+            <key>pn_domain_name</key>
+            <type>URL</type>
+            <tooltip>Specify domain-name to be assigned to switches</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>NTP Server</displayText>
+            <value>0.us.pool.ntp.org</value>
+            <choices></choices>
+            <key>pn_ntp_server</key>
+            <type>URL</type>
+            <tooltip>Specify ntp-server value to be assigned to switches</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>STP</displayText>
+            <value>False</value>
             <choices>
-                <option> in-band </option>
-                <option> mgmt </option>
+                <option>True</option>
+                <option>False</option>
             </choices>
-            <key> pn_fabric_control_network </key>
-            <type> boolean </type>
-            <tooltip> Select fabric control network </tooltip>
-        </guiProperties>
-
-        <guiProperties>
-            <tab> optional </tab>
-            <displayText> Mgmt IP Subnet </displayText>
-            <value> 16 </value>
-            <choices></choices>
-            <key> pn_mgmt_ip_subnet </key>
-            <type> text </type>
-            <tooltip> Specify subnet mask for mgmt-ip to be assigned to switches </tooltip>
-        </guiProperties>
-
-        <guiProperties>
-            <tab> optional </tab>
-            <displayText> Gateway IP </displayText>
-            <value> 10.9.9.1 </value>
-            <choices></choices>
-            <key> pn_gateway_ip </key>
-            <type> IP </type>
-            <tooltip> Specify gateway-ip to be assigned to switches </tooltip>
-        </guiProperties>
-
-        <guiProperties>
-            <tab> optional </tab>
-            <displayText> DNS IP </displayText>
-            <value> 10.20.41.1 </value>
-            <choices></choices>
-            <key> pn_dns_ip </key>
-            <type> IP </type>
-            <tooltip> Specify dns-ip to be assigned to switches </tooltip>
-        </guiProperties>
-
-        <guiProperties>
-            <tab> optional </tab>
-            <displayText> DNS Secondary IP </displayText>
-            <value> 10.20.4.1 </value>
-            <choices></choices>
-            <key> pn_dns_secondary_ip </key>
-            <type> IP </type>
-            <tooltip> Specify dns-secondary-ip to be assigned to switches </tooltip>
-        </guiProperties>
-
-        <guiProperties>
-            <tab> optional </tab>
-            <displayText> Domain Name </displayText>
-            <value> pluribusnetworks.com </value>
-            <choices></choices>
-            <key> pn_domain_name </key>
-            <type> URL </type>
-            <tooltip> Specify domain-name to be assigned to switches </tooltip>
-        </guiProperties>
-
-        <guiProperties>
-            <tab> optional </tab>
-            <displayText> NTP Server </displayText>
-            <value> 0.us.pool.ntp.org </value>
-            <choices></choices>
-            <key> pn_ntp_server </key>
-            <type> URL </type>
-            <tooltip> Specify ntp-server value to be assigned to switches </tooltip>
-        </guiProperties>
-
-        <guiProperties>
-            <tab> optional </tab>
-            <displayText> STP </displayText>
-            <value> False </value>
-            <choices>
-                <option> True </option>
-                <option> False </option>
-            </choices>
-            <key> pn_stp </key>
-            <type> boolean </type>
-            <tooltip> Flag to enable STP at the end of configuration </tooltip>
+            <key>pn_stp</key>
+            <type>boolean</type>
+            <tooltip>Flag to enable STP at the end of configuration</tooltip>
         </guiProperties>
     </playbook>
 
     <playbook>
-        <name> L2 VRRP </name>
+        <name>L2 VRRP</name>
         <image>  </image>
-        <description> A short  description regarding L2 VRRP Playbook. </description>
-        <csvValidationFileName> gui_l2_vrrp_csv_validation.yml </csvValidationFileName>
-        <playbookFileName> gui_l2_vrrp.yml </playbookFileName>
+        <description>A short  description regarding L2 VRRP Playbook.</description>
+        <csvValidationFileName>gui_l2_vrrp_csv_validation.yml</csvValidationFileName>
+        <playbookFileName>gui_l2_vrrp.yml</playbookFileName>
 
         <guiProperties>
-            <tab> optional </tab>
-            <displayText> Update Fabric Network </displayText>
-            <value> False </value>
+            <tab>optional</tab>
+            <displayText>Update Fabric Network</displayText>
+            <value>False</value>
             <choices>
-                <option> True </option>
-                <option> False </option>
+                <option>True</option>
+                <option>False</option>
             </choices>
-            <key> pn_update_fabric_to_inband </key>
-            <type> boolean </type>
-            <tooltip> Flag to update fabric network to in-band </tooltip>
+            <key>pn_update_fabric_to_inband</key>
+            <type>boolean</type>
+            <tooltip>Flag to update fabric network to in-band</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> optional </tab>
-            <displayText> STP </displayText>
-            <value> True </value>
+            <tab>optional</tab>
+            <displayText>STP</displayText>
+            <value>True</value>
             <choices>
-                <option> True </option>
-                <option> False </option>
+                <option>True</option>
+                <option>False</option>
             </choices>
-            <key> pn_stp </key>
-            <type> boolean </type>
-            <tooltip> Flag to enable STP at the end of configuration </tooltip>
+            <key>pn_stp</key>
+            <type>boolean</type>
+            <tooltip>Flag to enable STP at the end of configuration</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> mandatory </tab>
-            <displayText> CSV FILE </displayText>
-            <value> </value>
+            <tab>mandatory</tab>
+            <displayText>CSV FILE</displayText>
+            <value></value>
             <choices></choices>
-            <key> csv_file </key>
-            <type> file </type>
-            <tooltip> Layer2 VRRP data csv file </tooltip>
+            <key>csv_file</key>
+            <type>file</type>
+            <tooltip>Layer2 VRRP data csv file</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> optional </tab>
-            <displayText> VRRP ID </displayText>
-            <value> 18 </value>
+            <tab>optional</tab>
+            <displayText>VRRP ID</displayText>
+            <value>18</value>
             <choices>
                 <option> 18 </option>
             </choices>
-            <key> pn_vrrp_id </key>
-            <type> text </type>
-            <tooltip> Specify VRRP ID to be assigned </tooltip>
+            <key>pn_vrrp_id</key>
+            <type>text</type>
+            <tooltip>Specify VRRP ID to be assigned</tooltip>
         </guiProperties>
 
     </playbook>
 
     <playbook>
-        <name> L3 VRRP eBGP </name>
+        <name>L3 VRRP eBGP</name>
         <image>  </image>
-        <description> L3 VRRP eBGP playbook. </description>
-        <csvValidationFileName> gui_l3_vrrp_csv_validation.yml </csvValidationFileName>
-        <playbookFileName> gui_l3_vrrp_ebgp.yml </playbookFileName>
+        <description>L3 VRRP eBGP playbook.</description>
+        <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
+        <playbookFileName>gui_l3_vrrp_ebgp.yml</playbookFileName>
 
         <guiProperties>
-            <tab> mandatory </tab>
-            <displayText> CSV File</displayText>
+            <tab>mandatory</tab>
+            <displayText>CSV File</displayText>
             <value></value>
             <choices></choices>
-            <key> csv_file </key>
-            <type> file </type>
-            <tooltip> Csv file containing L3 vrrp data. </tooltip>
+            <key>csv_file</key>
+            <type>file</type>
+            <tooltip>Csv file containing L3 vrrp data.</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> mandatory </tab>
-            <displayText> Net Address</displayText>
-            <value> 172.168.1.0 </value>
+            <tab>mandatory</tab>
+            <displayText>Net Address</displayText>
+            <value>172.168.1.0</value>
             <choices></choices>
-            <key> pn_net_address </key>
-            <type> IP </type>
-            <tooltip> Network address required to calculate link IPs for layer3 fabric. </tooltip>
+            <key>pn_net_address</key>
+            <type>IP</type>
+            <tooltip>Network address required to calculate link IPs for layer3 fabric.</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> mandatory </tab>
-            <displayText> Cidr</displayText>
-            <value> 24 </value>
+            <tab>mandatory</tab>
+            <displayText>Cidr</displayText>
+            <value>24</value>
             <choices></choices>
-            <key> pn_cidr </key>
-            <type> text </type>
-            <tooltip> Subnet mask required to calculate link IPs for layer3 fabric. </tooltip>
+            <key>pn_cidr</key>
+            <type>text</type>
+            <tooltip>Subnet mask required to calculate link IPs for layer3 fabric.</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> mandatory </tab>
-            <displayText> Supernet</displayText>
-            <value> 30 </value>
+            <tab>mandatory</tab>
+            <displayText>Supernet</displayText>
+            <value>30</value>
             <choices> </choices>
-            <key> pn_supernet </key>
-            <type> text </type>
-            <tooltip> Supernet mask required to calculate link IPs for layer3 fabric. </tooltip>
+            <key>pn_supernet</key>
+            <type>text</type>
+            <tooltip>Supernet mask required to calculate link IPs for layer3 fabric.</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> optional </tab>
-            <displayText> Loopback Ip</displayText>
-            <value> 109.109.109.0/24 </value>
+        <tab>optional</tab>
+        <displayText>Assign Loopback</displayText>
+        <value>True</value>
+        <choices>
+            <option>False</option>
+            <option>True</option>
+        </choices>
+        <key>pn_assign_loopback</key>
+        <type>boolean</type>
+        <tooltip>Flag to indicate if loopback ips should be assigned to vrouters</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Loopback Ip</displayText>
+            <value>109.109.109.0/24</value>
             <choices></choices>
-            <key> pn_loopback_ip </key>
-            <type> IP </type>
-            <tooltip> Loopback ip starting value for vrouters. </tooltip>
+            <key>pn_loopback_ip</key>
+            <type>IP</type>
+            <tooltip>Loopback ip starting value for vrouters.</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> optional </tab>
-            <displayText> Bfd</displayText>
-            <value> True </value>
+            <tab>optional</tab>
+            <displayText>Bfd</displayText>
+            <value>True</value>
             <choices>
-                <option> False </option>
-                <option> True </option>
+                <option>False</option>
+                <option>True</option>
             </choices>
-            <key> pn_bfd </key>
-            <type> boolean </type>
-            <tooltip>  Flag to indicate if BFD config should be added to vrouter interfaces </tooltip>
+            <key>pn_bfd</key>
+            <type>boolean</type>
+            <tooltip>Flag to indicate if BFD config should be added to vrouter interfaces</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> optional </tab>
-            <displayText> Bfd min rx </displayText>
-            <value> 200 </value>
+            <tab>optional</tab>
+            <displayText>Bfd min rx</displayText>
+            <value>200</value>
             <choices></choices>
-            <key> pn_bfd_min_rx </key>
-            <type> text </type>
-            <tooltip> BFD-MIN-RX value required for adding BFD configuration to vrouter interfaces. </tooltip>
+            <key>pn_bfd_min_rx</key>
+            <type>text</type>
+            <tooltip>BFD-MIN-RX value required for adding BFD configuration to vrouter interfaces.</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> optional </tab>
-            <displayText> Bfd Multiplier </displayText>
-            <value> 3 </value>
+            <tab>optional</tab>
+            <displayText>Bfd Multiplier</displayText>
+            <value>3</value>
             <choices></choices>
-            <key> pn_bfd_multiplier </key>
-            <type> text </type>
-            <tooltip> BFD_MULTIPLIER value required for adding BFD configuration to vrouter interfaces. </tooltip>
+            <key>pn_bfd_multiplier</key>
+            <type>text</type>
+            <tooltip>BFD_MULTIPLIER value required for adding BFD configuration to vrouter interfaces.</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> optional </tab>
-            <displayText> Update fabric to inband</displayText>
-            <value> False </value>
+            <tab>optional</tab>
+            <displayText>Update fabric to inband</displayText>
+            <value>False</value>
             <choices>
-                <option> True </option>
-                <option> False </option>
+                <option>True</option>
+                <option>False</option>
             </choices>
-            <key> pn_update_fabric_to_inband </key>
-            <type> boolean </type>
-            <tooltip> Flag to indicate if fabric network should be updated to in-band. </tooltip>
+            <key>pn_update_fabric_to_inband</key>
+            <type>boolean</type>
+            <tooltip>Flag to indicate if fabric network should be updated to in-band.</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> optional </tab>
-            <displayText> STP </displayText>
-            <value> True </value>
+            <tab>optional</tab>
+            <displayText>STP</displayText>
+            <value>True</value>
             <choices>
-                <option> False </option>
-                <option> True </option>
+                <option>False</option>
+                <option>True</option>
             </choices>
-            <key> pn_stp </key>
-            <type> boolean </type>
-            <tooltip> Flag to enable STP (spanning tree protocol) </tooltip>
+            <key>pn_stp</key>
+            <type>boolean</type>
+            <tooltip>Flag to enable STP (spanning tree protocol)</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> optional </tab>
-            <displayText> Bgp Maxpath </displayText>
-            <value> 16 </value>
+            <tab>optional</tab>
+            <displayText>Bgp Maxpath</displayText>
+            <value>16</value>
             <choices></choices>
-            <key> pn_bgp_maxpath </key>
-            <type> text </type>
-            <tooltip>  BGP-MAXPATH value to be assigned to vrouters </tooltip>
+            <key>pn_bgp_maxpath</key>
+            <type>text</type>
+            <tooltip>BGP-MAXPATH value to be assigned to vrouters</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> mandatory </tab>
-            <displayText> Bgp as range </displayText>
-            <value> 65000 </value>
+            <tab>mandatory</tab>
+            <displayText>Bgp as range</displayText>
+            <value>65000</value>
             <choices></choices>
-            <key> pn_bgp_as_range </key>
-            <type> text </type>
-            <tooltip>  BGP-AS-RANGE value to be assigned to vrouters </tooltip>
+            <key>pn_bgp_as_range</key>
+            <type>text</type>
+            <tooltip>BGP-AS-RANGE value to be assigned to vrouters</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> mandatory </tab>
-            <displayText> Ibgp ip range </displayText>
-            <value> 75.75.75.0/24 </value>
+            <tab>mandatory</tab>
+            <displayText>Ibgp ip range</displayText>
+            <value>75.75.75.0/24</value>
             <choices></choices>
-            <key> pn_ibgp_ip_range </key>
-            <type> IP </type>
-            <tooltip>  iBGP IP range to be assigned to vrouter interfaces </tooltip>
+            <key>pn_ibgp_ip_range</key>
+            <type>IP</type>
+            <tooltip>iBGP IP range to be assigned to vrouter interfaces</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> optional </tab>
-            <displayText> Bgp redistribute </displayText>
-            <value> connected </value>
+            <tab>optional</tab>
+            <displayText>Bgp redistribute</displayText>
+            <value>connected</value>
             <choices>
-                <option> none </option>
-                <option> static </option>
-                <option> rip </option>
-                <option> ospf </option>
-                <option> connected </option>
+                <option>none</option>
+                <option>static</option>
+                <option>rip</option>
+                <option>ospf</option>
+                <option>connected</option>
             </choices>
-            <key> pn_bgp_redistribute </key>
-            <type> boolean </type>
-            <tooltip> iBGP vlan value to be assigned to vrouter interfaces </tooltip>
+            <key>pn_bgp_redistribute</key>
+            <type>boolean</type>
+            <tooltip>iBGP vlan value to be assigned to vrouter interfaces</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> mandatory </tab>
-            <displayText> Ibgp vlan </displayText>
-            <value> 4040 </value>
+            <tab>mandatory</tab>
+            <displayText>Ibgp vlan</displayText>
+            <value>4040</value>
             <choices></choices>
-            <key> pn_ibgp_vlan </key>
-            <type> text </type>
-            <tooltip> iBGP vlan value to be assigned to vrouter interfaces </tooltip>
+            <key>pn_ibgp_vlan</key>
+            <type>text</type>
+            <tooltip>iBGP vlan value to be assigned to vrouter interfaces</tooltip>
         </guiProperties>
     </playbook>
 
     <playbook>
-        <name> L3 VRRP OSPF </name>
+        <name>L3 VRRP OSPF</name>
         <image>  </image>
-        <description> Configure L3 VRRP with OSPF </description>
-        <csvValidationFileName> gui_l3_vrrp_csv_validation.yml </csvValidationFileName>
-        <playbookFileName> gui_l3_vrrp_ospf.yml </playbookFileName>
+        <description>Configure L3 VRRP with OSPF</description>
+        <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
+        <playbookFileName>gui_l3_vrrp_ospf.yml</playbookFileName>
 
         <guiProperties>
-            <tab> mandatory </tab>
-            <displayText> CSV File</displayText>
+            <tab>mandatory</tab>
+            <displayText>CSV File</displayText>
             <value></value>
             <choices></choices>
-            <key> csv_file </key>
-            <type> file </type>
-            <tooltip> Csv file containing L3 vrrp data. </tooltip>
+            <key>csv_file</key>
+            <type>file</type>
+            <tooltip>Csv file containing L3 vrrp data.</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> mandatory </tab>
-            <displayText> Net Address</displayText>
-            <value> 172.168.1.0 </value>
+            <tab>mandatory</tab>
+            <displayText>Net Address</displayText>
+            <value>172.168.1.0</value>
             <choices></choices>
-            <key> pn_net_address </key>
-            <type> IP </type>
-            <tooltip> Network address required to calculate link IPs for layer3 fabric. </tooltip>
+            <key>pn_net_address</key>
+            <type>IP</type>
+            <tooltip>Network address required to calculate link IPs for layer3 fabric.</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> mandatory </tab>
-            <displayText> Cidr</displayText>
-            <value> 24 </value>
+            <tab>mandatory</tab>
+            <displayText>Cidr</displayText>
+            <value>24</value>
             <choices></choices>
-            <key> pn_cidr </key>
-            <type> text </type>
-            <tooltip> Subnet mask required to calculate link IPs for layer3 fabric. </tooltip>
+            <key>pn_cidr</key>
+            <type>text</type>
+            <tooltip>Subnet mask required to calculate link IPs for layer3 fabric.</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> mandatory </tab>
-            <displayText> Supernet</displayText>
-            <value> 30 </value>
+            <tab>mandatory</tab>
+            <displayText>Supernet</displayText>
+            <value>30</value>
             <choices></choices>
-            <key> pn_supernet </key>
-            <type> text </type>
-            <tooltip> Supernet mask required to calculate link IPs for layer3 fabric. </tooltip>
+            <key>pn_supernet</key>
+            <type>text</type>
+            <tooltip>Supernet mask required to calculate link IPs for layer3 fabric.</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> optional </tab>
-            <displayText> Loopback Ip</displayText>
-            <value> 109.109.109.0/24 </value>
-            <choices></choices>
-            <key> pn_loopback_ip </key>
-            <type> IP </type>
-            <tooltip> Loopback ip starting value for vrouters. </tooltip>
-        </guiProperties>
-
-        <guiProperties>
-            <tab> optional </tab>
-            <displayText> Bfd</displayText>
-            <value> True </value>
+            <tab>optional</tab>
+            <displayText>Assign Loopback</displayText>
+            <value>True</value>
             <choices>
-                <option> False </option>
-                <option> True </option>
+                <option>False</option>
+                <option>True</option>
             </choices>
-            <key> pn_bfd </key>
-            <type> boolean </type>
-            <tooltip>  Flag to indicate if BFD config should be added to vrouter interfaces </tooltip>
+            <key>pn_assign_loopback</key>
+            <type>boolean</type>
+            <tooltip>Flag to indicate if loopback ips should be assigned to vrouters</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> optional </tab>
-            <displayText> Bfd min rx </displayText>
-            <value> 200 </value>
+            <tab>optional</tab>
+            <displayText>Loopback Ip</displayText>
+            <value>109.109.109.0/24</value>
             <choices></choices>
-            <key> pn_bfd_min_rx </key>
-            <type> text </type>
-            <tooltip> BFD-MIN-RX value required for adding BFD configuration to vrouter interfaces. </tooltip>
+            <key>pn_loopback_ip</key>
+            <type>IP</type>
+            <tooltip>Loopback ip starting value for vrouters.</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> optional </tab>
-            <displayText> Bfd Multiplier </displayText>
-            <value> 3 </value>
-            <choices></choices>
-            <key> pn_bfd_multiplier </key>
-            <type> text </type>
-            <tooltip> BFD_MULTIPLIER value required for adding BFD configuration to vrouter interfaces. </tooltip>
-        </guiProperties>
-
-        <guiProperties>
-            <tab> optional </tab>
-            <displayText> Update fabric to inband</displayText>
-            <value> False </value>
+            <tab>optional</tab>
+            <displayText>Bfd</displayText>
+            <value>True</value>
             <choices>
-                <option> True </option>
-                <option> False </option>
+                <option>False</option>
+                <option>True</option>
             </choices>
-            <key> pn_update_fabric_to_inband </key>
-            <type> boolean </type>
-            <tooltip> Flag to indicate if fabric network should be updated to in-band. </tooltip>
+            <key>pn_bfd</key>
+            <type>boolean</type>
+            <tooltip>Flag to indicate if BFD config should be added to vrouter interfaces</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> optional </tab>
-            <displayText> STP </displayText>
-            <value> True </value>
+            <tab>optional</tab>
+            <displayText>Bfd min rx</displayText>
+            <value>200</value>
+            <choices></choices>
+            <key>pn_bfd_min_rx</key>
+            <type>text</type>
+            <tooltip>BFD-MIN-RX value required for adding BFD configuration to vrouter interfaces.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Bfd Multiplier</displayText>
+            <value>3</value>
+            <choices></choices>
+            <key>pn_bfd_multiplier</key>
+            <type>text</type>
+            <tooltip>BFD_MULTIPLIER value required for adding BFD configuration to vrouter interfaces.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Update fabric to inband</displayText>
+            <value>False</value>
             <choices>
-                <option> False </option>
-                <option> True </option>
+                <option>True</option>
+                <option>False</option>
             </choices>
-            <key> pn_stp </key>
-            <type> boolean </type>
-            <tooltip> Flag to enable STP (spanning tree protocol) </tooltip>
+            <key>pn_update_fabric_to_inband</key>
+            <type>boolean</type>
+            <tooltip>Flag to indicate if fabric network should be updated to in-band.</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> mandatory </tab>
-            <displayText> Ospf area id </displayText>
-            <value> 0 </value>
-            <choices></choices>
-            <key> pn_ospf_area_id </key>
-            <type> text </type>
-            <tooltip>  Area id to configure for ospf </tooltip>
+            <tab>optional</tab>
+            <displayText>STP</displayText>
+            <value>True</value>
+            <choices>
+                <option>False</option>
+                <option>True</option>
+            </choices>
+            <key>pn_stp</key>
+            <type>boolean</type>
+            <tooltip>Flag to enable STP (spanning tree protocol)</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> mandatory </tab>
-            <displayText> Iospf ip range </displayText>
-            <value> 75.75.75.0/24 </value>
+            <tab>mandatory</tab>
+            <displayText>Ospf area id</displayText>
+            <value>0</value>
             <choices></choices>
-            <key> pn_iospf_ip_range </key>
-            <type> IP </type>
-            <tooltip> Ip range for creating the interfaces between leaf clusters. </tooltip>
+            <key>pn_ospf_area_id</key>
+            <type>text</type>
+            <tooltip>Area id to configure for ospf</tooltip>
         </guiProperties>
 
         <guiProperties>
-            <tab> mandatory </tab>
-            <displayText> Iospf vlan </displayText>
-            <value> 4040 </value>
+            <tab>mandatory</tab>
+            <displayText>Iospf ip range</displayText>
+            <value>75.75.75.0/24</value>
             <choices></choices>
-            <key> pn_iospf_vlan </key>
-            <type> text </type>
-            <tooltip>  Vlan for creating the interfaces between leaf clusters </tooltip>
+            <key>pn_iospf_ip_range</key>
+            <type>IP</type>
+            <tooltip>Ip range for creating the interfaces between leaf clusters.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Iospf vlan</displayText>
+            <value>4040</value>
+            <choices></choices>
+            <key>pn_iospf_vlan</key>
+            <type>text</type>
+            <tooltip>Vlan for creating the interfaces between leaf clusters</tooltip>
         </guiProperties>
     </playbook>
+
+    <playbook>
+        <name>L3 with third party spines</name>
+        <image>  </image>
+        <description>Layer3 setup with third party spine switches.</description>
+        <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
+        <playbookFileName>gui_l3_ztp_third_party.yml</playbookFileName>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>CSV File</displayText>
+            <value></value>
+            <choices></choices>
+            <key>csv_file</key>
+            <type>file</type>
+            <tooltip>Csv file containing L3 vrrp data.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Net Address</displayText>
+            <value>172.168.1.0</value>
+            <choices></choices>
+            <key>pn_net_address</key>
+            <type>IP</type>
+            <tooltip>Network address required to calculate link IPs for layer3 fabric.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Cidr</displayText>
+            <value>24</value>
+            <choices></choices>
+            <key>pn_cidr</key>
+            <type>text</type>
+            <tooltip>Subnet mask required to calculate link IPs for layer3 fabric.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Supernet</displayText>
+            <value>30</value>
+            <choices> </choices>
+            <key>pn_supernet</key>
+            <type>text</type>
+            <tooltip>Supernet mask required to calculate link IPs for layer3 fabric.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Assign Loopback</displayText>
+            <value>True</value>
+            <choices>
+                <option>False</option>
+                <option>True</option>
+            </choices>
+            <key>pn_assign_loopback</key>
+            <type>boolean</type>
+            <tooltip>Flag to indicate if loopback ips should be assigned to vrouters</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Loopback Ip</displayText>
+            <value>109.109.109.0/24</value>
+            <choices></choices>
+            <key>pn_loopback_ip</key>
+            <type>IP</type>
+            <tooltip>Loopback ip starting value for vrouters.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Bfd</displayText>
+            <value>True</value>
+            <choices>
+                <option>False</option>
+                <option>True</option>
+            </choices>
+            <key>pn_bfd</key>
+            <type>boolean</type>
+            <tooltip>Flag to indicate if BFD config should be added to vrouter interfaces</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Bfd min rx</displayText>
+            <value>200</value>
+            <choices></choices>
+            <key>pn_bfd_min_rx</key>
+            <type>text</type>
+            <tooltip>BFD-MIN-RX value required for adding BFD configuration to vrouter interfaces.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Bfd Multiplier</displayText>
+            <value>3</value>
+            <choices></choices>
+            <key>pn_bfd_multiplier</key>
+            <type>text</type>
+            <tooltip>BFD_MULTIPLIER value required for adding BFD configuration to vrouter interfaces.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Update fabric to inband</displayText>
+            <value>False</value>
+            <choices>
+                <option>True</option>
+                <option>False</option>
+            </choices>
+            <key>pn_update_fabric_to_inband</key>
+            <type>boolean</type>
+            <tooltip>Flag to indicate if fabric network should be updated to in-band.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>STP</displayText>
+            <value>True</value>
+            <choices>
+                <option>False</option>
+                <option>True</option>
+            </choices>
+            <key>pn_stp</key>
+            <type>boolean</type>
+            <tooltip>Flag to enable STP (spanning tree protocol)</tooltip>
+        </guiProperties>
+    </playbook>
+
+    <playbook>
+        <name>L3 VRRP eBGP with third party spines</name>
+        <image>  </image>
+        <description>Configure L3 VRRP eBGP with third party spines</description>
+        <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
+        <playbookFileName>gui_l3_vrrp_ebgp_third_party.yml</playbookFileName>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>CSV File</displayText>
+            <value></value>
+            <choices></choices>
+            <key>csv_file</key>
+            <type>file</type>
+            <tooltip>Csv file containing L3 vrrp data.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Net Address</displayText>
+            <value>172.168.1.0</value>
+            <choices></choices>
+            <key>pn_net_address</key>
+            <type>IP</type>
+            <tooltip>Network address required to calculate link IPs for layer3 fabric.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Cidr</displayText>
+            <value>24</value>
+            <choices></choices>
+            <key>pn_cidr</key>
+            <type>text</type>
+            <tooltip>Subnet mask required to calculate link IPs for layer3 fabric.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Supernet</displayText>
+            <value>30</value>
+            <choices> </choices>
+            <key>pn_supernet</key>
+            <type>text</type>
+            <tooltip>Supernet mask required to calculate link IPs for layer3 fabric.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Assign Loopback</displayText>
+            <value>True</value>
+            <choices>
+                <option>False</option>
+                <option>True</option>
+            </choices>
+            <key>pn_assign_loopback</key>
+            <type>boolean</type>
+            <tooltip>Flag to indicate if loopback ips should be assigned to vrouters</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Loopback Ip</displayText>
+            <value>109.109.109.0/24</value>
+            <choices></choices>
+            <key>pn_loopback_ip</key>
+            <type>IP</type>
+            <tooltip>Loopback ip starting value for vrouters.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Bfd</displayText>
+            <value>True</value>
+            <choices>
+                <option>False</option>
+                <option>True</option>
+            </choices>
+            <key>pn_bfd</key>
+            <type>boolean</type>
+            <tooltip>Flag to indicate if BFD config should be added to vrouter interfaces</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Bfd min rx</displayText>
+            <value>200</value>
+            <choices></choices>
+            <key>pn_bfd_min_rx</key>
+            <type>text</type>
+            <tooltip>BFD-MIN-RX value required for adding BFD configuration to vrouter interfaces.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Bfd Multiplier</displayText>
+            <value>3</value>
+            <choices></choices>
+            <key>pn_bfd_multiplier</key>
+            <type>text</type>
+            <tooltip>BFD_MULTIPLIER value required for adding BFD configuration to vrouter interfaces.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Update fabric to inband</displayText>
+            <value>False</value>
+            <choices>
+                <option>True</option>
+                <option>False</option>
+            </choices>
+            <key>pn_update_fabric_to_inband</key>
+            <type>boolean</type>
+            <tooltip>Flag to indicate if fabric network should be updated to in-band.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>STP</displayText>
+            <value>True</value>
+            <choices>
+                <option>False</option>
+                <option>True</option>
+            </choices>
+            <key>pn_stp</key>
+            <type>boolean</type>
+            <tooltip>Flag to enable STP (spanning tree protocol)</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Bgp Maxpath</displayText>
+            <value>16</value>
+            <choices></choices>
+            <key>pn_bgp_maxpath</key>
+            <type>text</type>
+            <tooltip>BGP-MAXPATH value to be assigned to vrouters</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Bgp as range</displayText>
+            <value>65000</value>
+            <choices></choices>
+            <key>pn_bgp_as_range</key>
+            <type>text</type>
+            <tooltip>BGP-AS-RANGE value to be assigned to vrouters</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Ibgp ip range</displayText>
+            <value>75.75.75.0/24</value>
+            <choices></choices>
+            <key>pn_ibgp_ip_range</key>
+            <type>IP</type>
+            <tooltip>iBGP IP range to be assigned to vrouter interfaces</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Bgp redistribute</displayText>
+            <value>connected</value>
+            <choices>
+                <option>none</option>
+                <option>static</option>
+                <option>rip</option>
+                <option>ospf</option>
+                <option>connected</option>
+            </choices>
+            <key>pn_bgp_redistribute</key>
+            <type>boolean</type>
+            <tooltip>iBGP vlan value to be assigned to vrouter interfaces</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Ibgp vlan</displayText>
+            <value>4040</value>
+            <choices></choices>
+            <key>pn_ibgp_vlan</key>
+            <type>text</type>
+            <tooltip>iBGP vlan value to be assigned to vrouter interfaces</tooltip>
+        </guiProperties>
+    </playbook>
+
+    <playbook>
+        <name>L3 VRRP OSPF with third party spines</name>
+        <image>  </image>
+        <description>Configure L3 VRRP OSPF with third party spines</description>
+        <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
+        <playbookFileName>gui_l3_vrrp_ospf_third_party.yml</playbookFileName>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>CSV File</displayText>
+            <value></value>
+            <choices></choices>
+            <key>csv_file</key>
+            <type>file</type>
+            <tooltip>Csv file containing L3 vrrp data.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Net Address</displayText>
+            <value>172.168.1.0</value>
+            <choices></choices>
+            <key>pn_net_address</key>
+            <type>IP</type>
+            <tooltip>Network address required to calculate link IPs for layer3 fabric.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Cidr</displayText>
+            <value>24</value>
+            <choices></choices>
+            <key>pn_cidr</key>
+            <type>text</type>
+            <tooltip>Subnet mask required to calculate link IPs for layer3 fabric.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Supernet</displayText>
+            <value>30</value>
+            <choices></choices>
+            <key>pn_supernet</key>
+            <type>text</type>
+            <tooltip>Supernet mask required to calculate link IPs for layer3 fabric.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Assign Loopback</displayText>
+            <value>True</value>
+            <choices>
+                <option>False</option>
+                <option>True</option>
+            </choices>
+            <key>pn_assign_loopback</key>
+            <type>boolean</type>
+            <tooltip>Flag to indicate if loopback ips should be assigned to vrouters</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Loopback Ip</displayText>
+            <value>109.109.109.0/24</value>
+            <choices></choices>
+            <key>pn_loopback_ip</key>
+            <type>IP</type>
+            <tooltip>Loopback ip starting value for vrouters.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Bfd</displayText>
+            <value>True</value>
+            <choices>
+                <option>False</option>
+                <option>True</option>
+            </choices>
+            <key>pn_bfd</key>
+            <type>boolean</type>
+            <tooltip>Flag to indicate if BFD config should be added to vrouter interfaces</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Bfd min rx</displayText>
+            <value>200</value>
+            <choices></choices>
+            <key>pn_bfd_min_rx</key>
+            <type>text</type>
+            <tooltip>BFD-MIN-RX value required for adding BFD configuration to vrouter interfaces.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Bfd Multiplier</displayText>
+            <value>3</value>
+            <choices></choices>
+            <key>pn_bfd_multiplier</key>
+            <type>text</type>
+            <tooltip>BFD_MULTIPLIER value required for adding BFD configuration to vrouter interfaces.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Update fabric to inband</displayText>
+            <value>False</value>
+            <choices>
+                <option>True</option>
+                <option>False</option>
+            </choices>
+            <key>pn_update_fabric_to_inband</key>
+            <type>boolean</type>
+            <tooltip>Flag to indicate if fabric network should be updated to in-band.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>STP</displayText>
+            <value>True</value>
+            <choices>
+                <option>False</option>
+                <option>True</option>
+            </choices>
+            <key>pn_stp</key>
+            <type>boolean</type>
+            <tooltip>Flag to enable STP (spanning tree protocol)</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Ospf area id</displayText>
+            <value>0</value>
+            <choices></choices>
+            <key>pn_ospf_area_id</key>
+            <type>text</type>
+            <tooltip>Area id to configure for ospf</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Iospf ip range</displayText>
+            <value>75.75.75.0/24</value>
+            <choices></choices>
+            <key>pn_iospf_ip_range</key>
+            <type>IP</type>
+            <tooltip>Ip range for creating the interfaces between leaf clusters.</tooltip>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Iospf vlan</displayText>
+            <value>4040</value>
+            <choices></choices>
+            <key>pn_iospf_vlan</key>
+            <type>text</type>
+            <tooltip>Vlan for creating the interfaces between leaf clusters</tooltip>
+        </guiProperties>
+    </playbook>
+
+
 </playbooks>
