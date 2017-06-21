@@ -281,7 +281,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>BFD min rx</displayText>
+            <displayText>BFD Min RX</displayText>
             <value>200</value>
             <choices></choices>
             <key>pn_bfd_min_rx</key>
@@ -467,7 +467,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>BFD min rx</displayText>
+            <displayText>BFD Min RX</displayText>
             <value>200</value>
             <choices></choices>
             <key>pn_bfd_min_rx</key>
@@ -627,7 +627,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>BFD min rx</displayText>
+            <displayText>BFD Min RX</displayText>
             <value>200</value>
             <choices></choices>
             <key>pn_bfd_min_rx</key>
@@ -757,7 +757,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>BFD min rx</displayText>
+            <displayText>BFD Min RX</displayText>
             <value>200</value>
             <choices></choices>
             <key>pn_bfd_min_rx</key>
@@ -943,7 +943,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>BFD min rx</displayText>
+            <displayText>BFD Min RX</displayText>
             <value>200</value>
             <choices></choices>
             <key>pn_bfd_min_rx</key>
