@@ -8,7 +8,7 @@
 
         <guiProperties>
             <tab>mandatory</tab>
-            <displayText>Fabric Creation</displayText>
+            <displayText>Fabric Name</displayText>
             <value>gui-fabric</value>
             <choices></choices>
             <key>pn_fabric_name</key>
@@ -225,7 +225,7 @@
 
         <guiProperties>
             <tab>mandatory</tab>
-            <displayText>Cidr</displayText>
+            <displayText>CIDR</displayText>
             <value>24</value>
             <choices></choices>
             <key>pn_cidr</key>
@@ -258,17 +258,17 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Loopback Ip</displayText>
+            <displayText>Loopback IP</displayText>
             <value>109.109.109.0/24</value>
             <choices></choices>
             <key>pn_loopback_ip</key>
             <type>IP</type>
-            <tooltip>Loopback ip starting value for vrouters.</tooltip>
+            <tooltip>Loopback IP starting value for vrouters.</tooltip>
         </guiProperties>
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Bfd</displayText>
+            <displayText>BFD</displayText>
             <value>True</value>
             <choices>
                 <option>False</option>
@@ -281,7 +281,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Bfd min rx</displayText>
+            <displayText>BFD min rx</displayText>
             <value>200</value>
             <choices></choices>
             <key>pn_bfd_min_rx</key>
@@ -291,7 +291,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Bfd Multiplier</displayText>
+            <displayText>BFD Multiplier</displayText>
             <value>3</value>
             <choices></choices>
             <key>pn_bfd_multiplier</key>
@@ -327,7 +327,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Bgp Maxpath</displayText>
+            <displayText>BGP Maxpath</displayText>
             <value>16</value>
             <choices></choices>
             <key>pn_bgp_maxpath</key>
@@ -337,7 +337,7 @@
 
         <guiProperties>
             <tab>mandatory</tab>
-            <displayText>Bgp as range</displayText>
+            <displayText>BGP as range</displayText>
             <value>65000</value>
             <choices></choices>
             <key>pn_bgp_as_range</key>
@@ -347,7 +347,7 @@
 
         <guiProperties>
             <tab>mandatory</tab>
-            <displayText>Ibgp ip range</displayText>
+            <displayText>iBGP IP range</displayText>
             <value>75.75.75.0/24</value>
             <choices></choices>
             <key>pn_ibgp_ip_range</key>
@@ -357,7 +357,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Bgp redistribute</displayText>
+            <displayText>BGP redistribute</displayText>
             <value>connected</value>
             <choices>
                 <option>none</option>
@@ -373,7 +373,7 @@
 
         <guiProperties>
             <tab>mandatory</tab>
-            <displayText>Ibgp vlan</displayText>
+            <displayText>iBGP vlan</displayText>
             <value>4040</value>
             <choices></choices>
             <key>pn_ibgp_vlan</key>
@@ -411,7 +411,7 @@
 
         <guiProperties>
             <tab>mandatory</tab>
-            <displayText>Cidr</displayText>
+            <displayText>CIDR</displayText>
             <value>24</value>
             <choices></choices>
             <key>pn_cidr</key>
@@ -444,17 +444,17 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Loopback Ip</displayText>
+            <displayText>Loopback IP</displayText>
             <value>109.109.109.0/24</value>
             <choices></choices>
             <key>pn_loopback_ip</key>
             <type>IP</type>
-            <tooltip>Loopback ip starting value for vrouters.</tooltip>
+            <tooltip>Loopback IP starting value for vrouters.</tooltip>
         </guiProperties>
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Bfd</displayText>
+            <displayText>BFD</displayText>
             <value>True</value>
             <choices>
                 <option>False</option>
@@ -467,7 +467,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Bfd min rx</displayText>
+            <displayText>BFD min rx</displayText>
             <value>200</value>
             <choices></choices>
             <key>pn_bfd_min_rx</key>
@@ -477,7 +477,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Bfd Multiplier</displayText>
+            <displayText>BFD Multiplier</displayText>
             <value>3</value>
             <choices></choices>
             <key>pn_bfd_multiplier</key>
@@ -523,7 +523,7 @@
 
         <guiProperties>
             <tab>mandatory</tab>
-            <displayText>Iospf ip range</displayText>
+            <displayText>iOSPF IP Range</displayText>
             <value>75.75.75.0/24</value>
             <choices></choices>
             <key>pn_iospf_ip_range</key>
@@ -533,7 +533,7 @@
 
         <guiProperties>
             <tab>mandatory</tab>
-            <displayText>Iospf vlan</displayText>
+            <displayText>iOSPF Vlan</displayText>
             <value>4040</value>
             <choices></choices>
             <key>pn_iospf_vlan</key>
@@ -543,9 +543,9 @@
     </playbook>
 
     <playbook>
-        <name>L3 with third party spines</name>
+        <name>L3 with existing spines</name>
         <image>  </image>
-        <description>Layer3 setup with third party spine switches.</description>
+        <description>Layer3 setup with existing spine switches.</description>
         <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
         <playbookFileName>gui_l3_ztp_third_party.yml</playbookFileName>
 
@@ -571,7 +571,7 @@
 
         <guiProperties>
             <tab>mandatory</tab>
-            <displayText>Cidr</displayText>
+            <displayText>CIDR</displayText>
             <value>24</value>
             <choices></choices>
             <key>pn_cidr</key>
@@ -604,17 +604,17 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Loopback Ip</displayText>
+            <displayText>Loopback IP</displayText>
             <value>109.109.109.0/24</value>
             <choices></choices>
             <key>pn_loopback_ip</key>
             <type>IP</type>
-            <tooltip>Loopback ip starting value for vrouters.</tooltip>
+            <tooltip>Loopback IP starting value for vrouters.</tooltip>
         </guiProperties>
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Bfd</displayText>
+            <displayText>BFD</displayText>
             <value>True</value>
             <choices>
                 <option>False</option>
@@ -627,7 +627,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Bfd min rx</displayText>
+            <displayText>BFD min rx</displayText>
             <value>200</value>
             <choices></choices>
             <key>pn_bfd_min_rx</key>
@@ -637,7 +637,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Bfd Multiplier</displayText>
+            <displayText>BFD Multiplier</displayText>
             <value>3</value>
             <choices></choices>
             <key>pn_bfd_multiplier</key>
@@ -673,9 +673,9 @@
     </playbook>
 
     <playbook>
-        <name>L3 VRRP eBGP with third party spines</name>
+        <name>L3 VRRP eBGP with existing spines</name>
         <image>  </image>
-        <description>Configure L3 VRRP eBGP with third party spines</description>
+        <description>Configure L3 VRRP eBGP with existing spines</description>
         <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
         <playbookFileName>gui_l3_vrrp_ebgp_third_party.yml</playbookFileName>
 
@@ -701,7 +701,7 @@
 
         <guiProperties>
             <tab>mandatory</tab>
-            <displayText>Cidr</displayText>
+            <displayText>CIDR</displayText>
             <value>24</value>
             <choices></choices>
             <key>pn_cidr</key>
@@ -713,7 +713,7 @@
             <tab>mandatory</tab>
             <displayText>Supernet</displayText>
             <value>30</value>
-            <choices> </choices>
+            <choices></choices>
             <key>pn_supernet</key>
             <type>text</type>
             <tooltip>Supernet mask required to calculate link IPs for layer3 fabric.</tooltip>
@@ -734,17 +734,17 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Loopback Ip</displayText>
+            <displayText>Loopback IP</displayText>
             <value>109.109.109.0/24</value>
             <choices></choices>
             <key>pn_loopback_ip</key>
             <type>IP</type>
-            <tooltip>Loopback ip starting value for vrouters.</tooltip>
+            <tooltip>Loopback iIP starting value for vrouters.</tooltip>
         </guiProperties>
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Bfd</displayText>
+            <displayText>BFD</displayText>
             <value>True</value>
             <choices>
                 <option>False</option>
@@ -757,7 +757,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Bfd min rx</displayText>
+            <displayText>BFD min rx</displayText>
             <value>200</value>
             <choices></choices>
             <key>pn_bfd_min_rx</key>
@@ -767,7 +767,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Bfd Multiplier</displayText>
+            <displayText>BFD Multiplier</displayText>
             <value>3</value>
             <choices></choices>
             <key>pn_bfd_multiplier</key>
@@ -803,7 +803,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Bgp Maxpath</displayText>
+            <displayText>BGP Maxpath</displayText>
             <value>16</value>
             <choices></choices>
             <key>pn_bgp_maxpath</key>
@@ -813,7 +813,7 @@
 
         <guiProperties>
             <tab>mandatory</tab>
-            <displayText>Bgp as range</displayText>
+            <displayText>BGP as range</displayText>
             <value>65000</value>
             <choices></choices>
             <key>pn_bgp_as_range</key>
@@ -823,7 +823,7 @@
 
         <guiProperties>
             <tab>mandatory</tab>
-            <displayText>Ibgp ip range</displayText>
+            <displayText>iBGP IP range</displayText>
             <value>75.75.75.0/24</value>
             <choices></choices>
             <key>pn_ibgp_ip_range</key>
@@ -833,7 +833,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Bgp redistribute</displayText>
+            <displayText>BGP redistribute</displayText>
             <value>connected</value>
             <choices>
                 <option>none</option>
@@ -859,9 +859,9 @@
     </playbook>
 
     <playbook>
-        <name>L3 VRRP OSPF with third party spines</name>
+        <name>L3 VRRP OSPF with existing spines</name>
         <image>  </image>
-        <description>Configure L3 VRRP OSPF with third party spines</description>
+        <description>Configure L3 VRRP OSPF with existing spines</description>
         <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
         <playbookFileName>gui_l3_vrrp_ospf_third_party.yml</playbookFileName>
 
@@ -887,7 +887,7 @@
 
         <guiProperties>
             <tab>mandatory</tab>
-            <displayText>Cidr</displayText>
+            <displayText>CIDR</displayText>
             <value>24</value>
             <choices></choices>
             <key>pn_cidr</key>
@@ -920,17 +920,17 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Loopback Ip</displayText>
+            <displayText>Loopback IP</displayText>
             <value>109.109.109.0/24</value>
             <choices></choices>
             <key>pn_loopback_ip</key>
             <type>IP</type>
-            <tooltip>Loopback ip starting value for vrouters.</tooltip>
+            <tooltip>Loopback IP starting value for vrouters.</tooltip>
         </guiProperties>
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Bfd</displayText>
+            <displayText>BFD</displayText>
             <value>True</value>
             <choices>
                 <option>False</option>
@@ -943,7 +943,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Bfd min rx</displayText>
+            <displayText>BFD min rx</displayText>
             <value>200</value>
             <choices></choices>
             <key>pn_bfd_min_rx</key>
@@ -953,7 +953,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Bfd Multiplier</displayText>
+            <displayText>BFD Multiplier</displayText>
             <value>3</value>
             <choices></choices>
             <key>pn_bfd_multiplier</key>
@@ -989,7 +989,7 @@
 
         <guiProperties>
             <tab>mandatory</tab>
-            <displayText>Ospf area id</displayText>
+            <displayText>OSPF area ID</displayText>
             <value>0</value>
             <choices></choices>
             <key>pn_ospf_area_id</key>
@@ -999,7 +999,7 @@
 
         <guiProperties>
             <tab>mandatory</tab>
-            <displayText>Iospf ip range</displayText>
+            <displayText>iOSPF IP Range</displayText>
             <value>75.75.75.0/24</value>
             <choices></choices>
             <key>pn_iospf_ip_range</key>
@@ -1009,7 +1009,7 @@
 
         <guiProperties>
             <tab>mandatory</tab>
-            <displayText>Iospf vlan</displayText>
+            <displayText>iOSPF Vlan</displayText>
             <value>4040</value>
             <choices></choices>
             <key>pn_iospf_vlan</key>
