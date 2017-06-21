@@ -8,7 +8,7 @@
 
         <guiProperties>
             <tab>mandatory</tab>
-            <displayText>Fabric Creation</displayText>
+            <displayText>Fabric Name</displayText>
             <value>gui-fabric</value>
             <choices></choices>
             <key>pn_fabric_name</key>
