@@ -179,6 +179,7 @@
             <choices></choices>
             <key>csv_file</key>
             <type>file</type>
+            <sampleFilePath>assets/resources/l2_vrrp.csv</sampleFilePath>
             <tooltip>Layer2 VRRP data csv file</tooltip>
         </guiProperties>
 
@@ -210,6 +211,7 @@
             <choices></choices>
             <key>csv_file</key>
             <type>file</type>
+            <sampleFilePath>assets/resources/l3.csv</sampleFilePath>
             <tooltip>Csv file containing L3 vrrp data.</tooltip>
         </guiProperties>
 
@@ -396,6 +398,7 @@
             <choices></choices>
             <key>csv_file</key>
             <type>file</type>
+            <sampleFilePath>assets/resources/l3.csv</sampleFilePath>
             <tooltip>Csv file containing L3 vrrp data.</tooltip>
         </guiProperties>
 
@@ -556,6 +559,7 @@
             <choices></choices>
             <key>csv_file</key>
             <type>file</type>
+            <sampleFilePath>assets/resources/l3.csv</sampleFilePath>
             <tooltip>Csv file containing L3 vrrp data.</tooltip>
         </guiProperties>
 
@@ -686,6 +690,7 @@
             <choices></choices>
             <key>csv_file</key>
             <type>file</type>
+            <sampleFilePath>assets/resources/l3.csv</sampleFilePath>
             <tooltip>Csv file containing L3 vrrp data.</tooltip>
         </guiProperties>
 
@@ -872,6 +877,7 @@
             <choices></choices>
             <key>csv_file</key>
             <type>file</type>
+            <sampleFilePath>assets/resources/l3.csv</sampleFilePath>
             <tooltip>Csv file containing L3 vrrp data.</tooltip>
         </guiProperties>
 
