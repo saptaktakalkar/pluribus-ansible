@@ -198,7 +198,7 @@
 
     <playbook>
         <name>L3 VRRP eBGP</name>
-        <image>  </image>
+        <image>assets/images/playbookImages/l3_vrrp.png</image>
         <description>L3 VRRP eBGP playbook.</description>
         <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
         <playbookFileName>gui_l3_vrrp_ebgp.yml</playbookFileName>
@@ -384,7 +384,7 @@
 
     <playbook>
         <name>L3 VRRP OSPF</name>
-        <image>  </image>
+        <image>assets/images/playbookImages/l3_vrrp.png</image>
         <description>Configure L3 VRRP with OSPF</description>
         <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
         <playbookFileName>gui_l3_vrrp_ospf.yml</playbookFileName>
@@ -544,7 +544,7 @@
 
     <playbook>
         <name>L3 with existing spines</name>
-        <image>  </image>
+        <image>assets/images/playbookImages/l2_existing_spine.png</image>
         <description>Layer3 setup with existing spine switches.</description>
         <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
         <playbookFileName>gui_l3_ztp_third_party.yml</playbookFileName>
@@ -674,7 +674,7 @@
 
     <playbook>
         <name>L3 VRRP eBGP with existing spines</name>
-        <image>  </image>
+        <image>assets/images/playbookImages/l3_existing_spine.png</image>
         <description>Configure L3 VRRP eBGP with existing spines</description>
         <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
         <playbookFileName>gui_l3_vrrp_ebgp_third_party.yml</playbookFileName>
@@ -860,7 +860,7 @@
 
     <playbook>
         <name>L3 VRRP OSPF with existing spines</name>
-        <image>  </image>
+        <image>assets/images/playbookImages/l3_existing_spine.png</image>
         <description>Configure L3 VRRP OSPF with existing spines</description>
         <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
         <playbookFileName>gui_l3_vrrp_ospf_third_party.yml</playbookFileName>
