@@ -123,6 +123,8 @@ def main():
                                 pass
                             elif '[leaf]' in elements:
                                 pass
+                            elif '[third_party_spine]' in elements:
+                                pass
                             else:
                                 raise IndexError
 
