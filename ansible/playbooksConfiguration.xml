@@ -141,7 +141,7 @@
 
     <playbook>
         <name>L2 VRRP</name>
-        <image>  </image>
+        <image>assets/images/playbookImages/l2_vrrp.png</image>
         <description>A short  description regarding L2 VRRP Playbook.</description>
         <csvValidationFileName>gui_l2_vrrp_csv_validation.yml</csvValidationFileName>
         <playbookFileName>gui_l2_vrrp.yml</playbookFileName>
@@ -199,7 +199,7 @@
 
     <playbook>
         <name>L3 VRRP eBGP</name>
-        <image>  </image>
+        <image>assets/images/playbookImages/l3_vrrp.png</image>
         <description>L3 VRRP eBGP playbook.</description>
         <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
         <playbookFileName>gui_l3_vrrp_ebgp.yml</playbookFileName>
@@ -283,7 +283,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>BFD min rx</displayText>
+            <displayText>BFD Min RX</displayText>
             <value>200</value>
             <choices></choices>
             <key>pn_bfd_min_rx</key>
@@ -386,7 +386,7 @@
 
     <playbook>
         <name>L3 VRRP OSPF</name>
-        <image>  </image>
+        <image>assets/images/playbookImages/l3_vrrp.png</image>
         <description>Configure L3 VRRP with OSPF</description>
         <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
         <playbookFileName>gui_l3_vrrp_ospf.yml</playbookFileName>
@@ -546,112 +546,15 @@
     </playbook>
 
     <playbook>
-        <name>L3 with existing spines</name>
-        <image>  </image>
-        <description>Layer3 setup with existing spine switches.</description>
-        <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
-        <playbookFileName>gui_l3_ztp_third_party.yml</playbookFileName>
-
-        <guiProperties>
-            <tab>mandatory</tab>
-            <displayText>CSV File</displayText>
-            <value></value>
-            <choices></choices>
-            <key>csv_file</key>
-            <type>file</type>
-            <sampleFilePath>assets/resources/l3.csv</sampleFilePath>
-            <tooltip>Csv file containing L3 vrrp data.</tooltip>
-        </guiProperties>
-
-        <guiProperties>
-            <tab>mandatory</tab>
-            <displayText>Net Address</displayText>
-            <value>172.168.1.0</value>
-            <choices></choices>
-            <key>pn_net_address</key>
-            <type>IP</type>
-            <tooltip>Network address required to calculate link IPs for layer3 fabric.</tooltip>
-        </guiProperties>
-
-        <guiProperties>
-            <tab>mandatory</tab>
-            <displayText>CIDR</displayText>
-            <value>24</value>
-            <choices></choices>
-            <key>pn_cidr</key>
-            <type>text</type>
-            <tooltip>Subnet mask required to calculate link IPs for layer3 fabric.</tooltip>
-        </guiProperties>
-
-        <guiProperties>
-            <tab>mandatory</tab>
-            <displayText>Supernet</displayText>
-            <value>30</value>
-            <choices> </choices>
-            <key>pn_supernet</key>
-            <type>text</type>
-            <tooltip>Supernet mask required to calculate link IPs for layer3 fabric.</tooltip>
-        </guiProperties>
+        <name>L2 with existing spines</name>
+        <image>assets/images/playbookImages/l2_existing_spine.png</image>
+        <description>A short  description regarding L2 with existing spines Playbook.</description>
+        <csvValidationFileName>gui_l2_vrrp_csv_validation.yml</csvValidationFileName>
+        <playbookFileName>gui_l2_vrrp.yml</playbookFileName>
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Assign Loopback</displayText>
-            <value>True</value>
-            <choices>
-                <option>False</option>
-                <option>True</option>
-            </choices>
-            <key>pn_assign_loopback</key>
-            <type>boolean</type>
-            <tooltip>Flag to indicate if loopback ips should be assigned to vrouters</tooltip>
-        </guiProperties>
-
-        <guiProperties>
-            <tab>optional</tab>
-            <displayText>Loopback IP</displayText>
-            <value>109.109.109.0/24</value>
-            <choices></choices>
-            <key>pn_loopback_ip</key>
-            <type>IP</type>
-            <tooltip>Loopback IP starting value for vrouters.</tooltip>
-        </guiProperties>
-
-        <guiProperties>
-            <tab>optional</tab>
-            <displayText>BFD</displayText>
-            <value>True</value>
-            <choices>
-                <option>False</option>
-                <option>True</option>
-            </choices>
-            <key>pn_bfd</key>
-            <type>boolean</type>
-            <tooltip>Flag to indicate if BFD config should be added to vrouter interfaces</tooltip>
-        </guiProperties>
-
-        <guiProperties>
-            <tab>optional</tab>
-            <displayText>BFD Min RX</displayText>
-            <value>200</value>
-            <choices></choices>
-            <key>pn_bfd_min_rx</key>
-            <type>text</type>
-            <tooltip>BFD-MIN-RX value required for adding BFD configuration to vrouter interfaces.</tooltip>
-        </guiProperties>
-
-        <guiProperties>
-            <tab>optional</tab>
-            <displayText>BFD Multiplier</displayText>
-            <value>3</value>
-            <choices></choices>
-            <key>pn_bfd_multiplier</key>
-            <type>text</type>
-            <tooltip>BFD_MULTIPLIER value required for adding BFD configuration to vrouter interfaces.</tooltip>
-        </guiProperties>
-
-        <guiProperties>
-            <tab>optional</tab>
-            <displayText>Update fabric to inband</displayText>
+            <displayText>Update Fabric Network</displayText>
             <value>False</value>
             <choices>
                 <option>True</option>
@@ -659,7 +562,7 @@
             </choices>
             <key>pn_update_fabric_to_inband</key>
             <type>boolean</type>
-            <tooltip>Flag to indicate if fabric network should be updated to in-band.</tooltip>
+            <tooltip>Flag to update fabric network to in-band</tooltip>
         </guiProperties>
 
         <guiProperties>
@@ -667,18 +570,18 @@
             <displayText>STP</displayText>
             <value>True</value>
             <choices>
-                <option>False</option>
                 <option>True</option>
+                <option>False</option>
             </choices>
             <key>pn_stp</key>
             <type>boolean</type>
-            <tooltip>Flag to enable STP (spanning tree protocol)</tooltip>
+            <tooltip>Flag to enable STP at the end of configuration</tooltip>
         </guiProperties>
     </playbook>
 
     <playbook>
         <name>L3 VRRP eBGP with existing spines</name>
-        <image>  </image>
+        <image>assets/images/playbookImages/l3_existing_spine.png</image>
         <description>Configure L3 VRRP eBGP with existing spines</description>
         <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
         <playbookFileName>gui_l3_vrrp_ebgp_third_party.yml</playbookFileName>
@@ -865,7 +768,7 @@
 
     <playbook>
         <name>L3 VRRP OSPF with existing spines</name>
-        <image>  </image>
+        <image>assets/images/playbookImages/l3_existing_spine.png</image>
         <description>Configure L3 VRRP OSPF with existing spines</description>
         <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
         <playbookFileName>gui_l3_vrrp_ospf_third_party.yml</playbookFileName>
@@ -949,7 +852,7 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>BFD MIn RX</displayText>
+            <displayText>BFD Min RX</displayText>
             <value>200</value>
             <choices></choices>
             <key>pn_bfd_min_rx</key>
