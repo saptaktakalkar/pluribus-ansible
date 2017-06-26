@@ -547,7 +547,7 @@
         <image>assets/images/playbookImages/l2_existing_spine.png</image>
         <description>A short  description regarding L2 VRRP Playbook.</description>
         <csvValidationFileName>gui_l2_vrrp_csv_validation.yml</csvValidationFileName>
-        <playbookFileName>gui_l2_vrrp.yml</playbookFileName>
+        <playbookFileName>gui_l2_third_party.yml</playbookFileName>
 
         <guiProperties>
             <tab>optional</tab>
