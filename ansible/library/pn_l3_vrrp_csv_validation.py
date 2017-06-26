@@ -114,6 +114,7 @@ def main():
     vlan_list = []
     existing_ip = []
     csv_data = module.params['pn_csv_data'].replace(' ', '')
+    switch_id_dict = {}
 
     if csv_data:
         csv_data_list = csv_data.split('\n')
@@ -133,7 +134,7 @@ def main():
                     vlan = elements[0]
                     ip = elements[1]
                     switch1 = elements[2]
-                    clustered_leafs = []                    
+                    clustered_leafs = []
 
                     if not ip or not vlan or not switch1:
                         output += 'Invalid entry at line number {}\n'.format(
@@ -164,7 +165,7 @@ def main():
                                 if (not subnet.isdigit() or
                                         int(subnet) not in range(1, 33)):
                                     raise socket.error
-                                
+
                                 existing_ip.append(address)
                         except socket.error:
                             output += 'Invalid vrrp ip {} '.format(ip)
@@ -195,12 +196,26 @@ def main():
                                     line_count)
                             else:
                                 clustered_leafs.append(switch2)
+                                if tuple(clustered_leafs) not in switch_id_dict:
+                                    switch_id_dict[
+                                        tuple(clustered_leafs)] = None
 
                             # VRRP ID validation
                             if not vrrp_id.isdigit():
                                 output += 'Invalid vrrp id {} '.format(vrrp_id)
                                 output += 'at line number {}\n'.format(
                                     line_count)
+                            else:
+                                existing_vrrp_id = switch_id_dict.get(
+                                    tuple(clustered_leafs))
+                                if existing_vrrp_id is None:
+                                    switch_id_dict[
+                                        tuple(clustered_leafs)] = vrrp_id
+                                else:
+                                    if existing_vrrp_id != vrrp_id:
+                                        output += 'Vrrp id cannot be different '
+                                        output += 'at line number {}\n'.format(
+                                            line_count)
 
                             # Active switch name validation
                             if (not validate_switch_name(
@@ -229,6 +244,7 @@ def main():
         changed=False,
         task='Validate L3 vrrp csv file'
     )
+
 
 if __name__ == '__main__':
     main()
