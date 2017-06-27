@@ -142,7 +142,19 @@
     <playbook>
         <name>L2 VRRP</name>
         <image>assets/images/playbookImages/l2_vrrp.png</image>
-        <description>A short  description regarding L2 VRRP Playbook.</description>
+        <description><![CDATA[
+            <ul>
+                <li>Create trunk</li>
+                <li>Create VLAG</li>
+                <li>Create vRouter</li>
+                <li>Create VLANs</li>
+                <li>Cluster between spines</li>
+                <li>Create VRRP interfaces on spines</li>
+                <li>Supports leaf switches in cluster</li>
+                <li>Supports leaf switches not in cluster</li>
+                <li>Supports mix of leaf switches in cluster and not in cluster</li>
+            </ul>
+            ]]></description>
         <csvValidationFileName>gui_l2_vrrp_csv_validation.yml</csvValidationFileName>
         <playbookFileName>gui_l2_vrrp.yml</playbookFileName>
 
@@ -200,7 +212,21 @@
     <playbook>
         <name>L3 VRRP eBGP</name>
         <image>assets/images/playbookImages/l3_vrrp.png</image>
-        <description>L3 VRRP eBGP playbook.</description>
+        <description><![CDATA[
+            <ul>
+                <li>Create vRouter</li>
+                <li>Configure Layer 3 Link Address</li>
+                <li>Create Loopback IP and RouterID</li>
+                <li>Create BGP Network</li>
+                <li>Create BFD Neighbor</li>
+                <li>Create VLANs</li>
+                <li>Create VRRP Interfaces for leaf clusters</li>
+                <li>Create SVI for Non-cluster leaf nodes</li>
+                <li>Supports leaf switches in cluster</li>
+                <li>Supports leaf switches not in cluster</li>
+                <li>Supports mix of leaf switches in cluster and not in cluster</li>
+            </ul>
+        ]]></description>
         <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
         <playbookFileName>gui_l3_vrrp_ebgp.yml</playbookFileName>
 
@@ -387,7 +413,21 @@
     <playbook>
         <name>L3 VRRP OSPF</name>
         <image>assets/images/playbookImages/l3_vrrp.png</image>
-        <description>Configure L3 VRRP with OSPF</description>
+        <description><![CDATA[
+            <ul>
+                <li>Create vRouter</li>
+                <li>Configure Layer 3 Link Address</li>
+                <li>Create Loopback IP and RouterID</li>
+                <li>Create OSPF Network</li>
+                <li>Create BFD Neighbor</li>
+                <li>Create VLANs</li>
+                <li>Create VRRP Interfaces for leaf clusters</li>
+                <li>Create SVI for Non-cluster leaf nodes</li>
+                <li>Supports leaf switches in cluster</li>
+                <li>Supports leaf switches not in cluster</li>
+                <li>Supports mix of leaf switches in cluster and not in cluster</li>
+            </ul>
+        ]]></description>
         <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
         <playbookFileName>gui_l3_vrrp_ospf.yml</playbookFileName>
 
@@ -548,7 +588,17 @@
     <playbook>
         <name>L2 with existing spines</name>
         <image>assets/images/playbookImages/l2_existing_spine.png</image>
-        <description>A short  description regarding L2 with existing spines Playbook.</description>
+        <description><![CDATA[
+                    <ul>
+                        <li>Create trunk</li>
+                        <li>Create VLAG</li>
+                        <li>Create VLANs</li>
+                        <li>Supports leaf switches in cluster</li>
+                        <li>Supports leaf switches not in cluster</li>
+                        <li>Supports mix of leaf switches in cluster and not in cluster</li>
+                    </ul>
+                ]]>
+        </description>
         <csvValidationFileName>gui_l2_vrrp_csv_validation.yml</csvValidationFileName>
         <playbookFileName>gui_l2_third_party.yml</playbookFileName>
 
@@ -582,7 +632,23 @@
     <playbook>
         <name>L3 VRRP eBGP with existing spines</name>
         <image>assets/images/playbookImages/l3_existing_spine.png</image>
-        <description>Configure L3 VRRP eBGP with existing spines</description>
+        <description>
+            <![CDATA[
+                <ul>
+                    <li>Create vRouter</li>
+                    <li>Configure Layer 3 Link Address</li>
+                    <li>Create Loopback IP and RouterID</li>
+                    <li>Create BGP Network</li>
+                    <li>Create BFD Neighbor</li>
+                    <li>Create VLANs</li>
+                    <li>Create VRRP Interfaces for leaf clusters</li>
+                    <li>Create SVI for Non-cluster leaf nodes</li>
+                    <li>Supports leaf switches in cluster</li>
+                    <li>Supports leaf switches not in cluster</li>
+                    <li>Supports mix of leaf switches in cluster and not in cluster</li>
+                </ul>
+            ]]>
+        </description>
         <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
         <playbookFileName>gui_l3_vrrp_ebgp_third_party.yml</playbookFileName>
 
@@ -769,7 +835,22 @@
     <playbook>
         <name>L3 VRRP OSPF with existing spines</name>
         <image>assets/images/playbookImages/l3_existing_spine.png</image>
-        <description>Configure L3 VRRP OSPF with existing spines</description>
+        <description>
+            <![CDATA[
+                <ul>
+                    <li>Configure Layer 3 Link Address</li>
+                    <li>Create Loopback IP and RouterID</li>
+                    <li>Create OSPF Network</li>
+                    <li>Create BFD Neighbor</li>
+                    <li>Create VLANs</li>
+                    <li>Create VRRP Interfaces for leaf clusters</li>
+                    <li>Create SVI for Non-cluster leaf nodes</li>
+                    <li>Supports leaf switches in cluster</li>
+                    <li>Supports leaf switches not in cluster</li>
+                    <li>Supports mix of leaf switches in cluster and not in cluster</li>
+                </ul>
+            ]]>
+        </description>
         <csvValidationFileName>gui_l3_vrrp_csv_validation.yml</csvValidationFileName>
         <playbookFileName>gui_l3_vrrp_ospf_third_party.yml</playbookFileName>
 
