@@ -102,8 +102,8 @@ def main():
             hosts_file_data.append(row.strip())
 
         # [spine] and [leaf] group validation
-        if '[spine]' not in hosts_file_data:
-            output += '[spine] section is missing from the hosts file\n'
+        if '[spine]' not in hosts_file_data and '[third_party_spine]' not in hosts_file_data:
+            output += '[spine]/[third_party_spine] section is missing from the hosts file\n'
 
         if '[leaf]' not in hosts_file_data:
             output += '[leaf] section is missing from the hosts file\n'
