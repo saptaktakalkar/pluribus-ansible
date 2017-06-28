@@ -2,10 +2,11 @@
 
 
 - name: Switch Config Reset
-  hosts: all
+  hosts: "{{ reset_mode }}"
 
   vars_files:
   - cli_vault.yml
+  - playbook-variable.yml
 
   tasks:
     - name: Reset all switches
