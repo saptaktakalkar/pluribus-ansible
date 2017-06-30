@@ -10,8 +10,7 @@
 
   vars_files:
   - cli_vault.yml
-  - playbook-variable.yml
-  
+
   tasks:
     # This task is to configure VRRP for Layer 3 fabric.
     # It takes required VRRP config data from csv file.
