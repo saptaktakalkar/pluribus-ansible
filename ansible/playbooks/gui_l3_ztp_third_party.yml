@@ -10,7 +10,6 @@
 
   vars_files:
   - cli_vault.yml
-  - playbook-variable.yml
 
   tasks:
     # This task is to configure ZTP for layer3 fabric .

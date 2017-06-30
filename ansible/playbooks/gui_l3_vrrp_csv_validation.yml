@@ -8,9 +8,6 @@
   # become_method: su
   # become_user: root
 
-  vars_files:
-  - playbook-variable.yml
-
   tasks:
     # This task is to validate L3 VRRP csv file.
     - name: Validate L3 VRRP csv file
