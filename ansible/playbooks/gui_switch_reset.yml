@@ -2,7 +2,7 @@
 
 
 - name: Reset switches
-  hosts: localhost
+  hosts: "{{ reset_mode }}"
 
   vars_files:
   - cli_vault.yml
