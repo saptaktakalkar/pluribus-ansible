@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI Zero Touch Provisioning (ZTP) """
+""" PN Fabric Creation """
 
 #
 # This file is part of Ansible
@@ -25,14 +25,13 @@ from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
 ---
-module: pn_initial_ztp
+module: pn_fabric_creation
 author: 'Pluribus Networks (devops@pluribusnetworks.com)'
-short_description: CLI command to do zero touch provisioning.
+short_description: Module to perform fabric creation/join.
 description:
     Zero Touch Provisioning (ZTP) allows you to provision new switches in your
     network automatically, without manual intervention.
     It performs following steps:
-        - Accept EULA
         - Disable STP
         - Enable all ports
         - Create/Join fabric
@@ -146,13 +145,13 @@ options:
       description:
         - Flag to enable STP at the end.
       required: False
-      default: False
+      default: True
       type: bool
 """
 
 EXAMPLES = """
-- name: Auto accept EULA, Disable STP, enable ports and create/join fabric
-    pn_initial_ztp:
+- name: Fabric creation/join
+    pn_fabric_creation:
       pn_cliusername: "{{ USERNAME }}"
       pn_clipassword: "{{ PASSWORD }}"
       pn_fabric_name: 'ztp-fabric'
@@ -220,7 +219,6 @@ def run_cli(module, cli):
     :param cli: The complete cli string to be executed on the target node(s).
     :return: Output/Error or Success msg depending upon the response from cli.
     """
-    task = 'Accept EULA, Disable STP, Enable ports and Create/join fabric'
     results = []
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
@@ -238,33 +236,12 @@ def run_cli(module, cli):
             failed=True,
             exception=err.strip(),
             summary=results,
-            task=task,
+            task='Fabric creation',
             msg='Fabric creation failed',
             changed=False
         )
     else:
         return 'Success'
-
-
-def auto_accept_eula(module):
-    """
-    Method to accept the EULA when we first login to a new switch.
-    :param module: The Ansible module to fetch input parameters.
-    :return: The output of run_cli() method.
-    """
-    password = module.params['pn_clipassword']
-    cli = ' /usr/bin/cli --quiet --skip-setup eula-show '
-    cli = shlex.split(cli)
-    rc, out, err = module.run_command(cli)
-
-    if err:
-        cli = '/usr/bin/cli --quiet'
-        cli += ' --skip-setup --script-password '
-        cli += ' switch-setup-modify password ' + password
-        cli += ' eula-accepted true '
-        return run_cli(module, cli)
-    elif out:
-        return ' EULA has been accepted already '
 
 
 def update_switch_names(module, switch_name):
@@ -580,7 +557,7 @@ def main():
         pn_domain_name=dict(required=False, type='str'),
         pn_ntp_server=dict(required=False, type='str'),
         pn_web_api=dict(type='bool', default=True),
-        pn_stp=dict(required=False, type='bool', default=False), )
+        pn_stp=dict(required=False, type='bool', default=True), )
     )
 
     fabric_name = module.params['pn_fabric_name']
@@ -590,15 +567,6 @@ def main():
     current_switch = module.params['pn_current_switch']
     results = []
     global CHANGED_FLAG
-
-    # Auto accept EULA
-    if 'Setup completed successfully' in auto_accept_eula(module):
-        CHANGED_FLAG.append(True)
-
-    results.append({
-        'switch': current_switch,
-        'output': 'EULA accepted'
-    })
 
     # Update switch names to match host names from hosts file
     if 'Updated' in update_switch_names(module, current_switch):
@@ -685,7 +653,7 @@ def main():
         msg='Fabric creation succeeded',
         summary=results,
         exception='',
-        task='Accept EULA, Disable STP, Enable ports and Create/join fabric',
+        task='Fabric creation',
         failed=False,
         changed=True if True in CHANGED_FLAG else False
     )
