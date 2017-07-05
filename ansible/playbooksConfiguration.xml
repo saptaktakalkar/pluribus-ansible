@@ -17,7 +17,7 @@
             <regex>^[a-zA-Z0-9_.:-]+{1,5}$</regex>
             <parentKey>null</parentKey>
             <visible>true</visible>
-            <userAssistText>Text with no space in between.</userAssistText>
+            <userAssistText>Can contain: "letters, numbers, _, ., :, and -"</userAssistText>
         </guiProperties>
 
         <guiProperties>
@@ -47,7 +47,7 @@
             <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\/)([0-2]?[0-9]|[3][0-2])($)</regex>
             <parentKey>null</parentKey>
             <visible>true</visible>
-            <userAssistText>IP address with subnet mask.</userAssistText>
+            <userAssistText>IP address with subnet mask</userAssistText>
         </guiProperties>
 
         <guiProperties>
@@ -93,7 +93,7 @@
             <regex>^([1-9]|[12][0-9]|3[01])$</regex>
             <parentKey>null</parentKey>
             <visible>true</visible>
-            <userAssistText>Subnet mask.</userAssistText>
+            <userAssistText>Subnet mask</userAssistText>
         </guiProperties>
 
         <guiProperties>
