@@ -91,7 +91,6 @@ def main():
     host_ips = []
     connection_str = "ansible_user=\"{{ SSH_USER }}\" "
     connection_str += "ansible_ssh_pass=\"{{ SSH_PASS }}\" "
-    connection_str += "ansible_become_pass=\"{{ SSH_PASS }}\""
     hosts_file_data = module.params['pn_hosts_file_data']
 
     if hosts_file_data:

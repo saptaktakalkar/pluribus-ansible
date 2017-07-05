@@ -4,9 +4,6 @@
 
 - name: Configure L3 VRRP eBGP with third party spines
   hosts: leaf[0]
-  become: true
-  # become_method: su
-  # become_user: root
 
   vars_files:
   - cli_vault.yml
@@ -26,7 +23,6 @@
       until:  vrrp_out.failed != true           # If error pops up it will retry the code
       retries: 3                                # This is the retries count
       delay: 1
-      # ignore_errors: yes                      # Flag to indicate if we should ignore errors if any.
 
     - pause:
         seconds: 2                              # Pause playbook execution for specified amount of time.
@@ -55,7 +51,6 @@
       until:  ztp_l3_out.failed != true                 # If error pops up it will retry the code
       retries: 3                                        # This is the retries count
       delay: 1
-      # ignore_errors: yes                              # Flag to indicate if we should ignore errors if any.
 
     - pause:
         seconds: 2                                      # Pause playbook execution for specified amount of time.
@@ -79,7 +74,6 @@
       until: bgp_out.failed != true                        # If the above code fails it will retry the code
       retries: 3                                           # This is the retries count
       delay: 1
-      # ignore_errors: yes                                 # Flag to indicate if we should ignore errors if any.
 
     - pause:
         seconds: 2                                         # Pause playbook execution for specified amount of time.
