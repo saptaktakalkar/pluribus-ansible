@@ -33,7 +33,7 @@
 
   tasks:
     - name: Auto accept EULA, Disable STP, enable ports and create/join fabric
-      pn_initial_ztp:
+      pn_fabric_creation:
         pn_cliusername: "{{ USERNAME }}"                              # Cli username (value comes from cli_vault.yml).
         pn_clipassword: "{{ PASSWORD }}"                              # Cli password (value comes from cli_vault.yml).
         pn_fabric_name: "{{ pn_fabric_name }}"                        # Name of the fabric to create/join.

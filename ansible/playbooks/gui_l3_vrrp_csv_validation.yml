@@ -4,9 +4,6 @@
 
 - name: Validate L3 VRRP CSV File
   hosts: localhost
-  become: true
-  # become_method: su
-  # become_user: root
 
   tasks:
     # This task is to validate L3 VRRP csv file.

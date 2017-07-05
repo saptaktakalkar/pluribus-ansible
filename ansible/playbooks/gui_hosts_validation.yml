@@ -4,9 +4,6 @@
 
 - name: Validate Hosts file
   hosts: localhost
-  become: true
-  # become_method: su
-  # become_user: root
 
   tasks:
     # This task is to validate hosts file.
