@@ -224,6 +224,7 @@ def create_vrouter(module, switch, vrrp_id, vnet_name):
         cli += ' vrouter-create name %s vnet %s hw-vrrp-id %s enable ' % (
             vrouter_name, vnet_name, vrrp_id
         )
+        cli += ' router-type hardware '
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
 

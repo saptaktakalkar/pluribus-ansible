@@ -211,6 +211,7 @@ def create_vrouter(module, switch, vrrp_id, vnet_name):
         cli = clicopy
         cli += ' vrouter-create name %s vnet %s hw-vrrp-id %s enable ' % (
             vrouter_name, vnet_name, vrrp_id)
+        cli += ' router-type hardware '
         run_cli(module, cli)
         output = ' %s: Created vrouter with name %s \n' % (switch, vrouter_name)
         CHANGED_FLAG.append(True)
@@ -356,6 +357,7 @@ def create_vrouter_without_vrrp(module, switch, vnet_name):
     if vrouter_name not in existing_vrouter_names:
         cli = clicopy
         cli += ' vrouter-create name %s vnet %s ' % (vrouter_name, vnet_name)
+        cli += ' router-type hardware '
         run_cli(module, cli)
         output = ' %s: Created vrouter with name %s \n' % (switch, vrouter_name)
         CHANGED_FLAG.append(True)
