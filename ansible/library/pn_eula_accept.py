@@ -115,15 +115,15 @@ def main():
 
     for ip in switch_ips:
         cli = 'sshpass -p %s ' % password
-        cli += 'ssh %s@%s ' % (username, ip)
+        cli += 'ssh -o StrictHostKeyChecking=no %s@%s ' % (username, ip)
         cli += 'eula-show'
 
         cli = shlex.split(cli)
         rc, out, err = module.run_command(cli)
 
         if not out:
-            cli = 'sshpass -p admin ssh %s@%s ' % (username, ip)
-            cli += '-- --quiet --script-password '
+            cli = 'sshpass -p admin ssh -o StrictHostKeyChecking=no '
+            cli += '%s@%s -- --quiet --script-password ' % (username, ip)
             cli += 'switch-setup-modify password %s ' % password
             cli += 'eula-accepted true'
 
