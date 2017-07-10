@@ -140,7 +140,8 @@ class Connection(ConnectionBase):
     def _connect(self):
         cache_key = self._cache_key()
         if cache_key in SSH_CONNECTION_CACHE:
-            self.ssh = SSH_CONNECTION_CACHE[cache_key]
+            self.ssh = SSH_CONNECTION_CACHE[
+                cache_key] = self._connect_uncached()
         else:
             self.ssh = SSH_CONNECTION_CACHE[
                 cache_key] = self._connect_uncached()
