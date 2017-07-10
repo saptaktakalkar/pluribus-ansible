@@ -344,6 +344,7 @@ def create_vrouter(module, switch, vnet_name):
     if vrouter_name not in existing_vrouter_names:
         cli = clicopy
         cli += ' vrouter-create name %s vnet %s ' % (vrouter_name, vnet_name)
+        cli += ' router-type hardware '
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
 
