@@ -140,7 +140,8 @@ class Connection(ConnectionBase):
     def _connect(self):
         cache_key = self._cache_key()
         if cache_key in SSH_CONNECTION_CACHE:
-            self.ssh = SSH_CONNECTION_CACHE[cache_key]
+            self.ssh = SSH_CONNECTION_CACHE[
+                cache_key] = self._connect_uncached()
         else:
             self.ssh = SSH_CONNECTION_CACHE[
                 cache_key] = self._connect_uncached()
@@ -300,7 +301,6 @@ class Connection(ConnectionBase):
                          width=int(os.getenv('COLUMNS', 0)),
                          height=int(os.getenv('LINES', 0)))
 
-        cmd = cmd.replace("/bin/sh -c", "/bin/sh \-c")
         display.vvv("EXEC %s" % cmd, host=self._play_context.remote_addr)
 
         cmd = to_bytes(cmd, errors='surrogate_or_strict')

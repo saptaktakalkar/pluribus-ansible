@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI Zero Touch Provisioning (ZTP) """
+""" PN Fabric Creation """
 
 #
 # This file is part of Ansible
@@ -25,24 +25,23 @@ from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
 ---
-module: pn_initial_ztp
+module: pn_fabric_creation
 author: 'Pluribus Networks (devops@pluribusnetworks.com)'
-short_description: CLI command to do zero touch provisioning.
+short_description: Module to perform fabric creation/join.
 description:
     Zero Touch Provisioning (ZTP) allows you to provision new switches in your
     network automatically, without manual intervention.
     It performs following steps:
-        - Accept EULA
         - Disable STP
         - Enable all ports
         - Create/Join fabric
         - Enable STP
 options:
     pn_cliusername:
-        description:
-          - Provide login username if user is not root.
-        required: False
-        type: str
+      description:
+        - Provide login username if user is not root.
+      required: False
+      type: str
     pn_clipassword:
       description:
         - Provide login password if user is not root.
@@ -146,13 +145,13 @@ options:
       description:
         - Flag to enable STP at the end.
       required: False
-      default: False
+      default: True
       type: bool
 """
 
 EXAMPLES = """
-- name: Auto accept EULA, Disable STP, enable ports and create/join fabric
-    pn_initial_ztp:
+- name: Fabric creation/join
+    pn_fabric_creation:
       pn_cliusername: "{{ USERNAME }}"
       pn_clipassword: "{{ PASSWORD }}"
       pn_fabric_name: 'ztp-fabric'
@@ -162,18 +161,34 @@ EXAMPLES = """
 """
 
 RETURN = """
-stdout:
-  description: The set of responses for each command.
+summary:
+  description: It contains output of each configuration along with switch name.
   returned: always
   type: str
 changed:
   description: Indicates whether the CLI caused changes on the target.
   returned: always
   type: bool
+unreachable:
+  description: Indicates whether switch was unreachable to connect.
+  returned: always
+  type: bool
 failed:
   description: Indicates whether or not the execution failed on the target.
   returned: always
   type: bool
+exception:
+  description: Describes error/exception occurred while executing CLI command.
+  returned: always
+  type: str
+task:
+  description: Name of the task getting executed on switch.
+  returned: always
+  type: str
+msg:
+  description: Indicates whether configuration made was successful or failed.
+  returned: always
+  type: str
 """
 
 CHANGED_FLAG = []
@@ -204,42 +219,29 @@ def run_cli(module, cli):
     :param cli: The complete cli string to be executed on the target node(s).
     :return: Output/Error or Success msg depending upon the response from cli.
     """
+    results = []
     cli = shlex.split(cli)
     rc, out, err = module.run_command(cli)
+
     if out:
         return out
-
     if err:
+        json_msg = {
+            'switch': module.params['pn_current_switch'],
+            'output': u'Operation Failed: {}'.format(' '.join(cli))
+        }
+        results.append(json_msg)
         module.exit_json(
-            error='1',
+            unreachable=False,
             failed=True,
-            stderr=err.strip(),
-            msg='Operation Failed: ' + ' '.join(cli),
+            exception=err.strip(),
+            summary=results,
+            task='Fabric creation',
+            msg='Fabric creation failed',
             changed=False
         )
     else:
         return 'Success'
-
-
-def auto_accept_eula(module):
-    """
-    Method to accept the EULA when we first login to a new switch.
-    :param module: The Ansible module to fetch input parameters.
-    :return: The output of run_cli() method.
-    """
-    password = module.params['pn_clipassword']
-    cli = ' /usr/bin/cli --quiet --skip-setup eula-show '
-    cli = shlex.split(cli)
-    rc, out, err = module.run_command(cli)
-
-    if err:
-        cli = '/usr/bin/cli --quiet'
-        cli += ' --skip-setup --script-password '
-        cli += ' switch-setup-modify password ' + password
-        cli += ' eula-accepted true '
-        return run_cli(module, cli)
-    elif out:
-        return ' EULA has been accepted already '
 
 
 def update_switch_names(module, switch_name):
@@ -251,7 +253,7 @@ def update_switch_names(module, switch_name):
     """
     cli = pn_cli(module)
     cli += ' switch-setup-show format switch-name '
-    if switch_name in run_cli(module, cli).split()[1]:
+    if switch_name == run_cli(module, cli).split()[1]:
         return ' Switch name is same as hostname! '
     else:
         cli = pn_cli(module)
@@ -264,10 +266,7 @@ def make_switch_setup_static(module):
     """
     Method to assign static values to different switch setup parameters.
     :param module: The Ansible module to fetch input parameters.
-    :return: String describing modified switch setup values.
     """
-    global CHANGED_FLAG
-    switch = module.params['pn_current_switch']
     mgmt_ip = module.params['pn_mgmt_ip']
     mgmt_ip_subnet = module.params['pn_mgmt_ip_subnet']
     gateway_ip = module.params['pn_gateway_ip']
@@ -277,44 +276,29 @@ def make_switch_setup_static(module):
     ntp_server = module.params['pn_ntp_server']
     cli = pn_cli(module)
     cli += ' switch-setup-modify '
-    output = ''
 
-    if mgmt_ip and mgmt_ip_subnet:
+    if mgmt_ip:
         ip = mgmt_ip + '/' + mgmt_ip_subnet
         cli += ' mgmt-ip ' + ip
-        output += ' %s: Modified switch mgmt-ip to %s \n' % (switch, ip)
 
     if gateway_ip:
         cli += ' gateway-ip ' + gateway_ip
-        output += ' %s: Modified switch gateway-ip to %s \n' % (switch,
-                                                                gateway_ip)
 
     if dns_ip:
         cli += ' dns-ip ' + dns_ip
-        output += ' %s: Modified switch dns-ip to %s \n' % (switch, dns_ip)
 
     if dns_secondary_ip:
         cli += ' dns-secondary-ip ' + dns_secondary_ip
-        output += ' %s: Modified switch dns-secondary-ip to %s \n' % (
-            switch, dns_secondary_ip
-        )
 
     if domain_name:
         cli += ' domain-name ' + domain_name
-        output += ' %s: Modified switch domain-name to %s \n' % (switch,
-                                                                 domain_name)
 
     if ntp_server:
         cli += ' ntp-server ' + ntp_server
-        output += ' %s: Modified switch ntp-server to %s \n' % (switch,
-                                                                ntp_server)
 
     clicopy = cli
     if clicopy.split('switch-setup-modify')[1] != ' ':
         run_cli(module, cli)
-        CHANGED_FLAG.append(True)
-
-    return output
 
 
 def modify_stp_local(module, modify_flag):
@@ -542,44 +526,38 @@ def assign_inband_ip(module):
             cli += ' in-band-ip ' + ip
             run_cli(module, cli)
             CHANGED_FLAG.append(True)
-            return ' %s: Assigned in-band ip %s \n' % (switch, ip)
-        else:
-            return ' %s: In-band ip %s has been already assigned \n' % (switch,
-                                                                        ip)
 
-    return ' %s: Could not assign in-band ip \n' % switch
+        return 'Assigned in-band ip ' + ip
+
+    return 'Could not assign in-band ip'
 
 
 def main():
     """ This section is for arguments parsing """
-    module = AnsibleModule(
-        argument_spec=dict(
-            pn_cliusername=dict(required=False, type='str'),
-            pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_fabric_name=dict(required=True, type='str'),
-            pn_fabric_network=dict(required=False, type='str',
-                                   choices=['mgmt', 'in-band'],
-                                   default='mgmt'),
-            pn_fabric_control_network=dict(required=False, type='str',
-                                           choices=['mgmt', 'in-band'],
-                                           default='mgmt'),
-            pn_toggle_40g=dict(required=False, type='bool', default=True),
-            pn_spine_list=dict(required=False, type='list', default=[]),
-            pn_leaf_list=dict(required=False, type='list', default=[]),
-            pn_inband_ip=dict(required=False, type='str',
-                              default='172.16.0.0/24'),
-            pn_current_switch=dict(required=False, type='str'),
-            pn_static_setup=dict(required=False, type='bool', default=True),
-            pn_mgmt_ip=dict(required=False, type='str'),
-            pn_mgmt_ip_subnet=dict(required=False, type='str'),
-            pn_gateway_ip=dict(required=False, type='str'),
-            pn_dns_ip=dict(required=False, type='str'),
-            pn_dns_secondary_ip=dict(required=False, type='str'),
-            pn_domain_name=dict(required=False, type='str'),
-            pn_ntp_server=dict(required=False, type='str'),
-            pn_web_api=dict(type='bool', default=True),
-            pn_stp=dict(required=False, type='bool', default=False),
-        )
+    module = AnsibleModule(argument_spec=dict(
+        pn_cliusername=dict(required=False, type='str'),
+        pn_clipassword=dict(required=False, type='str', no_log=True),
+        pn_fabric_name=dict(required=True, type='str'),
+        pn_fabric_network=dict(required=False, type='str',
+                               choices=['mgmt', 'in-band'], default='mgmt'),
+        pn_fabric_control_network=dict(required=False, type='str',
+                                       choices=['mgmt', 'in-band'],
+                                       default='mgmt'),
+        pn_toggle_40g=dict(required=False, type='bool', default=True),
+        pn_spine_list=dict(required=False, type='list', default=[]),
+        pn_leaf_list=dict(required=False, type='list', default=[]),
+        pn_inband_ip=dict(required=False, type='str', default='172.16.0.0/24'),
+        pn_current_switch=dict(required=False, type='str'),
+        pn_static_setup=dict(required=False, type='bool', default=False),
+        pn_mgmt_ip=dict(required=False, type='str'),
+        pn_mgmt_ip_subnet=dict(required=False, type='str'),
+        pn_gateway_ip=dict(required=False, type='str'),
+        pn_dns_ip=dict(required=False, type='str'),
+        pn_dns_secondary_ip=dict(required=False, type='str'),
+        pn_domain_name=dict(required=False, type='str'),
+        pn_ntp_server=dict(required=False, type='str'),
+        pn_web_api=dict(type='bool', default=True),
+        pn_stp=dict(required=False, type='bool', default=True), )
     )
 
     fabric_name = module.params['pn_fabric_name']
@@ -587,15 +565,8 @@ def main():
     control_network = module.params['pn_fabric_control_network']
     toggle_40g_flag = module.params['pn_toggle_40g']
     current_switch = module.params['pn_current_switch']
-    message = ''
+    results = []
     global CHANGED_FLAG
-
-    # Auto accept EULA
-    if 'Setup completed successfully' in auto_accept_eula(module):
-        message += ' %s: EULA accepted \n' % current_switch
-        CHANGED_FLAG.append(True)
-    else:
-        message += ' %s: EULA has already been accepted \n' % current_switch
 
     # Update switch names to match host names from hosts file
     if 'Updated' in update_switch_names(module, current_switch):
@@ -603,28 +574,28 @@ def main():
 
     # Make switch setup static
     if module.params['pn_static_setup']:
-        output = make_switch_setup_static(module)
-        if output != '':
-            message += output
+        make_switch_setup_static(module)
 
     # Create/join fabric
-    if 'already in the fabric' in create_or_join_fabric(module, fabric_name,
-                                                        fabric_network):
-        message += ' %s: Already a part of fabric %s \n' % (current_switch,
-                                                            fabric_name)
-    else:
-        message += ' %s: Joined fabric %s \n' % (current_switch,
-                                                 fabric_name)
+    if 'already in the fabric' not in create_or_join_fabric(module, fabric_name,
+                                                            fabric_network):
         CHANGED_FLAG.append(True)
+
+    results.append({
+        'switch': current_switch,
+        'output': u"Joined fabric '{}'".format(fabric_name)
+    })
 
     # Configure fabric control network to either mgmt or in-band
     if 'Success' in configure_control_network(module, control_network):
-        message += ' %s: Configured fabric control network to %s \n' % (
-            current_switch, control_network)
         CHANGED_FLAG.append(True)
-    else:
-        message += ' %s: Fabric is already in %s control network \n' % (
-            current_switch, control_network)
+
+    results.append({
+        'switch': current_switch,
+        'output': u"Configured fabric control network to '{}'".format(
+            control_network
+        )
+    })
 
     # Enable web api if flag is True
     if module.params['pn_web_api']:
@@ -632,43 +603,60 @@ def main():
 
     # Disable STP
     if 'Success' in modify_stp_local(module, 'disable'):
-        message += ' %s: STP disabled \n' % current_switch
         CHANGED_FLAG.append(True)
-    else:
-        message += ' %s: STP is already disabled \n' % current_switch
+
+    results.append({
+        'switch': current_switch,
+        'output': 'STP disabled'
+    })
 
     # Enable ports
     if enable_ports(module):
-        message += ' %s: Ports enabled \n' % current_switch
         CHANGED_FLAG.append(True)
-    else:
-        message += ' %s: Ports are already enabled \n' % current_switch
+
+    results.append({
+        'switch': current_switch,
+        'output': 'Ports enabled'
+    })
 
     # Toggle 40g ports to 10g
     if toggle_40g_flag:
         if toggle_40g_local(module):
-            message += ' %s: Toggled 40G ports to 10G \n' % current_switch
+            json_msg = {
+                'switch': current_switch,
+                'output': 'Toggled 40G ports to 10G'
+            }
             CHANGED_FLAG.append(True)
+            results.append(json_msg)
 
     # Assign in-band ips.
-    message += assign_inband_ip(module)
+    out = assign_inband_ip(module)
+    json_msg = {
+        'switch': current_switch,
+        'output': out
+    }
+    results.append(json_msg)
 
     # Enable STP if flag is True
     if module.params['pn_stp']:
         if 'Success' in modify_stp_local(module, 'enable'):
-            message += ' %s: STP enabled \n' % current_switch
             CHANGED_FLAG.append(True)
-        else:
-            message += ' %s: STP is already enabled \n' % current_switch
+
+        results.append({
+            'switch': current_switch,
+            'output': 'STP enabled'
+        })
 
     # Exit the module and return the required JSON
     module.exit_json(
-        stdout=message,
-        error='0',
+        unreachable=False,
+        msg='Fabric creation succeeded',
+        summary=results,
+        exception='',
+        task='Fabric creation',
         failed=False,
         changed=True if True in CHANGED_FLAG else False
     )
-
 
 if __name__ == '__main__':
     main()

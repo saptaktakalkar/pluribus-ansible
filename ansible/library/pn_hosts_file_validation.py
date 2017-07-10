@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN HOSTS FILE Validation """
+""" PN Hosts File Validation """
 
 #
 # This file is part of Ansible
@@ -19,6 +19,7 @@
 #
 
 import re
+import socket
 
 from ansible.module_utils.basic import AnsibleModule
 
@@ -26,26 +27,26 @@ DOCUMENTATION = """
 ---
 module: pn_hosts_file_validation
 author: 'Pluribus Networks (devops@pluribusnetworks.com)'
-short_description: Module to validate L2 VRRP configuration csv file.
+short_description: Module to validate Ansible hosts/inventory file.
 description:
     HOSTS file format: switch_name ansible_hosts=ip_address
     Every row in the hosts file should have above 2 elements.
     Hosts file should not be empty. This module validates the given hosts file.
 options:
     pn_hosts_file_data:
-      description: String containing Hosts file data parsed from ini file.
+      description: String containing Hosts file data parsed.
       required: True
       type: str
 """
 
 EXAMPLES = """
-- name: Validate HOSTS file
+- name: Validate hosts file
   pn_hosts_file_validation:
-    pn_hosts_file_data: "{{ lookup('file', '{{ ini_file }}') }}"
+    pn_hosts_file_data: "{{ lookup('file', '{{ hosts_file }}') }}"
 """
 
 RETURN = """
-msg:
+summary:
   description: It contains output of each validation.
   returned: always
   type: str
@@ -58,7 +59,7 @@ unreachable:
   returned: always
   type: bool
 failed:
-  description: Indicates if csv validation failed or not.
+  description: Indicates if hosts file validation failed or not.
   returned: always
   type: bool
 exception:
@@ -69,8 +70,8 @@ task:
   description: Name of the task getting executed.
   returned: always
   type: str
-summary:
-  description: Indicates whether csv file is valid or invalid.
+msg:
+  description: Indicates whether hosts file is valid or invalid.
   returned: always
   type: str
 """
@@ -84,68 +85,103 @@ def main():
         )
     )
 
-    host_names = []
-    ip_list = []
     output = ''
+    line_count = 0
+    switch_names = []
+    host_ips = []
+    connection_str = "ansible_user=\"{{ SSH_USER }}\" "
+    connection_str += "ansible_ssh_pass=\"{{ SSH_PASS }}\""
     hosts_file_data = module.params['pn_hosts_file_data']
 
     if hosts_file_data:
-        input = hosts_file_data.split('\n')
-        if '[leaf]' not in input:
-            output += 'No leaf section in the hosts file \n'
-        elif '[spine]' not in input:
-            output += 'No spine section in the hosts file \n'
-        else:
-            line_count = 0
-            while line_count < len(input):
-                if input[line_count] == "":
-                    line_count += 1
+        hosts_file_data_temp = hosts_file_data.split('\n')
+        hosts_file_data = []
+        # To remove whitespace characters at the start and end of line
+        for row in hosts_file_data_temp:
+            hosts_file_data.append(row.strip())
 
-                elif re.match("(^\#.*)", input[line_count]) is not None:
-                    line_count += 1
+        # [spine] and [leaf] group validation
+        if '[spine]' not in hosts_file_data and '[third_party_spine]' not in hosts_file_data:
+            output += '[spine]/[third_party_spine] section is missing from the hosts file\n'
 
-                elif re.match("(^\[.*)", input[line_count]) is not None:
-                    line_count += 1
+        if '[leaf]' not in hosts_file_data:
+            output += '[leaf] section is missing from the hosts file\n'
 
+        if not output:
+            for row in hosts_file_data:
+                line_count += 1
+                row_copy = row
+                if not row_copy.strip() or row.startswith('#'):
+                    # Skip blank lines and comments which starts with '#'
+                    continue
                 else:
-                    host_line = input[line_count].split()
-                    if len(host_line) != 2:
-                        output += 'Invalid number of elements '
-                        output += 'at line number {0}. '.format(line_count + 1)
-                        output += 'It should have 2 elements (switch_name, ansible_host=ip_address)\n'
-                    else:
-                        if host_line[0] in host_names:
-                            output += 'Duplicate host name {0} '.format(host_line[0])
-                            output += 'at line number {0}\n'.format(line_count + 1)
-                        else:
-                            ip = host_line[1].split('=')
-                            if ip[0] != 'ansible_host':
-                                output += 'The spelling error in ansible_host keyword '
-                                output += 'at line number {0}.\n'.format(line_count + 1)
+                    try:
+                        elements = row.split(" ", 2)
+                        if len(elements) == 1:
+                            if '[spine]' in elements:
+                                pass
+                            elif '[leaf]' in elements:
+                                pass
+                            elif '[third_party_spine]' in elements:
+                                pass
                             else:
+                                raise IndexError
 
-                                if len(ip) == 2:
-                                    ip = ip[1]
+                        elif len(elements) == 3:
+                            switch = elements[0]
+                            ip = elements[1]
 
-                                    if re.match("(^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$)", ip) is not None:
-                                        if ip in ip_list:
-                                            output += 'Duplicate ip address '
-                                            output += 'at line number {0}\n'.format(line_count + 1)
-                                        else:
-                                            host_names.append(host_line[0])
-                                            ip_list.append(ip)
-                                    else:
-                                        output += 'Invalid IP {0} '.format(ip)
-                                        output += 'at line number {0}\n'.format(line_count + 1)
+                            # Switch name validation
+                            if switch not in switch_names:
+                                switch_names.append(switch)
+                                if (re.match("^[a-zA-Z0-9_.:-]+$", switch) is
+                                        None):
+                                    output += 'Invalid switch name {} '.format(
+                                        switch)
+                                    output += 'at line number {}\n'.format(
+                                        line_count)
+                            else:
+                                output += 'Duplicate switch name {} '.format(
+                                    switch)
+                                output += 'at line number {}\n'.format(
+                                    line_count)
 
-                                else:
-                                    output += 'ip address missing in 2nd column'
-                                    output += 'at line number {0}\n'.format(line_count + 1)
+                            # Host ip validation
+                            ip_host = ip.split('=')
+                            host = ip_host[0]
+                            ip = ip_host[1]
 
-                    line_count += 1
-            if len(ip_list) < 1:
-                output += 'The count of valid hosts is less than 1\n'
+                            if host != 'ansible_host':
+                                raise IndexError
 
+                            if ip not in host_ips:
+                                host_ips.append(ip)
+                                try:
+                                    dot_count = ip.count('.')
+                                    if dot_count != 3:
+                                        raise socket.error
+
+                                    socket.inet_aton(ip)
+                                except socket.error:
+                                    output += 'Invalid host ip {} '.format(ip)
+                                    output += 'at line number {}\n'.format(
+                                        line_count
+                                    )
+                            else:
+                                output += 'Duplicate host ip {} '.format(ip)
+                                output += 'at line number {}\n'.format(
+                                    line_count)
+
+                            # Ansible connection variable validation
+                            if elements[2] != connection_str:
+                                raise IndexError
+                        else:
+                            raise IndexError
+
+                    except IndexError:
+                        output += 'Invalid entry at line number {}\n'.format(
+                            line_count
+                        )
     else:
         output += 'Hosts file should not be empty\n'
 
@@ -165,7 +201,6 @@ def main():
         changed=False,
         task='Validate hosts file'
     )
-
 
 if __name__ == '__main__':
     main()
