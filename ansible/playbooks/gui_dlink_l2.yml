@@ -1,0 +1,72 @@
+#L2 Dlink
+---
+
+
+# This play is to accept eula.
+# It uses pn_eula_accept.py module from library/ directory.
+# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+- name: Zero Touch Provisioning - Eula accept
+  hosts: localhost
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Auto accept EULA
+      pn_eula_accept:
+        pn_cliusername: "{{ USERNAME }}"               # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ PASSWORD }}"               # Cli password (value comes from cli_vault.yml).
+        pn_host_list: "{{ groups['all'] }}"            # List of all switches
+        pn_host_ips: "{{ groups['all'] | map('extract', hostvars, ['ansible_host']) | join(',') }}"   # IPs of all switches separated by comma
+
+
+# This play is to configure fabric
+# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+- name: Create/join fabric
+  hosts: all
+  serial: 1
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Fabric creation/join
+      dlink_fabric_creation:
+        pn_cliusername: "{{ USERNAME }}"                             # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ PASSWORD }}"                             # Cli password (value comes from cli_vault.yml).
+        pn_current_switch: "{{ inventory_hostname }}"                # Name of the switch on which this task is currently getting executed.
+        pn_spine_list: "{{ groups['spine'] | default([]) }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
+        pn_leaf_list: "{{ groups['leaf'] | default([]) }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
+        pn_inband_ip: "{{ pn_inband_ip }}"                           # Inband ips to be assigned to switches starting with this value. Default: 172.16.0.0/24.
+        pn_mgmt_ip: "{{ ansible_host }}"                             # Specify MGMT-IP value of the switch.
+        pn_host_ips: "{{ groups['all'] | map('extract', hostvars, ['ansible_host']) | join(',') }}"   # IPs of all switches separated by comma
+      register: ztp_out                                              # Variable to hold/register output of the above tasks.
+      until: ztp_out.failed != true                                  # If the above code fails it will retry the code
+      retries: 3                                                     # This is the retries count
+      delay: 3
+
+
+# This play is to configure L2 vrrp
+# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+- name: Configure L2 vrrp
+  hosts: all
+  serial: 1
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: L2 configuration
+      dlink_l2:
+        pn_cliusername: "{{ USERNAME }}"                             # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ PASSWORD }}"                             # Cli password (value comes from cli_vault.yml).
+        pn_current_switch: "{{ inventory_hostname }}"                # Name of the switch on which this task is currently getting executed.
+        pn_spine_list: "{{ groups['spine'] | default([]) }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
+        pn_leaf_list: "{{ groups['leaf'] | default([]) }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
+        pn_host_ips: "{{ groups['all'] | map('extract', hostvars, ['ansible_host']) | join(',') }}"   # IPs of all switches separated by comma
+        pn_vrrp_id: "{{ pn_vrrp_id }}"                               # Specify VRRP ID to be assigned. Default: 18.
+        pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"        # VRRP layer2 data specified in csv file.
+      register: l2_out                                               # Variable to hold/register output of the above tasks.
+      until: l2_out.failed != true                                   # If the above code fails it will retry the code
+      retries: 3                                                     # This is the retries count
+      delay: 3
