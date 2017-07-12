@@ -601,13 +601,13 @@ def main():
     if module.params['pn_web_api']:
         enable_web_api(module)
 
-    # Disable STP
-    if 'Success' in modify_stp_local(module, 'disable'):
+    # Enable STP
+    if 'Success' in modify_stp_local(module, 'enable'):
         CHANGED_FLAG.append(True)
 
     results.append({
         'switch': current_switch,
-        'output': 'STP disabled'
+        'output': 'STP enabled'
     })
 
     # Enable ports
