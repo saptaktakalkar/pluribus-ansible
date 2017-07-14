@@ -185,6 +185,59 @@
     </playbook>
 
     <playbook>
+        <name>Dlink Fabric Creation</name>
+        <image>  </image>
+        <description>Fabric creation playbook. This playbook creates fabric from the host file.</description>
+        <csvValidationFileName></csvValidationFileName>
+        <playbookFileName>gui_dlink_fabric_creation.yml</playbookFileName>
+        <playbookType>Netvisor Enterprise L2/L3 License</playbookType>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Fabric Name</displayText>
+            <value>gui-fabric</value>
+            <choices></choices>
+            <key>pn_fabric_name</key>
+            <type>text</type>
+            <tooltip>Enter Fabric Name</tooltip>
+            <regex>^[a-zA-Z0-9_.:-]{1,59}$</regex>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>Can contain: "letters, numbers, _, ., :, and -"</userAssistText>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Toggle 40G</displayText>
+            <value>True</value>
+            <choices>
+		<option>True</option>
+                <option>False</option>
+	        </choices>
+            <key>pn_toggle_40g</key>
+            <type>boolean</type>
+            <tooltip>Flag to toggle/convert 40g ports to 10g ports, Toggle 40g, boolean</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>Trur or False</userAssistText>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Inband IP</displayText>
+            <value>172.16.1.0/24</value>
+            <choices></choices>
+            <key>pn_inband_ip</key>
+            <type>IP-MASK</type>
+            <tooltip>Inband ips to be assigned to switches starting with this value, Inband IP</tooltip>
+            <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\/)([0-2]?[0-9]|[3][0-2])($)</regex>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>IP address with subnet mask</userAssistText>
+        </guiProperties>
+    </playbook>
+
+    <playbook>
         <name>L2 VRRP</name>
         <image>assets/images/playbookImages/l2_vrrp.png</image>
         <description><![CDATA[
