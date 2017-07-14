@@ -60,11 +60,6 @@ options:
         - Name of the switch on which this task is currently getting executed.
       required: False
       type: str
-    pn_host_ips:
-      description:
-        - Specify ips of all hosts/switches separated by comma.
-      required: True
-      type: str
     pn_vrrp_id:
       description:
         - Specify the vrrp id to be assigned.
@@ -86,8 +81,6 @@ EXAMPLES = """
     pn_spine_list: "{{ groups['spine'] }}"
     pn_leaf_list: "{{ groups['leaf'] }}"
     pn_current_switch: "{{ inventory_hostname }}"
-    pn_host_ips: "{{ groups['all'] |
-        map('extract', hostvars, ['ansible_host']) | join(',') }}"
     pn_vrrp_id: '18'
     pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"
 """
@@ -621,7 +614,6 @@ def main():
             pn_spine_list=dict(required=False, type='list', default=[]),
             pn_leaf_list=dict(required=False, type='list', default=[]),
             pn_current_switch=dict(required=False, type='str'),
-            pn_host_ips=dict(required=True, type='str'),
             pn_vrrp_id=dict(required=False, type='str', default='18'),
             pn_csv_data=dict(required=True, type='str'),
         )

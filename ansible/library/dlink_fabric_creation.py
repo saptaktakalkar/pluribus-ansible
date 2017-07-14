@@ -18,9 +18,7 @@
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-import binascii
 import shlex
-import socket
 import time
 
 from ansible.module_utils.basic import AnsibleModule
@@ -59,6 +57,11 @@ options:
         - Specify list of leaf hosts
       required: False
       type: list
+    pn_fabric_name:
+      description:
+        - Specify name of the fabric.
+      required: False
+      type: str
     pn_inband_ip:
       description:
         - Inband ips to be assigned to switches starting with this value.
@@ -69,16 +72,6 @@ options:
       description:
         - Name of the switch on which this task is currently getting executed.
       required: False
-      type: str
-    pn_mgmt_ip:
-      description:
-        - Specify mgmt-ip of the switch.
-      required: False
-      type: str
-    pn_host_ips:
-      description:
-        - Specify ips of all hosts/switches separated by comma.
-      required: True
       type: str
     pn_toggle_40g:
       description:
@@ -96,9 +89,6 @@ EXAMPLES = """
       pn_current_switch: "{{ inventory_hostname }}"
       pn_spine_list: "{{ groups['spine'] }}"
       pn_leaf_list: "{{ groups['leaf'] }}"
-      pn_mgmt_ip: "{{ ansible_host }}"
-      pn_host_ips: "{{ groups['all'] |
-        map('extract', hostvars, ['ansible_host']) | join(',') }}"
 """
 
 RETURN = """
@@ -222,10 +212,10 @@ def assign_inband_ip(module):
         if ip not in existing_inband_ip:
             cli = clicopy
             cli += ' switch-local switch-setup-modify '
-            cli += ' in-band-ip ' + ip
+            cli += ' in-band-ip %s ' % ip
             run_cli(module, cli)
             CHANGED_FLAG.append(True)
-            output += 'Assigned in-band ip ' + ip
+            output += 'Assigned in-band ip %s ' % ip
 
         return output
 
@@ -345,7 +335,7 @@ def modify_stp(module, modify_flag):
 
     if current_state == state:
         cli = pn_cli(module)
-        cli += ' switch-local stp-modify ' + modify_flag
+        cli += ' switch-local stp-modify %s ' % modify_flag
         run_cli(module, cli)
 
 
@@ -371,34 +361,8 @@ def configure_control_network(module):
 
     if current_control_network != network:
         cli = pn_cli(module)
-        cli += ' fabric-local-modify control-network ' + network
+        cli += ' fabric-local-modify control-network %s ' % network
         run_cli(module, cli)
-
-
-def get_fabric_name_using_ip(ip):
-    """
-    Get fabric name using hex representation of an ip address.
-    :param ip: IP address to convert to hex
-    :return: Fabric name prefixed with 'fab-', followed by hex of ip
-    """
-    return 'fab-' + binascii.hexlify(socket.inet_aton(ip))
-
-
-def get_switch_name_to_ip_dict(module):
-    """
-    Get the dict containing switch_name:switch_ip pairs for all switches.
-    :param module: The Ansible module to fetch input parameters.
-    :return: dict containing switch_name:switch_ip pairs for all switches.
-    """
-    hosts = module.params['pn_spine_list'] + module.params['pn_leaf_list']
-    count = 0
-    host_ip_dict = {}
-
-    for ip in module.params['pn_host_ips'].split(','):
-        host_ip_dict[hosts[count]] = ip
-        count += 1
-
-    return host_ip_dict
 
 
 def create_fabric(module, fabric_name):
@@ -438,9 +402,11 @@ def configure_fabric(module):
     spine_list = module.params['pn_spine_list']
     leaf_list = module.params['pn_leaf_list']
     switch = module.params['pn_current_switch']
-    switch_ip = module.params['pn_mgmt_ip']
+    fabric_name = module.params['pn_fabric_name']
     find_cluster = True
     is_spine = False
+    err_flag = False
+    output = ''
 
     cli = pn_cli(module)
     cli += ' fabric-info format name no-show-headers '
@@ -481,10 +447,6 @@ def configure_fabric(module):
                             break
 
                 if cluster_node is not None:
-                    host_ip_dict = get_switch_name_to_ip_dict(module)
-                    cluster_node_ip = host_ip_dict[cluster_node]
-                    fabric_name = get_fabric_name_using_ip(cluster_node_ip)
-
                     cli = pn_cli(module)
                     cli += ' fabric-show format name no-show-headers '
                     existing_fabrics = run_cli(module, cli).split()
@@ -492,22 +454,18 @@ def configure_fabric(module):
                     if fabric_name in existing_fabrics:
                         output = join_fabric(module, fabric_name)
                     else:
-                        fabric_name = get_fabric_name_using_ip(switch_ip)
                         output = create_fabric(module, fabric_name)
                 else:
-                    fabric_name = get_fabric_name_using_ip(switch_ip)
-                    output = create_fabric(module, fabric_name)
+                    err_flag = True
             else:
-                fabric_name = get_fabric_name_using_ip(switch_ip)
-                output = create_fabric(module, fabric_name)
-
-        # If a switch is not part of any cluster then create a unique fabric
-        # for it.
+                err_flag = True
         else:
-            fabric_name = get_fabric_name_using_ip(switch_ip)
             output = create_fabric(module, fabric_name)
     else:
-        output = 'Fabric already configured'
+        return 'Fabric already configured'
+
+    if err_flag:
+        return 'Error: Switches are not connected to each other'
 
     return output
 
@@ -519,10 +477,9 @@ def main():
         pn_clipassword=dict(required=False, type='str', no_log=True),
         pn_spine_list=dict(required=False, type='list', default=[]),
         pn_leaf_list=dict(required=False, type='list', default=[]),
+        pn_fabric_name=dict(required=True, type='str'),
         pn_inband_ip=dict(required=False, type='str', default='172.16.0.0/24'),
         pn_current_switch=dict(required=False, type='str'),
-        pn_mgmt_ip=dict(required=False, type='str'),
-        pn_host_ips=dict(required=True, type='str'),
         pn_toggle_40g=dict(required=False, type='bool', default=True), )
     )
 
@@ -532,10 +489,21 @@ def main():
 
     # Create/join fabric
     out = configure_fabric(module)
-    results.append({
-        'switch': current_switch,
-        'output': out
-    })
+    if 'Error' in out:
+        module.exit_json(
+            unreachable=False,
+            failed=True,
+            exception=out,
+            summary=results,
+            task='Fabric creation',
+            msg='Fabric creation failed',
+            changed=False
+        )
+    else:
+        results.append({
+            'switch': current_switch,
+            'output': out
+        })
 
     # Configure fabric control network to mgmt
     configure_control_network(module)
