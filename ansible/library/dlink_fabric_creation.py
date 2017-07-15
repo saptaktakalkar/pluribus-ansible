@@ -47,14 +47,9 @@ options:
         - Provide login password if user is not root.
       required: False
       type: str
-    pn_spine_list:
+    pn_switch_list:
       description:
-        - Specify list of Spine hosts
-      required: False
-      type: list
-    pn_leaf_list:
-      description:
-        - Specify list of leaf hosts
+        - Specify list of switches.
       required: False
       type: list
     pn_fabric_name:
@@ -68,7 +63,7 @@ options:
       required: False
       default: 172.16.0.0/24.
       type: str
-    pn_current_switch:
+    pn_switch:
       description:
         - Name of the switch on which this task is currently getting executed.
       required: False
@@ -86,9 +81,8 @@ EXAMPLES = """
     dlink_fabric_creation:
       pn_cliusername: "{{ USERNAME }}"
       pn_clipassword: "{{ PASSWORD }}"
-      pn_current_switch: "{{ inventory_hostname }}"
-      pn_spine_list: "{{ groups['spine'] }}"
-      pn_leaf_list: "{{ groups['leaf'] }}"
+      pn_switch: "{{ inventory_hostname }}"
+      pn_switch_list: "{{ groups['switch'] }}"
 """
 
 RETURN = """
@@ -157,7 +151,7 @@ def run_cli(module, cli):
         return out
     if err:
         json_msg = {
-            'switch': module.params['pn_current_switch'],
+            'switch': module.params['pn_switch'],
             'output': u'Operation Failed: {}'.format(' '.join(cli))
         }
         results.append(json_msg)
@@ -188,16 +182,8 @@ def assign_inband_ip(module):
     last_octet = str(address[3]).split('/')
     subnet = last_octet[1]
 
-    switches_list = []
-    spines = module.params['pn_spine_list']
-    leafs = module.params['pn_leaf_list']
-    switch = module.params['pn_current_switch']
-
-    if spines:
-        switches_list += spines
-
-    if leafs:
-        switches_list += leafs
+    switches_list = module.params['pn_switch_list']
+    switch = module.params['pn_switch']
 
     if switches_list:
         ip_count = switches_list.index(switch) + 1
@@ -399,12 +385,9 @@ def configure_fabric(module):
     :param module: The Ansible module to fetch input parameters.
     :return: String describing if fabric got created/joined/already configured.
     """
-    spine_list = module.params['pn_spine_list']
-    leaf_list = module.params['pn_leaf_list']
-    switch = module.params['pn_current_switch']
+    switch_list = module.params['pn_switch_list']
+    switch = module.params['pn_switch']
     fabric_name = module.params['pn_fabric_name']
-    find_cluster = True
-    is_spine = False
     err_flag = False
     output = ''
 
@@ -416,13 +399,7 @@ def configure_fabric(module):
     # Above fabric-info cli command will throw an error, if switch is not part
     # of any fabric. So if err, we need to create/join the fabric.
     if err:
-        if switch in spine_list:
-            is_spine = True
-            if len(spine_list) == 1:
-                find_cluster = False
-        elif switch in leaf_list:
-            if len(leaf_list) == 1:
-                find_cluster = False
+        find_cluster = True if len(switch_list) == 2 else False
 
         # Clustered switches will be in same fabric.
         # So if a switch is going to be a part of a cluster, then check whether
@@ -437,16 +414,11 @@ def configure_fabric(module):
                 sys_names = list(set(sys_names.split()))
                 cluster_node = None
                 for sys in sys_names:
-                    if is_spine:
-                        if sys in spine_list:
-                            cluster_node = sys
-                            break
-                    else:
-                        if sys in leaf_list:
-                            cluster_node = sys
-                            break
+                    if sys in switch_list:
+                        cluster_node = sys
+                        break
 
-                if cluster_node is not None:
+                if cluster_node is not None and cluster_node != switch:
                     cli = pn_cli(module)
                     cli += ' fabric-show format name no-show-headers '
                     existing_fabrics = run_cli(module, cli).split()
@@ -475,17 +447,16 @@ def main():
     module = AnsibleModule(argument_spec=dict(
         pn_cliusername=dict(required=False, type='str'),
         pn_clipassword=dict(required=False, type='str', no_log=True),
-        pn_spine_list=dict(required=False, type='list', default=[]),
-        pn_leaf_list=dict(required=False, type='list', default=[]),
+        pn_switch_list=dict(required=False, type='list', default=[]),
         pn_fabric_name=dict(required=True, type='str'),
         pn_inband_ip=dict(required=False, type='str', default='172.16.0.0/24'),
-        pn_current_switch=dict(required=False, type='str'),
+        pn_switch=dict(required=False, type='str'),
         pn_toggle_40g=dict(required=False, type='bool', default=True), )
     )
 
     global CHANGED_FLAG
     results = []
-    current_switch = module.params['pn_current_switch']
+    switch = module.params['pn_switch']
 
     # Create/join fabric
     out = configure_fabric(module)
@@ -501,7 +472,7 @@ def main():
         )
     else:
         results.append({
-            'switch': current_switch,
+            'switch': switch,
             'output': out
         })
 
@@ -521,7 +492,7 @@ def main():
     if module.params['pn_toggle_40g']:
         if toggle_40g_local(module):
             results.append({
-                'switch': current_switch,
+                'switch': switch,
                 'output': 'Toggled 40G ports to 10G'
             })
 
@@ -529,7 +500,7 @@ def main():
     out = assign_inband_ip(module)
     if out:
         results.append({
-            'switch': current_switch,
+            'switch': switch,
             'output': out
         })
 
