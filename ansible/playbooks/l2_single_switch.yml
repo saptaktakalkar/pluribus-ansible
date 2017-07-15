@@ -3,6 +3,7 @@
 
 - name: Configure L2 single switch
   hosts: all
+  serial: 1
 
   vars_files:
   - cli_vault.yml
