@@ -2,6 +2,7 @@
 
 - name: Configure L2 Two switch cluster
   hosts: all
+  serial: 1
 
   vars_files:
   - cli_vault.yml
