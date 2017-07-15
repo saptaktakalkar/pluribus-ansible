@@ -34,9 +34,8 @@
       dlink_fabric_creation:
         pn_cliusername: "{{ USERNAME }}"                             # Cli username (value comes from cli_vault.yml).
         pn_clipassword: "{{ PASSWORD }}"                             # Cli password (value comes from cli_vault.yml).
-        pn_current_switch: "{{ inventory_hostname }}"                # Name of the switch on which this task is currently getting executed.
-        pn_spine_list: "{{ groups['spine'] | default([]) }}"         # List of all spine switches mentioned under [spine] grp in hosts file.
-        pn_leaf_list: "{{ groups['leaf'] | default([]) }}"           # List of all leaf switches mentioned under [leaf] grp in hosts file.
+        pn_switch: "{{ inventory_hostname }}"                        # Name of the switch on which this task is currently getting executed.
+        pn_switch_list: "{{ groups['switch'] | default([]) }}"       # List of all switches mentioned under [switch] grp in hosts file.
         pn_fabric_name: "{{ pn_fabric_name }}"                       # Name of the fabric to create.
         pn_inband_ip: "{{ pn_inband_ip }}"                           # Inband ips to be assigned to switches starting with this value. Default: 172.16.0.0/24.
         pn_toggle_40g: "{{ pn_toggle_40g }}"                         # Flag to indicate if 40g ports should be converted to 10g ports or not. Default: True
