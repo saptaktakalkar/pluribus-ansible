@@ -1,0 +1,28 @@
+---
+
+
+- name: Configure L2 single switch
+  hosts: all
+
+  vars_files:
+  - cli_vault.yml
+
+  vars:
+  - trunk_file: /etc/ansible/trunk.csv
+  - vlan_file: /etc/ansible/vlan.csv
+
+  tasks:
+    - name: Create trunks
+      pn_trunk_creation:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_switch: "{{ inventory_hostname }}"
+        pn_trunk_data: "{{ lookup('file', '{{ trunk_file }}') }}"
+
+    - name: Create vlans
+      pn_vlan_creation:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_switch: "{{ inventory_hostname }}"
+        pn_vlan_data: "{{ lookup('file', '{{ vlan_file }}') }}"
+

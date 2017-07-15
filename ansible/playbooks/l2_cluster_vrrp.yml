@@ -1,0 +1,42 @@
+---
+
+- name: Configure L2 Cluster with VRRP
+  hosts: all
+
+  vars_files:
+  - cli_vault.yml
+
+  vars:
+  - trunk_file: /etc/ansible/trunk.csv
+  - vlag_file: /etc/ansible/vlag.csv
+  - vlan_file: /etc/ansible/vlan.csv
+  - vrrp_file: /etc/ansible/vrrp.csv
+
+  tasks:
+    - name: Create trunks
+      pn_trunk_creation:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_switch: "{{ inventory_hostname }}"
+        pn_trunk_data: "{{ lookup('file', '{{ trunk_file }}') }}"
+
+    - name: Create vlags
+      pn_vlag_creation:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_switch: "{{ inventory_hostname }}"
+        pn_vlag_data: "{{ lookup('file', '{{ vlag_file }}') }}"
+
+    - name: Create vlans
+      pn_vlan_creation:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_switch: "{{ inventory_hostname }}"
+        pn_vlan_data: "{{ lookup('file', '{{ vlan_file }}') }}"
+
+    - name: Configure L2 VRRP on cluster switch
+      pn_vrrp_creation:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_switch: "{{ inventory_hostname }}"
+        pn_vrrp_data: "{{ lookup('file', '{{ vrrp_file }}') }}"
