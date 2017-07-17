@@ -128,7 +128,7 @@ def run_cli(module, cli):
         return out
     if err:
         json_msg = {
-            'switch': module.params['pn_switch'],
+            'switch': module.params['pn_switch_list'][0],
             'output': u'Operation Failed: {}'.format(' '.join(cli))
         }
         results.append(json_msg)
