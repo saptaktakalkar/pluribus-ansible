@@ -39,11 +39,12 @@ options:
         - Provide login password if user is not root.
       required: False
       type: str
-    pn_switch:
+    pn_switch_list:
       description:
-        - Name of the switch on which this task is currently getting executed.
-      required: True
-      type: str
+        - Specify list of all switches.
+      required: False
+      type: list
+      default: []
     pn_vlag_data:
       description:
         - String containing vlag data parsed from csv file.
@@ -57,7 +58,7 @@ EXAMPLES = """
   pn_vlag_creation:
     pn_cliusername: "{{ USERNAME }}"
     pn_clipassword: "{{ PASSWORD }}"
-    pn_switch: "{{ inventory_hostname }}"
+    pn_switch_list: "{{ groups['switch'] }}"
     pn_vlag_data: "{{ lookup('file', '{{ vlag_file }}') }}"
 """
 
@@ -144,11 +145,12 @@ def run_cli(module, cli):
         return None
 
 
-def create_vlag(module, name, port, peer_switch, peer_port):
+def create_vlag(module, name, switch, port, peer_switch, peer_port):
     """
     Create virtual link aggregation groups.
     :param module: The Ansible module to fetch input parameters.
     :param name: The name of the vlag to create.
+    :param switch: Name of the local switch.
     :param port: Name of the trunk on local switch.
     :param peer_switch: Name of the peer switch.
     :param peer_port: Name of the trunk on peer switch.
@@ -158,7 +160,8 @@ def create_vlag(module, name, port, peer_switch, peer_port):
     new_vlag = False
 
     cli = pn_cli(module)
-    cli += ' switch-local vlag-show format switch,peer-switch, no-show-headers '
+    cli += ' switch %s vlag-show format switch,peer-switch, ' % switch
+    cli += ' no-show-headers '
     vlag_list = run_cli(module, cli)
     if vlag_list is not None:
         vlag_list = vlag_list.split()
@@ -167,12 +170,12 @@ def create_vlag(module, name, port, peer_switch, peer_port):
 
     if new_vlag or vlag_list is None:
         cli = pn_cli(module)
-        cli += ' switch-local vlag-create name %s port %s ' % (name, port)
+        cli += ' switch %s vlag-create name %s port %s ' % (switch, name, port)
         cli += ' peer-switch %s peer-port %s ' % (peer_switch, peer_port)
         cli += ' mode active-active '
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
-        output += 'Configured vLag %s\n' % name
+        output += '%s: Configured vLag %s\n' % (switch, name)
 
     return output
 
@@ -183,7 +186,7 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_switch=dict(required=True, type='str'),
+            pn_switch_list=dict(required=False, type='list', default=[]),
             pn_vlag_data=dict(required=False, type='str', default=''),
         )
     )
@@ -191,7 +194,6 @@ def main():
     global CHANGED_FLAG
     results = []
     message = ''
-    switch = module.params['pn_switch']
 
     # Create vlag
     vlag_data = module.params['pn_vlag_data']
@@ -210,16 +212,17 @@ def main():
                     peer_switch = elements[3]
                     peer_ports = elements[4]
 
-                    if switch == local_switch:
-                        message += create_vlag(module, vlag_name, local_ports,
-                                               peer_switch, peer_ports)
+                    message += create_vlag(module, vlag_name, local_switch,
+                                           local_ports, peer_switch, peer_ports)
 
-    for line in message.splitlines():
-        if line:
-            results.append({
-                'switch': switch,
-                'output': line
-            })
+    for switch in module.params['pn_switch_list']:
+        replace_string = switch + ': '
+        for line in message.splitlines():
+            if replace_string in line:
+                results.append({
+                    'switch': switch,
+                    'output': (line.replace(replace_string, '')).strip()
+                })
 
     # Exit the module and return the required JSON.
     module.exit_json(
@@ -234,4 +237,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
