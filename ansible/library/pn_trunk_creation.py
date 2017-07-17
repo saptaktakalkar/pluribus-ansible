@@ -190,6 +190,7 @@ def main():
     global CHANGED_FLAG
     results = []
     message = ''
+    switch_list = module.params['pn_switch_list']
 
     # Create trunk
     trunk_data = module.params['pn_trunk_data']
@@ -204,9 +205,12 @@ def main():
                 switch_name = elements.pop(0)
                 trunk_name = elements.pop(0)
                 ports = ','.join(elements)
-                message += create_trunk(module, switch_name, trunk_name, ports)
 
-    for switch in module.params['pn_switch_list']:
+                if switch_name in switch_list:
+                    message += create_trunk(module, switch_name, trunk_name,
+                                            ports)
+
+    for switch in switch_list:
         replace_string = switch + ': '
         for line in message.splitlines():
             if replace_string in line:
