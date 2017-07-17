@@ -27,7 +27,7 @@ DOCUMENTATION = """
 module: pn_trunk_creation
 author: 'Pluribus Networks (devops@pluribusnetworks.com)'
 description: Module to create trunks.
-Trunk csv file format: trunk_name, list of ports.
+Trunk csv file format: switch_name, trunk_name, list of ports.
 options:
     pn_cliusername:
       description:
@@ -39,11 +39,12 @@ options:
         - Provide login password if user is not root.
       required: False
       type: str
-    pn_switch:
+    pn_switch_list:
       description:
-        - Name of the switch on which this task is currently getting executed.
-      required: True
-      type: str
+        - Specify list of all switches.
+      required: False
+      type: list
+      default: []
     pn_trunk_data:
       description:
         - String containing trunk data parsed from csv file.
@@ -57,7 +58,7 @@ EXAMPLES = """
   pn_trunk_creation:
     pn_cliusername: "{{ USERNAME }}"
     pn_clipassword: "{{ PASSWORD }}"
-    pn_switch: "{{ inventory_hostname }}"
+    pn_switch_list: "{{ groups['switch'] }}"
     pn_trunk_data: "{{ lookup('file', '{{ trunk_file }}') }}"
 """
 
@@ -144,10 +145,11 @@ def run_cli(module, cli):
         return None
 
 
-def create_trunk(module, name, ports):
+def create_trunk(module, switch, name, ports):
     """
     Method to create a trunk on a switch.
     :param module: The Ansible module to fetch input parameters.
+    :param switch: Name of the switch on which to create a trunk
     :param name: The name of the trunk to create.
     :param ports: List of connected ports.
     :return: String describing if trunk got created or not.
@@ -156,7 +158,7 @@ def create_trunk(module, name, ports):
     new_trunk = False
 
     cli = pn_cli(module)
-    cli += ' switch-local trunk-show format name no-show-headers '
+    cli += ' switch %s trunk-show format name no-show-headers ' % switch
     trunk_list = run_cli(module, cli)
     if trunk_list is not None:
         trunk_list = trunk_list.split()
@@ -165,10 +167,11 @@ def create_trunk(module, name, ports):
 
     if new_trunk or trunk_list is None:
         cli = pn_cli(module)
-        cli += ' switch-local trunk-create name %s ports %s ' % (name, ports)
+        cli += ' switch %s trunk-create name %s ports %s ' % (switch, name,
+                                                              ports)
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
-        output += 'Created trunk %s\n' % name
+        output += '%s: Created trunk %s\n' % (switch, name)
 
     return output
 
@@ -179,7 +182,7 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_switch=dict(required=True, type='str'),
+            pn_switch_list=dict(required=False, type='list', default=[]),
             pn_trunk_data=dict(required=False, type='str', default=''),
         )
     )
@@ -187,7 +190,6 @@ def main():
     global CHANGED_FLAG
     results = []
     message = ''
-    switch = module.params['pn_switch']
 
     # Create trunk
     trunk_data = module.params['pn_trunk_data']
@@ -202,16 +204,16 @@ def main():
                 switch_name = elements.pop(0)
                 trunk_name = elements.pop(0)
                 ports = ','.join(elements)
+                message += create_trunk(module, switch_name, trunk_name, ports)
 
-                if switch == switch_name:
-                    message += create_trunk(module, trunk_name, ports)
-
-    for line in message.splitlines():
-        if line:
-            results.append({
-                'switch': switch,
-                'output': line
-            })
+    for switch in module.params['pn_switch_list']:
+        replace_string = switch + ': '
+        for line in message.splitlines():
+            if replace_string in line:
+                results.append({
+                    'switch': switch,
+                    'output': (line.replace(replace_string, '')).strip()
+                })
 
     # Exit the module and return the required JSON.
     module.exit_json(
@@ -226,4 +228,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
