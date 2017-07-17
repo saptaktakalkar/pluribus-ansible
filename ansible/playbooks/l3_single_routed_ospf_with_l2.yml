@@ -1,0 +1,44 @@
+---
+
+- name: Configure OSPF, SVI
+  hosts: switch[0]
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Create vlans
+      pn_vlan_creation:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_switch: "{{ inventory_hostname }}"
+        pn_vlan_data: "{{ lookup('file', '{{ vlan_file }}') }}"
+
+    - name: Create trunks
+      pn_trunk_creation:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_switch_list: "{{ groups['switch'] }}"
+        pn_trunk_data: "{{ lookup('file', '{{ trunk_file }}') }}"
+
+    - name: Create vrouter
+      pn_vrouter_creation:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_loopback_ip: '10.10.10.10'
+        #pn_vrrp_id: '18'
+        pn_switch_list: "{{ groups['switch'] }}"
+
+    - name: Configure OSPF
+      pn_ospf_configuration:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_ospf_data: "{{ lookup('file', '{{ ospf_file }}') }}"
+        pn_switch_list: "{{ groups['switch'] }}"
+
+    - name: Configure SVI
+      pn_svi_configuration:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_switch: "{{ inventory_hostname }}"
+        pn_svi_data: "{{ lookup('file', '{{ svi_file }}') }}"
