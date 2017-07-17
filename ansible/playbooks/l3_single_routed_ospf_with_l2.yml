@@ -6,12 +6,6 @@
   vars_files:
   - cli_vault.yml
 
-  vars:
-  - ospf_file: /etc/ansible/pluribus-ansible/ansible/ospf.csv
-  - vlan_file: /etc/ansible/pluribus-ansible/ansible/vlan.csv
-  - svi_file: /etc/ansible/pluribus-ansible/ansible/svi.csv
-  - trunk_file: /etc/ansible/pluribus-ansible/ansible/trunk.csv
-
   tasks:
     - name: Create vlans
       pn_vlan_creation:
