@@ -218,7 +218,12 @@ def toggle_40g_local(module):
     cli = pn_cli(module)
     clicopy = cli
     cli += ' switch-local lldp-show format local-port no-show-headers '
-    local_ports = run_cli(module, cli).split()
+    local_ports = run_cli(module, cli)
+
+    if local_ports is not None:
+        local_ports = local_ports.split()
+    else:
+        local_ports = []
 
     cli = clicopy
     cli += ' switch-local port-config-show speed 40g '
@@ -520,4 +525,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
