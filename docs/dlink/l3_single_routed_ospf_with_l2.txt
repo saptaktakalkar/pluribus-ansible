@@ -1,0 +1,95 @@
+Playbook name: l3_single_routed_ospf_with_l2.yml
+
+Switch topology:
+
+BGP | | | 
+ +--------+
+ |   S0   |
+ +--------+
+L2   | | 
+
+Input parameters:
+1. Vlan csv file (Mandatory)
+2. Trunk csv file (Optional)
+3. ospf csv file (Mandatory)
+4. svi csv file (Mandatory) 
+
+Sample Hosts file:
+# This is the Ansible inventory/hosts file
+[switch]
+gui-spine1 ansible_host=10.9.21.60
+
+Sample vlan csv file:
+# vlan_id, list_of_untagged_ports
+90, 5, 6, 7
+
+Sample trunk csv file:
+# switch_name, trunk_name, list_of_ports
+gui-spine1, s0-to-leafs, 10, 11, 12, 13
+
+Sample ospf csv file:
+# switch_name, l3_port, my_ip, area_id
+gui-spine1, 9, 10.1.1.1/30, 0
+
+Sample svi csv file:
+# gateway_ip, vlan_id
+20.1.1.1/30, 4040
+
+Description(ospf and svi module):
+1. This playbook create vrouters, assign loopback-ip, creates l3-interfaces and configure ospf neighborship with data specified in the respective csv files.
+   It also creates svi interface with the vlan and gateway_ip given in the csv file.
+2. The vrouter_name used has format : (switch_name + ‘-vrouter’)
+3. The vnet_name used has format: (fabric_name + ‘-global’)
+4. Vrouter creation command:
+vrouter-create name %s vnet %s
+    if vrrp_id:
+        hw-vrrp-id %s
+enable router-type hardware
+(Values for vrouter_name and vnet_name is taken from point 2,3 and vrrp_id is taken from playbook as an user input.)
+5. Loopback assigning command:
+vrouter-loopback-interface-add vrouter-name %s ip %s
+(Value for vrouter_name is taken from point 2 and loopback-ip is taken from the playbook as an user input.)
+6. Vrouter interface add command:
+vrouter-interface-add vrouter-name %s ip %s l3-port %s
+(Value for vrouter_name is taken from point 2 and value for interface_ip and l3_port is taken from the csv file.
+7. Vrouter ospf-add command:
+vrouter-ospf-add vrouter-name %s network %s ospf-area %s
+(Value for vrouter_name is taken from point 2 and value for network and ospf_area is taken from the csv file.
+8. SVI add command:
+switch %s vrouter-interface-add vrouter-name %s vlan %s ip %s
+(Value for vrouter_name is taken from point 2 and value for vlan and ip is taken from the csv file.
+
+Note:
+1. Make sure you have only one switch listed under [switch] section in hosts file.
+2. Ospf csv files input are mandatory.
+3. Make sure switch names in ospf csv file matches with switch name mentioned in hosts file.
+4. Make sure that the interface_ip has a subnet(e.g.: 10.1.1.1/30)
+5. We need to make sure that the vlan given in the SVI csv file is already created in the vlan task.
+
+Notes regarding working of vrouter_creation task:
+1) There are 2 arguments taken from the csv file.
+   pn_loopback_ip, pn_vrrp_id
+2) Both the parameters corresponds to respective functionality as below:
+   pn_loopback_ip: to assign router_id and assign loopback_ip
+   pn_vrrp_id: to assign hw-vrrp-id to the vrouter
+3) If we want any functionality to be configured then uncomment those parameters from the playbook otherwise comment them.
+   Commenting the parameter will not configure the respective functionality.
+   e.g.: if we comment pn_loopback_ip in the playbook and uncomment pn_vrrp_id then the modules will not assign loopback_ip or router_id, only vrrp_id will get assigned and similarly other cases.
+
+
+Description(trunk and vlan module):
+1. This playbook create vlans and trunks specified in the csv files.
+2. If list of untagged ports are also specified in vlan csv file, then it passes the that list of untagged ports to vlan-create command.
+3. All vlans get created with scope fabric.
+4. Vlan creation command:
+vlan-create id vlan_id scope fabric untagged-ports list_of_ports
+(Values for vlan_id and list_of_ports will get substituted from the vlan csv file)
+5. Trunk creation command:
+trunk-create name trunk_name ports list_of_ports
+(Values for trunk_name and list_of_ports will get substituted from the trunk csv file)
+
+Note(trunk and vlan module):
+1. Make sure you have only one switch listed under [switch] section in hosts file.
+2. Vlan csv file input is mandatory.
+3. Make sure switch name in trunk csv file matches with switch name mentioned in hosts file.
+4. Trunk name in trunk csv file should not be greater than 59 characters long.
