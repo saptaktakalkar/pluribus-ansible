@@ -1,0 +1,78 @@
+Playbook name: l2_cluster_with_vrrp.yml
+
+Switch topology:
+
+   | | |        | | 
++--------+   +-------+
+|   S0   |---|   S1  |
++--------+   +-------+
+    | |         | |
+
+Input parameters:
+1. Vlan csv file (Mandatory)
+2. Trunk csv file (Optional)
+3. Vlag csv file (Optional)
+4. Vrrp csv file (Mandatory)
+5. Vrrp id (Mandatory)
+
+Sample Hosts file:
+# This is the Ansible inventory/hosts file
+[switch]
+gui-spine1 ansible_host=10.9.21.60
+gui-spine2 ansible_host=10.9.21.61
+
+Sample vlan csv file:
+# vlan_id, list_of_untagged_ports
+90, 5, 6, 7
+92, 55, 56, 57
+
+Sample trunk csv file:
+# switch_name, trunk_name, list_of_ports
+gui-spine1, s0-to-leafs, 10, 11, 12, 13
+gui-spine2, s1-to-leafs, 20, 21, 22, 23
+
+Sample vlag csv file:
+# vlag_name, local_switch, local_port, peer_switch, peer_port
+s0tos1-vlag, gui-spine1, s0-to-leafs, gui-spine2, s1-to-leafs
+
+Sample vrrp csv file:
+# vlan_id, gateway_ip, primary_ip_master, primary_ip_slave, active_switch.
+100, 101.108.100.1/24, 101.108.100.2/24, 101.108.100.3/24, gui-spine1
+101, 101.108.101.1/24, 101.108.101.2/24, 101.108.101.3/24, gui-spine1
+102, 101.108.102.1/24, 101.108.102.2/24, 101.108.102.3/24, gui-spine2
+103, 101.108.103.1/24, 101.108.103.2/24, 101.108.103.3/24, gui-spine2
+
+Description:
+1. This playbook create vlans, trunks, vlags, vrouters and configures vrrp with data specified in the respective csv files.
+2. If list of untagged ports are also specified in vlan csv file, then it passes that list of untagged ports to vlan-create command.
+3. All vlans get created with scope fabric.
+4. All vlags get created with mode active-active.
+5. For vrrp, gateway ip gets created on both switches.
+6. For active switch, vrrp priority is 110. For slave switch, it is 109.
+7. Vlan creation command:
+vlan-create id vlan_id scope fabric untagged-ports list_of_ports
+(Values for vlan_id and list_of_ports will get substituted from the vlan csv file)
+8. Trunk creation command:
+trunk-create name trunk_name ports list_of_ports
+(Values for trunk_name and list_of_ports will get substituted from the trunk csv file)
+9. Vlag creation command:
+vlag-create name %s port %s peer-switch %s peer-port %s mode active-active
+(Values of %s will get substituted with vlag_name, local_port, peer_switch and peer_port respectively from vlag csv file)
+10. Vrouter creation command:
+vrouter-create name %s vnet %s router-type hardware enable hw-vrrp-id %s 
+(vrouter_name = switch + '-vrouter'
+ vnet_name = fabric_name + '-global')
+11. VRRP interface add command:
+vrouter-in/Users/gaurav/Desktop/l3_single_routed_bgp.txtterface-add vrouter_name %s ip %s vlan %s if data
+(Values of %s will get substituted with corresponding vrouter_name, primary_ip, vlan_id)
+12. VRRP gateway interface add command:
+vrouter-interface-add vrouter_name %s ip %s vlan %s if data vrrp-id %s vrrp-primary %s vrrp-priority %s
+(Values of %s will get substituted with corresponding vrouter_name, gateway_ip, vlan_id, vrrp_priority)
+
+Note:
+1. Make sure you have only two switches listed under [switch] section in hosts file.
+2. Vrrp id, Vlan and vrrp csv files input are mandatory.
+3. Make sure switch names in trunk and vlag csv files matches with switch names mentioned in hosts file.
+4. Trunk and vlag names in respective csv files should not be greater than 59 characters long.
+5. Make sure local_port and peer_port names in vlag csv file matches with trunk names specified in trunk csv file for respective switches.
+6. Make sure active_switch names in vrrp csv file matches with switch names from hosts file.

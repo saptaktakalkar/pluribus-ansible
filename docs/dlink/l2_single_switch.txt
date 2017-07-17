@@ -1,0 +1,44 @@
+Playbook name: l2_single_switch.yml
+
+Switch topology:
+
+   | | | 
++--------+
+|   S0   |
++--------+
+    | | 
+
+Input parameters:
+1. Vlan csv file (Mandatory)
+2. Trunk csv file (Optional)
+
+Sample Hosts file:
+# This is the Ansible inventory/hosts file
+[switch]
+gui-spine1 ansible_host=10.9.21.60
+
+Sample vlan csv file:
+# vlan_id, list_of_untagged_ports
+90, 5, 6, 7
+92, 55, 56, 57
+
+Sample trunk csv file:
+# switch_name, trunk_name, list_of_ports
+gui-spine1, s0-to-leafs, 10, 11, 12, 13
+
+Description:
+1. This playbook create vlans and trunks specified in the csv files.
+2. If list of untagged ports are also specified in vlan csv file, then it passes the that list of untagged ports to vlan-create command.
+3. All vlans get created with scope fabric.
+4. Vlan creation command:
+vlan-create id vlan_id scope fabric untagged-ports list_of_ports
+(Values for vlan_id and list_of_ports will get substituted from the vlan csv file)
+5. Trunk creation command:
+trunk-create name trunk_name ports list_of_ports
+(Values for trunk_name and list_of_ports will get substituted from the trunk csv file)
+
+Note:
+1. Make sure you have only one switch listed under [switch] section in hosts file.
+2. Vlan csv file input is mandatory.
+3. Make sure switch name in trunk csv file matches with switch name mentioned in hosts file.
+4. Trunk name in trunk csv file should not be greater than 59 characters long.
