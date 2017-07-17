@@ -1,9 +1,9 @@
-#Dlink L2 Single Switch
+#L2 Single Switch
 ---
 
 
 - name: Configure L2 single switch
-  hosts: all
+  hosts: switch[0]
   serial: 1
 
   vars_files:
@@ -14,7 +14,7 @@
       pn_trunk_creation:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_switch: "{{ inventory_hostname }}"
+        pn_switch_list: "{{ groups['switch'] }}"
         pn_trunk_data: "{{ lookup('file', '{{ trunk_file }}') }}"
 
     - name: Create vlans
