@@ -423,9 +423,10 @@
             <key>pn_loopback_ip</key>
             <type>IP</type>
             <tooltip>Loopback IP starting value for vrouters.</tooltip>
+            <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
             <parentKey>null</parentKey>
             <visible>true</visible>
-            <userAssistText>True or False</userAssistText>
+            <userAssistText>Enter Valid IP/Subnet</userAssistText>
         </guiProperties>
 
         <guiProperties>
@@ -683,7 +684,7 @@
             <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
             <parentKey>null</parentKey>
             <visible>true</visible>
-            <userAssistText>Enter Valid IP</userAssistText>
+            <userAssistText>Enter Valid IP/Subnet</userAssistText>
         </guiProperties>
 
         <guiProperties>
@@ -779,7 +780,7 @@
         <guiProperties>
             <tab>mandatory</tab>
             <displayText>iOSPF IP Range</displayText>
-            <value>75.75.75.0/24</value>
+            <value>109.109.109.0/24</value>
             <choices></choices>
             <key>pn_iospf_ip_range</key>
             <type>IP</type>
@@ -787,7 +788,7 @@
             <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
             <parentKey>null</parentKey>
             <visible>true</visible>
-            <userAssistText>Enter valid IP</userAssistText>
+            <userAssistText>Enter valid IP/Subnet</userAssistText>
         </guiProperties>
 
         <guiProperties>
@@ -957,10 +958,11 @@
             <choices></choices>
             <key>pn_loopback_ip</key>
             <type>IP</type>
-            <tooltip>Loopback iIP starting value for vrouters.</tooltip>
+            <tooltip>Loopback IP starting value for vrouters.</tooltip>
+            <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
             <parentKey>null</parentKey>
             <visible>true</visible>
-            <userAssistText>True or False</userAssistText>
+            <userAssistText>Enter Valid IP/Subnet</userAssistText>
         </guiProperties>
 
         <guiProperties>
@@ -1213,6 +1215,10 @@
             <key>pn_loopback_ip</key>
             <type>IP</type>
             <tooltip>Loopback IP starting value for vrouters.</tooltip>
+            <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>Enter Valid IP/Subnet</userAssistText>
         </guiProperties>
 
         <guiProperties>
@@ -1658,7 +1664,7 @@
             <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
             <parentKey>null</parentKey>
             <visible>true</visible>
-            <userAssistText>Enter Valid IP</userAssistText>
+            <userAssistText>Enter Valid IP/Subnet</userAssistText>
         </guiProperties>
     </playbook>
 
@@ -1772,7 +1778,7 @@
         <guiProperties>
             <tab>optional</tab>
             <displayText>Loopback IP</displayText>
-            <value>109.109.109.0/24</value>
+            <value>109.109.109.1</value>
             <choices></choices>
             <key>pn_loopback_ip</key>
             <type>IP</type>
@@ -1820,7 +1826,7 @@
         <guiProperties>
             <tab>optional</tab>
             <displayText>Loopback IP</displayText>
-            <value>109.109.109.0/24</value>
+            <value>109.109.109.1</value>
             <choices></choices>
             <key>pn_loopback_ip</key>
             <type>IP</type>
@@ -1913,7 +1919,7 @@
         <guiProperties>
             <tab>optional</tab>
             <displayText>Loopback IP</displayText>
-            <value>109.109.109.0/24</value>
+            <value>109.109.109.1</value>
             <choices></choices>
             <key>pn_loopback_ip</key>
             <type>IP</type>
@@ -1961,7 +1967,7 @@
         <guiProperties>
             <tab>optional</tab>
             <displayText>Loopback IP</displayText>
-            <value>109.109.109.0/24</value>
+            <value>109.109.109.1</value>
             <choices></choices>
             <key>pn_loopback_ip</key>
             <type>IP</type>
