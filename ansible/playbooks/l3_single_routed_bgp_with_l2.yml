@@ -25,8 +25,7 @@
       pn_vrouter_creation:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_loopback_ip: '10.10.10.10'
-        #pn_vrrp_id: '18'
+        pn_loopback_ip: "{{ pn_loopback_ip }}"
         pn_switch_list: "{{ groups['switch'] }}"
 
     - name: Configure eBGP
