@@ -1,0 +1,51 @@
+---
+
+- name: Configure OSPF, VRRP
+  hosts: switch[0]
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Create vlans
+      pn_vlan_creation:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_switch: "{{ inventory_hostname }}"
+        pn_vlan_data: "{{ lookup('file', '{{ vlan_file }}') }}"
+
+    - name: Create trunks
+      pn_trunk_creation:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_switch_list: "{{ groups['switch'] }}"
+        pn_trunk_data: "{{ lookup('file', '{{ trunk_file }}') }}"
+
+    - name: Create vlags
+      pn_vlag_creation:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_switch_list: "{{ groups['switch'] }}"
+        pn_vlag_data: "{{ lookup('file', '{{ vlag_file }}') }}"
+
+    - name: Create vrouter
+      pn_vrouter_creation:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_loopback_ip: "{{ pn_loopback_ip }}"
+        pn_vrrp_id: "{{ pn_vrrp_id }}"
+        pn_switch_list: "{{ groups['switch'] }}"
+
+    - name: Configure VRRP on cluster switch
+      pn_vrrp_creation:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_switch: "{{ inventory_hostname }}"
+        pn_vrrp_data: "{{ lookup('file', '{{ vrrp_file }}') }}"
+
+    - name: Configure OSPF
+      pn_ospf_configuration:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_ospf_data: "{{ lookup('file', '{{ ospf_file }}') }}"
+        pn_switch_list: "{{ groups['switch'] }}"
