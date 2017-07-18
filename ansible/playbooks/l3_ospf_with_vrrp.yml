@@ -7,6 +7,12 @@
   - cli_vault.yml
 
   tasks:
+    - name: Create cluster
+      pn_cluster_creation:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_switch_list: "{{ groups['switch'] }}"
+
     - name: Create vlans
       pn_vlan_creation:
         pn_cliusername: "{{ USERNAME }}"

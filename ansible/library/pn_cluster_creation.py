@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN Vlag Creation """
+""" PN Cluster Creation """
 
 #
 # This file is part of Ansible
@@ -24,10 +24,9 @@ from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
 ---
-module: pn_vlag_creation
+module: pn_cluster_creation
 author: 'Pluribus Networks (devops@pluribusnetworks.com)'
-description: Module to create vlags.
-Vlag csv format: vlag_name, local_switch, local_port, peer_switch, peer_port.
+description: Module to create cluster.
 options:
     pn_cliusername:
       description:
@@ -45,21 +44,14 @@ options:
       required: False
       type: list
       default: []
-    pn_vlag_data:
-      description:
-        - String containing vlag data parsed from csv file.
-      required: False
-      type: str
-      default: ''
 """
 
 EXAMPLES = """
-- name: Create vlags
-  pn_vlag_creation:
+- name: Create cluster
+  pn_cluster_creation:
     pn_cliusername: "{{ USERNAME }}"
     pn_clipassword: "{{ PASSWORD }}"
     pn_switch_list: "{{ groups['switch'] }}"
-    pn_vlag_data: "{{ lookup('file', '{{ vlag_file }}') }}"
 """
 
 RETURN = """
@@ -137,45 +129,46 @@ def run_cli(module, cli):
             failed=True,
             exception=err.strip(),
             summary=results,
-            task='Create vlags',
-            msg='vlag creation failed',
+            task='Create cluster',
+            msg='Cluster creation failed',
             changed=False
         )
     else:
         return None
 
 
-def create_vlag(module, name, switch, port, peer_switch, peer_port):
+def create_cluster(module, switch_list):
     """
-    Create virtual link aggregation groups.
+    Create a cluster between two switches.
     :param module: The Ansible module to fetch input parameters.
-    :param name: The name of the vlag to create.
-    :param switch: Name of the local switch.
-    :param port: Name of the trunk on local switch.
-    :param peer_switch: Name of the peer switch.
-    :param peer_port: Name of the trunk on peer switch.
-    :return: String describing if vlag got created or not.
+    :param switch_list: List of switches.
+    :return: String describing if cluster got created or not.
     """
+    global CHANGED_FLAG
     output = ''
-    new_vlag = False
+    new_cluster = False
+
+    node1 = switch_list[0]
+    node2 = switch_list[1]
+
+    name = node1 + '-' + node2 + '-cluster'
 
     cli = pn_cli(module)
-    cli += ' switch %s vlag-show format switch,peer-switch, ' % switch
-    cli += ' no-show-headers '
-    vlag_list = run_cli(module, cli)
-    if vlag_list is not None:
-        vlag_list = vlag_list.split()
-        if peer_switch not in vlag_list:
-            new_vlag = True
+    cli += ' switch %s cluster-show format name no-show-headers ' % node1
+    cluster_list = run_cli(module, cli)
 
-    if new_vlag or vlag_list is None:
+    if cluster_list is not None:
+        cluster_list = cluster_list.split()
+        if name not in cluster_list:
+            new_cluster = True
+
+    if new_cluster or cluster_list is None:
         cli = pn_cli(module)
-        cli += ' switch %s vlag-create name %s port %s ' % (switch, name, port)
-        cli += ' peer-switch %s peer-port %s ' % (peer_switch, peer_port)
-        cli += ' mode active-active '
+        cli += ' switch %s cluster-create name %s ' % (node1, name)
+        cli += ' cluster-node-1 %s cluster-node-2 %s ' % (node1, node2)
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
-        output += '%s: Configured vLag %s\n' % (switch, name)
+        output += '%s: Created %s\n' % (node1, name)
 
     return output
 
@@ -187,35 +180,19 @@ def main():
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_switch_list=dict(required=False, type='list', default=[]),
-            pn_vlag_data=dict(required=False, type='str', default=''),
         )
     )
 
     global CHANGED_FLAG
     results = []
     message = ''
+    switch_list = module.params['pn_switch_list']
 
-    # Create vlag
-    vlag_data = module.params['pn_vlag_data']
-    if vlag_data:
-        vlag_data = vlag_data.replace(' ', '')
-        vlag_data_list = vlag_data.split('\n')
-        for row in vlag_data_list:
-            if row.startswith('#'):
-                continue
-            else:
-                elements = row.split(',')
-                if len(elements) == 5:
-                    vlag_name = elements[0]
-                    local_switch = elements[1]
-                    local_ports = elements[2]
-                    peer_switch = elements[3]
-                    peer_ports = elements[4]
+    # Create cluster
+    if len(switch_list) == 2:
+        message += create_cluster(module, switch_list)
 
-                    message += create_vlag(module, vlag_name, local_switch,
-                                           local_ports, peer_switch, peer_ports)
-
-    for switch in module.params['pn_switch_list']:
+    for switch in switch_list:
         replace_string = switch + ': '
         for line in message.splitlines():
             if replace_string in line:
@@ -227,14 +204,13 @@ def main():
     # Exit the module and return the required JSON.
     module.exit_json(
         unreachable=False,
-        msg='vlag creation succeeded',
+        msg='cluster creation succeeded',
         summary=results,
         exception='',
         failed=False,
         changed=True if True in CHANGED_FLAG else False,
-        task='Create vlags'
+        task='Create clusters'
     )
 
 if __name__ == '__main__':
     main()
-
