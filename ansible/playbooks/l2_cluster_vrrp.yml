@@ -31,6 +31,13 @@
         pn_switch: "{{ inventory_hostname }}"
         pn_vlan_data: "{{ lookup('file', '{{ vlan_csv_file }}') }}"
 
+    - name: Create vrouter
+      pn_vrouter_creation:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_vrrp_id: "{{ pn_vrrp_id }}"
+        pn_switch_list: "{{ groups['switch'] }}"
+
     - name: Configure L2 VRRP on cluster switch
       pn_vrrp_creation:
         pn_cliusername: "{{ USERNAME }}"
