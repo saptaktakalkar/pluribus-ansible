@@ -15,18 +15,18 @@
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
         pn_switch_list: "{{ groups['switch'] }}"
-        pn_trunk_data: "{{ lookup('file', '{{ trunk_file }}') }}"
+        pn_trunk_data: "{{ lookup('file', '{{ trunk_csv_file }}') }}"
 
     - name: Create vlags
       pn_vlag_creation:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
         pn_switch_list: "{{ groups['switch'] }}"
-        pn_vlag_data: "{{ lookup('file', '{{ vlag_file }}') }}"
+        pn_vlag_data: "{{ lookup('file', '{{ vlag_csv_file }}') }}"
 
     - name: Create vlans
       pn_vlan_creation:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
         pn_switch: "{{ inventory_hostname }}"
-        pn_vlan_data: "{{ lookup('file', '{{ vlan_file }}') }}"
+        pn_vlan_data: "{{ lookup('file', '{{ vlan_csv_file }}') }}"

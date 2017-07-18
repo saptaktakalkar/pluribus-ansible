@@ -18,5 +18,5 @@
       pn_ospf_configuration:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_ospf_data: "{{ lookup('file', '{{ ospf_file }}') }}"
+        pn_ospf_data: "{{ lookup('file', '{{ ospf_csv_file }}') }}"
         pn_switch_list: "{{ groups['switch'] }}"

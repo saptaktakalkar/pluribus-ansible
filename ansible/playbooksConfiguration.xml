@@ -301,6 +301,7 @@
             <parentKey>null</parentKey>
             <visible>true</visible>
             <userAssistText>Upload CSV file</userAssistText>
+            <validationFile>gui_l2_vrrp_csv_validation.yml</validationFile>
         </guiProperties>
 
         <guiProperties>
@@ -353,6 +354,7 @@
             <sampleFilePath>assets/resources/l3.csv</sampleFilePath>
             <tooltip>Csv file containing L3 vrrp data.</tooltip>
             <userAssistText>Upload CSV file</userAssistText>
+            <validationFile>gui_l3_vrrp_csv_validation.yml</validationFile>
         </guiProperties>
 
         <guiProperties>
@@ -421,9 +423,10 @@
             <key>pn_loopback_ip</key>
             <type>IP</type>
             <tooltip>Loopback IP starting value for vrouters.</tooltip>
+            <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
             <parentKey>null</parentKey>
             <visible>true</visible>
-            <userAssistText>True or False</userAssistText>
+            <userAssistText>Enter Valid IP/Subnet</userAssistText>
         </guiProperties>
 
         <guiProperties>
@@ -609,6 +612,7 @@
             <sampleFilePath>assets/resources/l3.csv</sampleFilePath>
             <tooltip>Csv file containing L3 vrrp data.</tooltip>
             <userAssistText>Upload CSV File</userAssistText>
+            <validationFile>gui_l3_vrrp_csv_validation.yml</validationFile>
         </guiProperties>
 
         <guiProperties>
@@ -680,7 +684,7 @@
             <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
             <parentKey>null</parentKey>
             <visible>true</visible>
-            <userAssistText>Enter Valid IP</userAssistText>
+            <userAssistText>Enter Valid IP/Subnet</userAssistText>
         </guiProperties>
 
         <guiProperties>
@@ -776,7 +780,7 @@
         <guiProperties>
             <tab>mandatory</tab>
             <displayText>iOSPF IP Range</displayText>
-            <value>75.75.75.0/24</value>
+            <value>109.109.109.0/24</value>
             <choices></choices>
             <key>pn_iospf_ip_range</key>
             <type>IP</type>
@@ -784,7 +788,7 @@
             <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
             <parentKey>null</parentKey>
             <visible>true</visible>
-            <userAssistText>Enter valid IP</userAssistText>
+            <userAssistText>Enter valid IP/Subnet</userAssistText>
         </guiProperties>
 
         <guiProperties>
@@ -886,6 +890,7 @@
             <type>file</type>
             <sampleFilePath>assets/resources/l3.csv</sampleFilePath>
             <tooltip>Csv file containing L3 vrrp data.</tooltip>
+            <validationFile>gui_l3_vrrp_csv_validation.yml</validationFile>
         </guiProperties>
 
         <guiProperties>
@@ -953,10 +958,11 @@
             <choices></choices>
             <key>pn_loopback_ip</key>
             <type>IP</type>
-            <tooltip>Loopback iIP starting value for vrouters.</tooltip>
+            <tooltip>Loopback IP starting value for vrouters.</tooltip>
+            <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
             <parentKey>null</parentKey>
             <visible>true</visible>
-            <userAssistText>True or False</userAssistText>
+            <userAssistText>Enter Valid IP/Subnet</userAssistText>
         </guiProperties>
 
         <guiProperties>
@@ -1140,6 +1146,7 @@
             <type>file</type>
             <sampleFilePath>assets/resources/l3.csv</sampleFilePath>
             <tooltip>Csv file containing L3 vrrp data.</tooltip>
+            <validationFile>gui_l3_vrrp_csv_validation.yml</validationFile>
         </guiProperties>
 
         <guiProperties>
@@ -1208,6 +1215,10 @@
             <key>pn_loopback_ip</key>
             <type>IP</type>
             <tooltip>Loopback IP starting value for vrouters.</tooltip>
+            <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>Enter Valid IP/Subnet</userAssistText>
         </guiProperties>
 
         <guiProperties>
@@ -1330,54 +1341,130 @@
     </playbook>
 
     <playbook>
-        <name>L2</name>
+        <name>L2 Single Switch</name>
         <image>assets/images/playbookImages/l2_vrrp.png</image>
         <description>
             <![CDATA[
                 <ul>
-                    <li>Configure Layer 3 Link Address</li>
-                    <li>Create Loopback IP and RouterID</li>
-                    <li>Create OSPF Network</li>
-                    <li>Create BFD Neighbor</li>
-                    <li>Create VLANs</li>
-                    <li>Create VRRP Interfaces for leaf clusters</li>
-                    <li>Create SVI for Non-cluster leaf nodes</li>
-                    <li>Supports leaf switches in cluster</li>
-                    <li>Supports leaf switches not in cluster</li>
-                    <li>Supports mix of leaf switches in cluster and not in cluster</li>
+                    <li>Dummy text 1</li>
+                    <li>Dummy text 2</li>
+                    <li>Dummy text 3</li>
+                    <li>Dummy text 4</li>
+                    <li>Dummy text 5</li>
                 </ul>
             ]]>
         </description>
-        <csvValidationFileName>gui_l2_vrrp_csv_validation.yml</csvValidationFileName>
-        <playbookFileName>gui_dlink_l2.yml</playbookFileName>
+        <csvValidationFileName></csvValidationFileName>
+        <playbookFileName>l2_single_switch.yml</playbookFileName>
         <playbookType>Netvisor Enterprise L2/L3 License</playbookType>
 
         <guiProperties>
             <tab>mandatory</tab>
-            <displayText>CSV File</displayText>
+            <displayText>Trunk Data</displayText>
             <value></value>
             <choices></choices>
-            <key>csv_file</key>
+            <key>trunk_csv_file</key>
             <type>file</type>
-            <sampleFilePath>assets/resources/l3.csv</sampleFilePath>
-            <tooltip>Csv file containing L3 vrrp data.</tooltip>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>Trunk Data file</tooltip>
             <parentKey>null</parentKey>
             <visible>true</visible>
-            <userAssistText>CSV File</userAssistText>
+            <userAssistText>File contaning Trunk information</userAssistText>
+            <validationFile>trunk_csv_validation.yml</validationFile>
         </guiProperties>
 
         <guiProperties>
-            <tab>optional</tab>
-            <displayText>Inband IP</displayText>
-            <value> 172.16.0.0/24</value>
+            <tab>mandatory</tab>
+            <displayText>VLAN Data</displayText>
+            <value></value>
             <choices></choices>
-            <key>pn_inband_ip</key>
-            <type>IP-MASK</type>
-            <tooltip>Inband ips to be assigned to switches starting with this value, Inband IP</tooltip>
-            <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\/)([0-2]?[0-9]|[3][0-2])($)</regex>
+            <key>vlan_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>VLAN Data file</tooltip>
             <parentKey>null</parentKey>
             <visible>true</visible>
-            <userAssistText>IP address with subnet mask</userAssistText>
+            <userAssistText>File contaning VLAN information</userAssistText>
+            <validationFile>vlan_csv_validation.yml</validationFile>
+        </guiProperties>
+    </playbook>
+
+    <playbook>
+        <name>L2 Cluster VRRP</name>
+        <image>assets/images/playbookImages/l2_vrrp.png</image>
+        <description>
+            <![CDATA[
+                <ul>
+                    <li>Dummy text 1</li>
+                    <li>Dummy text 2</li>
+                    <li>Dummy text 3</li>
+                    <li>Dummy text 4</li>
+                    <li>Dummy text 5</li>
+                </ul>
+            ]]>
+        </description>
+        <csvValidationFileName></csvValidationFileName>
+        <playbookFileName>l2_cluster_vrrp.yml</playbookFileName>
+        <playbookType>Netvisor Enterprise L2/L3 License</playbookType>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Trunk Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>trunk_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>Trunk Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning Trunk information</userAssistText>
+            <validationFile>trunk_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>VLAG Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>vlag_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>VLAG Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning VLAG information</userAssistText>
+            <validationFile>vlag_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>VLAN Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>vlan_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>VLAN Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning VLAN information</userAssistText>
+            <validationFile>vlan_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>VRRP Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>vrrp_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>VRRP Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning VRRP information</userAssistText>
+            <validationFile>vrrp_csv_validation.yml</validationFile>
         </guiProperties>
 
         <guiProperties>
@@ -1394,4 +1481,581 @@
             <userAssistText>Number between 0-255</userAssistText>
         </guiProperties>
     </playbook>
+
+    <playbook>
+        <name>L2 Two Switch Cluster</name>
+        <image>assets/images/playbookImages/l2_vrrp.png</image>
+        <description>
+            <![CDATA[
+                <ul>
+                    <li>Dummy text 1</li>
+                    <li>Dummy text 2</li>
+                    <li>Dummy text 3</li>
+                    <li>Dummy text 4</li>
+                    <li>Dummy text 5</li>
+                </ul>
+            ]]>
+        </description>
+        <csvValidationFileName></csvValidationFileName>
+        <playbookFileName>l2_two_switch_cluster.yml</playbookFileName>
+        <playbookType>Netvisor Enterprise L2/L3 License</playbookType>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Trunk Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>trunk_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>Trunk Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning Trunk information</userAssistText>
+            <validationFile>trunk_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>VLAG Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>vlag_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>VLAG Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning VLAG information</userAssistText>
+            <validationFile>vlag_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>VLAN Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>vlan_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>VLAN Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning VLAN information</userAssistText>
+            <validationFile>vlan_csv_validation.yml</validationFile>
+        </guiProperties>
+    </playbook>
+
+    <playbook>
+        <name>L3 BGP with VRRPr</name>
+        <image>assets/images/playbookImages/l2_vrrp.png</image>
+        <description>
+            <![CDATA[
+                <ul>
+                    <li>Dummy text 1</li>
+                    <li>Dummy text 2</li>
+                    <li>Dummy text 3</li>
+                    <li>Dummy text 4</li>
+                    <li>Dummy text 5</li>
+                </ul>
+            ]]>
+        </description>
+        <csvValidationFileName></csvValidationFileName>
+        <playbookFileName>l3_bgp_with_vrrp.yml</playbookFileName>
+        <playbookType>Netvisor Enterprise L2/L3 License</playbookType>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Trunk Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>trunk_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>Trunk Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning Trunk information</userAssistText>
+            <validationFile>trunk_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>VLAG Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>vlag_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>VLAG Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning VLAG information</userAssistText>
+            <validationFile>vlag_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>VLAN Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>vlan_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>VLAN Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning VLAN information</userAssistText>
+            <validationFile>vlan_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>VRRP Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>vrrp_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>VRRP Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning VRRP information</userAssistText>
+            <validationFile>vrrp_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>BGP Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>bgp_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>BGP Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning Trunk information</userAssistText>
+            <validationFile>bgp_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>VRRP ID</displayText>
+            <value>18</value>
+            <choices></choices>
+            <key>pn_vrrp_id</key>
+            <type>text</type>
+            <tooltip>Specify VRRP ID to be assigned</tooltip>
+            <regex>([0-9]|[1-8][0-9]|9[0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])</regex>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>Number between 0-255</userAssistText>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Loopback IP</displayText>
+            <value>109.109.109.0/24</value>
+            <choices></choices>
+            <key>pn_loopback_ip</key>
+            <type>IP</type>
+            <tooltip>Loopback IP starting value for vrouters.</tooltip>
+            <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>Enter Valid IP/Subnet</userAssistText>
+        </guiProperties>
+    </playbook>
+
+    <playbook>
+        <name>L3 OSPF with VRRP</name>
+        <image>assets/images/playbookImages/l2_vrrp.png</image>
+        <description>
+            <![CDATA[
+                <ul>
+                    <li>Dummy text 1</li>
+                    <li>Dummy text 2</li>
+                    <li>Dummy text 3</li>
+                    <li>Dummy text 4</li>
+                    <li>Dummy text 5</li>
+                </ul>
+            ]]>
+        </description>
+        <csvValidationFileName></csvValidationFileName>
+        <playbookFileName>l3_ospf_with_vrrp.yml</playbookFileName>
+        <playbookType>Netvisor Enterprise L2/L3 License</playbookType>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Trunk Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>trunk_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>Trunk Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning Trunk information</userAssistText>
+            <validationFile>trunk_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>VLAG Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>vlag_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>VLAG Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning VLAG information</userAssistText>
+            <validationFile>vlag_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>VLAN Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>vlan_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>VLAN Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning VLAN information</userAssistText>
+            <validationFile>vlan_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>VRRP Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>vrrp_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>VRRP Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning VRRP information</userAssistText>
+            <validationFile>vrrp_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>OSPF Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>ospf_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>OSPF Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning OSPF information</userAssistText>
+            <validationFile>ospf_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>VRRP ID</displayText>
+            <value>18</value>
+            <choices></choices>
+            <key>pn_vrrp_id</key>
+            <type>text</type>
+            <tooltip>Specify VRRP ID to be assigned</tooltip>
+            <regex>([0-9]|[1-8][0-9]|9[0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])</regex>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>Number between 0-255</userAssistText>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Loopback IP</displayText>
+            <value>109.109.109.1</value>
+            <choices></choices>
+            <key>pn_loopback_ip</key>
+            <type>IP</type>
+            <tooltip>Loopback IP starting value for vrouters.</tooltip>
+            <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>Enter Valid IP</userAssistText>
+        </guiProperties>
+    </playbook>
+
+    <playbook>
+        <name>L3 Single Routed eBGP</name>
+        <image>assets/images/playbookImages/l2_vrrp.png</image>
+        <description>
+            <![CDATA[
+                <ul>
+                    <li>Dummy text 1</li>
+                    <li>Dummy text 2</li>
+                    <li>Dummy text 3</li>
+                    <li>Dummy text 4</li>
+                    <li>Dummy text 5</li>
+                </ul>
+            ]]>
+        </description>
+        <csvValidationFileName></csvValidationFileName>
+        <playbookFileName>l3_single_routed_bgp.yml</playbookFileName>
+        <playbookType>Netvisor Enterprise L2/L3 License</playbookType>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>BGP Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>bgp_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>BGP Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning Trunk information</userAssistText>
+            <validationFile>bgp_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Loopback IP</displayText>
+            <value>109.109.109.1</value>
+            <choices></choices>
+            <key>pn_loopback_ip</key>
+            <type>IP</type>
+            <tooltip>Loopback IP starting value for vrouters.</tooltip>
+            <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>Enter Valid IP</userAssistText>
+        </guiProperties>
+    </playbook>
+
+    <playbook>
+        <name>L3 Single Routed eBGP with L2</name>
+        <image>assets/images/playbookImages/l2_vrrp.png</image>
+        <description>
+            <![CDATA[
+                <ul>
+                    <li>Dummy text 1</li>
+                    <li>Dummy text 2</li>
+                    <li>Dummy text 3</li>
+                    <li>Dummy text 4</li>
+                    <li>Dummy text 5</li>
+                </ul>
+            ]]>
+        </description>
+        <csvValidationFileName></csvValidationFileName>
+        <playbookFileName>l3_single_routed_bgp_with_l2.yml</playbookFileName>
+        <playbookType>Netvisor Enterprise L2/L3 License</playbookType>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>BGP Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>bgp_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>BGP Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning BGP information</userAssistText>
+            <validationFile>bgp_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>VLAN Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>vlan_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>VLAN Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning VLAN information</userAssistText>
+            <validationFile>vlan_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>SVI Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>svi_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>SVI Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning SVI information</userAssistText>
+            <validationFile>svi_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Trunk Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>trunk_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>Trunk Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning Trunk information</userAssistText>
+            <validationFile>trunk_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Loopback IP</displayText>
+            <value>109.109.109.1</value>
+            <choices></choices>
+            <key>pn_loopback_ip</key>
+            <type>IP</type>
+            <tooltip>Loopback IP starting value for vrouters.</tooltip>
+            <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>Enter Valid IP</userAssistText>
+        </guiProperties>
+    </playbook>
+
+    <playbook>
+        <name>L3 Single Routed OSPF</name>
+        <image>assets/images/playbookImages/l2_vrrp.png</image>
+        <description>
+            <![CDATA[
+                <ul>
+                    <li>Dummy text 1</li>
+                    <li>Dummy text 2</li>
+                    <li>Dummy text 3</li>
+                    <li>Dummy text 4</li>
+                    <li>Dummy text 5</li>
+                </ul>
+            ]]>
+        </description>
+        <csvValidationFileName></csvValidationFileName>
+        <playbookFileName>l3_single_routed_ospf.yml</playbookFileName>
+        <playbookType>Netvisor Enterprise L2/L3 License</playbookType>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>OSPF Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>ospf_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>OSPF Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning OSPF information</userAssistText>
+            <validationFile>ospf_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Loopback IP</displayText>
+            <value>109.109.109.1</value>
+            <choices></choices>
+            <key>pn_loopback_ip</key>
+            <type>IP</type>
+            <tooltip>Loopback IP starting value for vrouters.</tooltip>
+            <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>Enter Valid IP</userAssistText>
+        </guiProperties>
+    </playbook>
+
+    <playbook>
+        <name>L3 Single Routed OSPF with L2</name>
+        <image>assets/images/playbookImages/l2_vrrp.png</image>
+        <description>
+            <![CDATA[
+                <ul>
+                    <li>Dummy text 1</li>
+                    <li>Dummy text 2</li>
+                    <li>Dummy text 3</li>
+                    <li>Dummy text 4</li>
+                    <li>Dummy text 5</li>
+                </ul>
+            ]]>
+        </description>
+        <csvValidationFileName></csvValidationFileName>
+        <playbookFileName>l3_single_routed_ospf_with_l2.yml</playbookFileName>
+        <playbookType>Netvisor Enterprise L2/L3 License</playbookType>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>OSPF Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>ospf_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>OSPF Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning OSPF information</userAssistText>
+            <validationFile>ospf_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>VLAN Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>vlan_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>VLAN Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning VLAN information</userAssistText>
+            <validationFile>vlan_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>SVI Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>svi_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>SVI Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning SVI information</userAssistText>
+            <validationFile>svi_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Trunk Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>trunk_csv_file</key>
+            <type>file</type>
+            <sampleFilePath></sampleFilePath>
+            <tooltip>Trunk Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning Trunk information</userAssistText>
+            <validationFile>trunk_csv_validation.yml</validationFile>
+        </guiProperties>
+    </playbook>
+
 </playbooks>
