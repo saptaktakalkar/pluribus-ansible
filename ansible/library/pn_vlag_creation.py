@@ -145,6 +145,42 @@ def run_cli(module, cli):
         return None
 
 
+def create_cluster(module, switch_list):
+    """
+    Create a cluster between two switches.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch_list: List of switches.
+    :return: String describing if cluster got created or not.
+    """
+    global CHANGED_FLAG
+    output = ''
+    new_cluster = False
+
+    node1 = switch_list[0]
+    node2 = switch_list[1]
+
+    name = node1 + '-' + node2 + '-cluster'
+
+    cli = pn_cli(module)
+    cli += ' switch %s cluster-show format name no-show-headers ' % node1
+    cluster_list = run_cli(module, cli)
+
+    if cluster_list is not None:
+        cluster_list = cluster_list.split()
+        if name not in cluster_list:
+            new_cluster = True
+
+    if new_cluster or cluster_list is None:
+        cli = pn_cli(module)
+        cli += ' switch %s cluster-create name %s ' % (node1, name)
+        cli += ' cluster-node-1 %s cluster-node-2 %s ' % (node1, node2)
+        run_cli(module, cli)
+        CHANGED_FLAG.append(True)
+        output += '%s: Created %s\n' % (node1, name)
+
+    return output
+
+
 def create_vlag(module, name, switch, port, peer_switch, peer_port):
     """
     Create virtual link aggregation groups.
@@ -194,6 +230,11 @@ def main():
     global CHANGED_FLAG
     results = []
     message = ''
+    switch_list = module.params['pn_switch_list']
+
+    # Create cluster
+    if len(switch_list) == 2:
+        message += create_cluster(module, switch_list)
 
     # Create vlag
     vlag_data = module.params['pn_vlag_data']
@@ -215,7 +256,7 @@ def main():
                     message += create_vlag(module, vlag_name, local_switch,
                                            local_ports, peer_switch, peer_ports)
 
-    for switch in module.params['pn_switch_list']:
+    for switch in switch_list:
         replace_string = switch + ': '
         for line in message.splitlines():
             if replace_string in line:
