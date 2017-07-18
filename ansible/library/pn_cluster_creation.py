@@ -168,7 +168,7 @@ def create_cluster(module, switch_list):
         cli += ' cluster-node-1 %s cluster-node-2 %s ' % (node1, node2)
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
-        output += '%s: Created %s\n' % (node1, name)
+        output += '%s: Created cluster %s\n' % (node1, name)
 
     return output
 
