@@ -18,5 +18,5 @@
       pn_ebgp_configuration:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_bgp_data: "{{ lookup('file', '{{ bgp_file }}') }}"
+        pn_bgp_data: "{{ lookup('file', '{{ bgp_csv_file }}') }}"
         pn_switch_list: "{{ groups['switch'] }}" 
