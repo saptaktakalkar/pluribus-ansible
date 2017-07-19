@@ -8,11 +8,11 @@
 #
 
 [spine]
-ansible-spine1 ansible_host=10.9.21.107
-ansible-spine2 ansible_host=10.9.21.106
+ansible-spine1 ansible_host=10.9.21.107 ansible_user="{{ SSH_USER }}" ansible_ssh_pass="{{ SSH_PASS }}"
+ansible-spine2 ansible_host=10.9.21.106 ansible_user="{{ SSH_USER }}" ansible_ssh_pass="{{ SSH_PASS }}"
 
 [leaf]
-ansible-leaf1 ansible_host=10.9.21.226
-ansible-leaf2 ansible_host=10.9.21.223
-ansible-leaf3 ansible_host=10.9.21.224
-ansible-leaf4 ansible_host=10.9.21.225
+ansible-leaf1 ansible_host=10.9.21.226 ansible_user="{{ SSH_USER }}" ansible_ssh_pass="{{ SSH_PASS }}"
+ansible-leaf2 ansible_host=10.9.21.223 ansible_user="{{ SSH_USER }}" ansible_ssh_pass="{{ SSH_PASS }}"
+ansible-leaf3 ansible_host=10.9.21.224 ansible_user="{{ SSH_USER }}" ansible_ssh_pass="{{ SSH_PASS }}"
+ansible-leaf4 ansible_host=10.9.21.225 ansible_user="{{ SSH_USER }}" ansible_ssh_pass="{{ SSH_PASS }}"

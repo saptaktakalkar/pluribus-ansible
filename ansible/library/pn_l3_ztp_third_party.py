@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI Layer3 Zero Touch Provisioning (ZTP) """
+""" PN CLI L3 ztp with 3rd party spine switches """
 
 #
 # This file is part of Ansible
@@ -24,9 +24,9 @@ from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
 ---
-module: pn_l3_ztp
+module: pn_l3_ztp_third_party
 author: 'Pluribus Networks (devops@pluribusnetworks.com)'
-short_description: CLI command to configure ZTP for Layer3 fabric.
+short_description: CLI command to configure L3 ztp with 3rd party switches.
 description:
     Zero Touch Provisioning (ZTP) allows you to provision new switches in your
     network automatically, without manual intervention. For layer3 fabric,
@@ -59,7 +59,7 @@ options:
       type: str
     pn_spine_list:
       description:
-        - Specify list of Spine hosts.
+        - Specify list of 3rd party Spine hosts.
       required: False
       type: list
     pn_leaf_list:
@@ -108,7 +108,7 @@ options:
 
 EXAMPLES = """
 - name: Zero Touch Provisioning - Layer3 setup
-  pn_l3_ztp:
+  pn_l3_ztp_third_party:
     pn_cliusername: "{{ USERNAME }}"
     pn_clipassword: "{{ PASSWORD }}"
     pn_net_address: '192.168.0.1'
@@ -192,7 +192,7 @@ def run_cli(module, cli):
             failed=True,
             exception=err.strip(),
             summary=results,
-            task='Configure L3 ZTP',
+            task='Configure L3 ZTP with existing spine switches',
             msg='L3 ZTP configuration failed',
             changed=False
         )
@@ -211,8 +211,7 @@ def modify_stp(module, modify_flag):
     cli = pn_cli(module)
     clicopy = cli
 
-    for switch in (module.params['pn_spine_list'] +
-                   module.params['pn_leaf_list']):
+    for switch in module.params['pn_leaf_list']:
         cli = clicopy
         cli += ' switch %s stp-show format enable ' % switch
         current_state = run_cli(module, cli).split()[1]
@@ -238,8 +237,7 @@ def update_fabric_network_to_inband(module):
     cli = pn_cli(module)
     clicopy = cli
 
-    for switch in (module.params['pn_spine_list'] +
-                   module.params['pn_leaf_list']):
+    for switch in module.params['pn_leaf_list']:
         cli = clicopy
         cli += ' fabric-info format fabric-network '
         fabric_network = run_cli(module, cli).split()[1]
@@ -467,11 +465,9 @@ def assign_loopback_ip(module, loopback_address):
 
     cli = pn_cli(module)
     clicopy = cli
-    switch_list = module.params['pn_spine_list']
-    switch_list += module.params['pn_leaf_list']
-
     vrouter_count = 1
-    for switch in switch_list:
+
+    for switch in module.params['pn_leaf_list']:
         vrouter = switch + '-vrouter'
         ip = static_part + str(vrouter_count)
 
@@ -500,10 +496,8 @@ def auto_configure_link_ips(module):
     :param module: The Ansible module to fetch input parameters.
     :return: String describing output of configuration.
     """
-    spine_list = module.params['pn_spine_list']
-    leaf_list = module.params['pn_leaf_list']
-    supernet = module.params['pn_supernet']
     output = ''
+    supernet = module.params['pn_supernet']
 
     cli = pn_cli(module)
     clicopy = cli
@@ -530,44 +524,32 @@ def auto_configure_link_ips(module):
     for switch in switch_names:
         output += create_vrouter(module, switch, vnet_name)
 
-    for spine in spine_list:
-        for leaf in leaf_list:
+    for spine in module.params['pn_spine_list']:
+        for leaf in module.params['pn_leaf_list']:
             cli = clicopy
-            cli += ' switch %s port-show hostname %s ' % (leaf, spine)
+            cli += ' switch %s port-show hostname %s' % (leaf, spine)
             cli += ' format port no-show-headers '
             leaf_port = run_cli(module, cli).split()
-            leaf_port = list(set(leaf_port))
 
             if 'Success' in leaf_port:
                 continue
+            else:
+                while len(leaf_port) > 0:
+                    lport = leaf_port[0]
+                    ip = available_ips[0]
+                    delete_trunk(module, leaf, lport, spine)
+                    output += create_interface(module, leaf, ip, lport)
 
-            while len(leaf_port) > 0:
-                lport = leaf_port[0]
-                ip = available_ips[0]
-                delete_trunk(module, leaf, lport, spine)
-                output += create_interface(module, leaf, ip, lport)
-
-                leaf_port.remove(lport)
-                available_ips.remove(ip)
-                ip = available_ips[0]
-
-                cli = clicopy
-                cli += ' switch %s port-show port %s ' % (leaf, lport)
-                cli += ' format rport no-show-headers '
-                rport = run_cli(module, cli).split()
-                rport = list(set(rport))
-                rport = rport[0]
-
-                delete_trunk(module, spine, rport, leaf)
-                output += create_interface(module, spine, ip, rport)
-                available_ips.remove(ip)
-
-                ip_count = 0
-                diff = 32 - int(supernet)
-                count = (1 << diff) - 4
-                while ip_count < count:
+                    leaf_port.remove(lport)
+                    available_ips.remove(ip)
                     available_ips.pop(0)
-                    ip_count += 1
+
+                    ip_count = 0
+                    diff = 32 - int(supernet)
+                    count = (1 << diff) - 4
+                    while ip_count < count:
+                        available_ips.pop(0)
+                        ip_count += 1
 
     # Assign loopback ip to vrouters.
     output += assign_loopback_ip(module, module.params['pn_loopback_ip'])
@@ -614,13 +596,10 @@ def main():
     if module.params['pn_stp']:
         message += modify_stp(module, 'enable')
 
-    message_string = message
     results = []
-    switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
-
-    for switch in switch_list:
+    for switch in module.params['pn_leaf_list']:
         replace_string = switch + ': '
-        for line in message_string.splitlines():
+        for line in message.splitlines():
             if replace_string in line:
                 json_msg = {
                     'switch': switch,
@@ -636,7 +615,7 @@ def main():
         exception='',
         failed=False,
         changed=True if True in CHANGED_FLAG else False,
-        task='Configure L3 ZTP'
+        task='Configure L3 ZTP with existing spine switches'
     )
 
 if __name__ == '__main__':
