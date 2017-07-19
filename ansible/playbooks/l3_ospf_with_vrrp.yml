@@ -12,21 +12,21 @@
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
         pn_switch: "{{ inventory_hostname }}"
-        pn_vlan_data: "{{ lookup('file', '{{ vlan_file }}') }}"
+        pn_vlan_data: "{{ lookup('file', '{{ vlan_csv_file }}') }}"
 
     - name: Create trunks
       pn_trunk_creation:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
         pn_switch_list: "{{ groups['switch'] }}"
-        pn_trunk_data: "{{ lookup('file', '{{ trunk_file }}') }}"
+        pn_trunk_data: "{{ lookup('file', '{{ trunk_csv_file }}') }}"
 
     - name: Create vlags
       pn_vlag_creation:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
         pn_switch_list: "{{ groups['switch'] }}"
-        pn_vlag_data: "{{ lookup('file', '{{ vlag_file }}') }}"
+        pn_vlag_data: "{{ lookup('file', '{{ vlag_csv_file }}') }}"
 
     - name: Create vrouter
       pn_vrouter_creation:
@@ -41,11 +41,11 @@
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
         pn_switch: "{{ inventory_hostname }}"
-        pn_vrrp_data: "{{ lookup('file', '{{ vrrp_file }}') }}"
+        pn_vrrp_data: "{{ lookup('file', '{{ vrrp_csv_file }}') }}"
 
     - name: Configure OSPF
       pn_ospf_configuration:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_ospf_data: "{{ lookup('file', '{{ ospf_file }}') }}"
+        pn_ospf_data: "{{ lookup('file', '{{ ospf_csv_file }}') }}"
         pn_switch_list: "{{ groups['switch'] }}"
