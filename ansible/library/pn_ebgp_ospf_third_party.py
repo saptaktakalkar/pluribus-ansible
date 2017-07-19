@@ -1,5 +1,5 @@
 #!/usr/bin/python
-""" PN CLI EBGP/OSPF """
+""" PN CLI EBGP/OSPF with 3rd party spine switches """
 
 #
 # This file is part of Ansible
@@ -24,9 +24,9 @@ from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
 ---
-module: pn_ebgp_ospf
+module: pn_ebgp_ospf_third_party
 author: 'Pluribus Networks (devops@pluribusnetworks.com)'
-short_description: Module to configure eBGP/OSPF.
+short_description: Module to configure eBGP/OSPF with 3rd party spine switches.
 description: It performs following steps:
     EBGP:
       - Assigning bgp_as
@@ -52,11 +52,6 @@ options:
         - Provide login password if user is not root.
       required: False
       type: str
-    pn_spine_list:
-      description:
-        - Specify list of Spine hosts
-      required: False
-      type: list
     pn_leaf_list:
       description:
         - Specify list of leaf hosts
@@ -114,11 +109,10 @@ options:
 """
 
 EXAMPLES = """
-- name: Configure eBGP/OSPF
-  pn_ebgp_ospf:
+- name: Configure eBGP/OSPF with 3rd party spine switches
+  pn_ebgp_ospf_third_party:
     pn_cliusername: "{{ USERNAME }}"
     pn_clipassword: "{{ PASSWORD }}"
-    pn_spine_list: "{{ groups['spine'] }}"
     pn_leaf_list: "{{ groups['leaf'] }}"
 """
 
@@ -196,10 +190,9 @@ def run_cli(module, cli):
         module.exit_json(
             unreachable=False,
             failed=True,
-            exception='',
+            exception=err.strip(),
             summary=results,
-            task='Configure eBGP/OSPF',
-            stderr=err.strip(),
+            task='Configure eBGP/OSPF with existing spine switches',
             msg='eBGP/OSPF configuration failed',
             changed=False
         )
@@ -219,9 +212,6 @@ def find_bgp_as_dict(module):
     cli = pn_cli(module)
     clicopy = cli
     dict_bgp_as = {}
-
-    for spine in module.params['pn_spine_list']:
-        dict_bgp_as[spine] = str(bgp_as)
 
     cli += ' cluster-show format name no-show-headers'
     cluster_list = run_cli(module, cli).split()
@@ -331,8 +321,6 @@ def assign_ibgp_interface(module, dict_bgp_as):
     """
     output = ''
     ibgp_ip_range = module.params['pn_ibgp_ip_range']
-    spine_list = module.params['pn_spine_list']
-    leaf_list = module.params['pn_leaf_list']
     subnet_count = 0
     supernet = 30
 
@@ -353,133 +341,102 @@ def assign_ibgp_interface(module, dict_bgp_as):
             cli += ' no-show-headers'
             cluster_node_1 = run_cli(module, cli).split()[0]
 
-            if cluster_node_1 not in spine_list and cluster_node_1 in leaf_list:
-                ip_count = subnet_count * 4
-                ip1 = static_part + str(ip_count + 1) + '/' + str(supernet)
-                ip2 = static_part + str(ip_count + 2) + '/' + str(supernet)
+            ip_count = subnet_count * 4
+            ip1 = static_part + str(ip_count + 1) + '/' + str(supernet)
+            ip2 = static_part + str(ip_count + 2) + '/' + str(supernet)
 
-                cli = clicopy
-                cli += ' cluster-show name %s format cluster-node-2' % cluster
-                cli += ' no-show-headers'
-                cluster_node_2 = run_cli(module, cli).split()[0]
+            cli = clicopy
+            cli += ' cluster-show name %s format cluster-node-2' % cluster
+            cli += ' no-show-headers'
+            cluster_node_2 = run_cli(module, cli).split()[0]
 
-                remote_as = dict_bgp_as[cluster_node_1]
-                output += vrouter_interface_ibgp_add(module, cluster_node_1,
-                                                     ip1, ip2, remote_as)
-                output += vrouter_interface_ibgp_add(module, cluster_node_2,
-                                                     ip2, ip1, remote_as)
+            remote_as = dict_bgp_as[cluster_node_1]
+            output += vrouter_interface_ibgp_add(module, cluster_node_1,
+                                                 ip1, ip2, remote_as)
+            output += vrouter_interface_ibgp_add(module, cluster_node_2,
+                                                 ip2, ip1, remote_as)
 
-                subnet_count += 1
+            subnet_count += 1
     else:
         output += ' No leaf clusters present to add iBGP \n'
 
     return output
 
 
-def add_bgp_neighbor(module, dict_bgp_as):
+def add_bgp_neighbor(module):
     """
-    Method to add bgp_neighbor to the vrouters.
+    This method add bgp_neighbor to the vrouter.
     :param module: The Ansible module to fetch input parameters.
-    :param dict_bgp_as: Dictionary containing bgp-as of all switches.
-    :return: String describing if bgp neighbors got added or not.
+    :return: The output of the adding bgp-neighbor
     """
     global CHANGED_FLAG
     output = ''
     cli = pn_cli(module)
     clicopy = cli
+    remote_as = module.params['pn_bgp_as_range']
 
-    for spine in module.params['pn_spine_list']:
-        cli = clicopy
-        cli += ' vrouter-show location %s' % spine
-        cli += ' format name no-show-headers'
-        vrouter_spine = run_cli(module, cli).split()[0]
+    for leaf in module.params['pn_leaf_list']:
+        weight_allowas_flag = 0
 
         cli = clicopy
-        cli += ' vrouter-interface-show vrouter-name %s ' % vrouter_spine
+        cli += ' vrouter-show location %s ' % leaf
+        cli += ' format name no-show-headers '
+        vrouter = run_cli(module, cli).split()[0]
+
+        cli = clicopy
+        cli += ' cluster-show format name no-show-headers'
+        cluster_list = run_cli(module, cli).split()
+        for cluster in cluster_list:
+            if leaf in cluster:
+                weight_allowas_flag = 1
+                break
+
+        cli = clicopy
+        cli += ' vrouter-interface-show vrouter-name %s ' % vrouter
         cli += ' format l3-port no-show-headers '
         port_list = run_cli(module, cli).split()
         port_list = list(set(port_list))
-        port_list.remove(vrouter_spine)
+        port_list.remove(vrouter)
 
         for port in port_list:
             cli = clicopy
-            cli += ' switch %s port-show port %s ' % (spine, port)
-            cli += ' format hostname no-show-headers '
-            leaf = run_cli(module, cli).split()[0]
-
-            cli = clicopy
-            cli += ' vrouter-show location %s' % leaf
-            cli += ' format name no-show-headers'
-            vrouter_leaf = run_cli(module, cli).split()[0]
-
-            bgp_leaf = dict_bgp_as[leaf]
-            bgp_spine = dict_bgp_as[spine]
-
-            cli = clicopy
-            cli += ' vrouter-interface-show vrouter-name %s ' % vrouter_spine
-            cli += ' l3-port %s format ip no-show-headers ' % port
+            cli += ' vrouter-interface-show vrouter-name %s l3-port %s ' % (
+                 vrouter, port)
+            cli += 'format ip no-show-headers'
             ip = run_cli(module, cli).split()
             ip = list(set(ip))
-            ip.remove(vrouter_spine)
+            ip.remove(vrouter)
             ip = ip[0]
-
-            ip = ip.split('/')[0]
-            ip_spine = ip
 
             ip = ip.split('.')
             static_part = str(ip[0]) + '.' + str(ip[1]) + '.'
             static_part += str(ip[2]) + '.'
-            leaf_last_octet = int(ip[3]) - 1
-            ip_leaf = static_part + str(leaf_last_octet)
+            last_octet = str(ip[3]).split('/')
+            remote_ip_lastoctet = int(last_octet[0]) + 1
+            remote_ip = static_part + str(remote_ip_lastoctet)
 
             cli = clicopy
-            cli += ' vrouter-bgp-show remote-as ' + bgp_leaf
-            cli += ' neighbor %s format switch no-show-headers ' % ip_leaf
-            already_added = run_cli(module, cli).split()
-
-            if vrouter_spine in already_added:
-                output += ''
-            else:
-                cli = clicopy
-                cli += ' vrouter-bgp-add vrouter-name ' + vrouter_spine
-                cli += ' neighbor %s remote-as %s ' % (ip_leaf,
-                                                       bgp_leaf)
-                if module.params['pn_bfd']:
-                    cli += ' bfd '
-
-                if 'Success' in run_cli(module, cli):
-                    output += ' %s: Added BGP Neighbor %s for %s \n' % (
-                        spine, ip_leaf, vrouter_spine
-                    )
-                    CHANGED_FLAG.append(True)
-
-            cli = clicopy
-            cli += ' vrouter-bgp-show remote-as ' + bgp_spine
+            cli += ' vrouter-bgp-show'
             cli += ' neighbor %s format switch no-show-headers ' % (
-                ip_spine)
+                remote_ip)
             already_added = run_cli(module, cli).split()
 
-            if vrouter_leaf in already_added:
+            if vrouter in already_added:
                 output += ''
             else:
                 cli = clicopy
-                cli += ' vrouter-bgp-add vrouter-name ' + vrouter_leaf
-                cli += ' neighbor %s remote-as %s ' % (ip_spine,
-                                                       bgp_spine)
+                cli += ' vrouter-bgp-add vrouter-name ' + vrouter
+                cli += ' neighbor %s remote-as %s ' % (remote_ip,
+                                                       remote_as)
                 if module.params['pn_bfd']:
                     cli += ' bfd '
 
-                temp_cli = clicopy
-                temp_cli += ' cluster-show format name no-show-headers'
-                cluster_list = run_cli(module, temp_cli).split()
-                for cluster in cluster_list:
-                    if leaf in cluster:
-                        cli += ' weight 100 allowas-in '
-                        break
+                if weight_allowas_flag == 1:
+                    cli += ' weight 100 allowas-in '
 
                 if 'Success' in run_cli(module, cli):
-                    output += ' %s: Added BGP Neighbor %s for %s \n' % (
-                        leaf, ip_spine, vrouter_leaf
+                    output += ' %s: Added BGP Neighbour %s for %s \n' % (
+                        leaf, remote_ip, vrouter
                     )
                     CHANGED_FLAG.append(True)
 
@@ -703,43 +660,6 @@ def configure_ospf_bfd(module, vrouter, ip):
         return ''
 
 
-def add_ospf_loopback_spine(module, switch, vrouter, ospf_network,
-                            ospf_area_id):
-    """
-    Method to add ospf_neighbor for loopback network for spines.
-    :param module: The Ansible module to fetch input parameters.
-    :param switch: The name of the ansible switch to add neighbor.
-    :param vrouter: The vrouter name to add ospf bfd.
-    :param ospf_network: The network for adding the ospf neighbor.
-    :param ospf_area_id: The area_id for the spines loopback neighbor.
-    :return: String describing if OSPF Neighbor got added or not.
-    """
-    global CHANGED_FLAG
-    output = ''
-    cli = pn_cli(module)
-    clicopy = cli
-
-    cli += ' vrouter-ospf-show'
-    cli += ' network %s format switch no-show-headers ' % ospf_network
-    already_added = run_cli(module, cli).split()
-
-    if vrouter in already_added:
-        pass
-    else:
-        cli = clicopy
-        cli += ' vrouter-ospf-add vrouter-name ' + vrouter
-        cli += ' network %s ospf-area %s' % (ospf_network,
-                                             ospf_area_id)
-
-        if 'Success' in run_cli(module, cli):
-            output += ' %s: Added OSPF neighbor %s to %s \n' % (switch,
-                                                                ospf_network,
-                                                                vrouter)
-            CHANGED_FLAG.append(True)
-
-    return output
-
-
 def find_area_id_leaf_switches(module):
     """
     Method to find area_id for all leaf switches and store it in a dictionary.
@@ -780,122 +700,78 @@ def find_area_id_leaf_switches(module):
 
 def add_ospf_neighbor(module, dict_area_id):
     """
-    Method to add ospf_neighbor to the vrouters.
+    This method add ospf_neighbor to the vrouter.
     :param module: The Ansible module to fetch input parameters.
     :param dict_area_id: Dictionary containing area_id of leafs.
-    :return: String describing if ospf neighbors got added or not.
+    :return: The output of the adding ospf-neighbor.
     """
     global CHANGED_FLAG
     output = ''
-    loopback_network = ''
     cli = pn_cli(module)
     clicopy = cli
-    spine_list = module.params['pn_spine_list']
 
-    for spine in spine_list:
-        cli = clicopy
-        cli += ' vrouter-show location %s' % spine
-        cli += ' format name no-show-headers'
-        vrouter_spine = run_cli(module, cli).split()[0]
-
-        if spine_list.index(spine) == 0:
+    if len(module.params['pn_leaf_list']) > 0:
+        for leaf in module.params['pn_leaf_list']:
             cli = clicopy
-            cli += ' vrouter-loopback-interface-show '
-            cli += ' vrouter-name %s format ip ' % vrouter_spine
-            cli += ' no-show-headers '
-            loopback_ip = run_cli(module, cli).split()
-            loopback_ip.remove(vrouter_spine)
-            loopback_ip = loopback_ip[0].split('.')
-            loopback_network = loopback_ip[0] + '.' + loopback_ip[1] + '.'
-            loopback_network += loopback_ip[2] + '.' + '0/24'
-
-        output += add_ospf_loopback_spine(module, spine, vrouter_spine,
-                                          loopback_network, '0')
-
-        cli = clicopy
-        cli += ' vrouter-interface-show vrouter-name %s ' % vrouter_spine
-        cli += ' format l3-port no-show-headers '
-        port_list = run_cli(module, cli).split()
-        port_list = list(set(port_list))
-        port_list.remove(vrouter_spine)
-
-        for port in port_list:
-            cli = clicopy
-            cli += ' switch %s port-show port %s' % (spine, port)
-            cli += ' format hostname no-show-headers'
-            hostname = run_cli(module, cli).split()[0]
-
-            ospf_area_id = dict_area_id[hostname]
-
-            cli = clicopy
-            cli += ' vrouter-show location %s' % hostname
+            cli += ' vrouter-show location %s' % leaf
             cli += ' format name no-show-headers'
-            vrouter_hostname = run_cli(module, cli).split()[0]
+            vrouter_leaf = run_cli(module, cli).split()[0]
 
             cli = clicopy
-            cli += ' vrouter-interface-show vrouter-name %s l3-port %s' % (
-                vrouter_spine, port
-            )
-            cli += ' format ip no-show-headers'
-            ip = run_cli(module, cli).split()
-            ip = list(set(ip))
-            ip.remove(vrouter_spine)
-            ip = ip[0]
+            cli += ' vrouter-interface-show vrouter-name %s ' % vrouter_leaf
+            cli += ' format l3-port no-show-headers '
+            port_list = run_cli(module, cli).split()
+            port_list = list(set(port_list))
+            port_list.remove(vrouter_leaf)
 
-            ip = ip.split('.')
-            static_part = str(ip[0]) + '.' + str(ip[1]) + '.'
-            static_part += str(ip[2]) + '.'
-            last_octet = str(ip[3]).split('/')
-            netmask = last_octet[1]
+            ospf_area_id = dict_area_id[leaf]
 
-            last_octet_ip_mod = int(last_octet[0]) % 4
-            ospf_last_octet = int(last_octet[0]) - last_octet_ip_mod
-            ospf_network = static_part + str(ospf_last_octet) + '/' + netmask
+            for port in port_list:
+                cli = clicopy
+                cli += ' vrouter-interface-show vrouter-name %s l3-port %s' % (
+                     vrouter_leaf, port
+                )
+                cli += ' format ip no-show-headers'
+                ip = run_cli(module, cli).split()
+                ip = list(set(ip))
+                ip.remove(vrouter_leaf)
+                ip = ip[0]
 
-            leaf_last_octet = int(last_octet[0]) - 1
-            ip_leaf = static_part + str(leaf_last_octet)
-            ip_spine = static_part + last_octet[0]
+                ip = ip.split('.')
+                static_part = str(ip[0]) + '.' + str(ip[1]) + '.'
+                static_part += str(ip[2]) + '.'
+                last_octet = str(ip[3]).split('/')
+                netmask = last_octet[1]
 
-            cli = clicopy
-            cli += ' vrouter-ospf-show'
-            cli += ' network %s format switch no-show-headers ' % ospf_network
-            already_added = run_cli(module, cli).split()
-
-            if vrouter_spine in already_added:
-                pass
-            else:
-                if module.params['pn_bfd']:
-                    output += configure_ospf_bfd(module, vrouter_spine,
-                                                 ip_spine)
+                last_octet_ip_mod = int(last_octet[0]) % 4
+                ospf_last_octet = int(last_octet[0]) - last_octet_ip_mod
+                ospf_network = static_part + str(ospf_last_octet) + '/'
+                ospf_network += netmask
+                ip_leaf = static_part + last_octet[0]
 
                 cli = clicopy
-                cli += ' vrouter-ospf-add vrouter-name ' + vrouter_spine
-                cli += ' network %s ospf-area %s' % (ospf_network,
-                                                     ospf_area_id)
+                cli += ' vrouter-ospf-show'
+                cli += ' network %s format switch no-show-headers ' % (
+                    ospf_network)
+                already_added = run_cli(module, cli).split()
 
-                if 'Success' in run_cli(module, cli):
-                    output += ' %s: Added OSPF neighbor %s to %s \n' % (
-                        spine, ospf_network, vrouter_spine
-                    )
-                    CHANGED_FLAG.append(True)
+                if vrouter_leaf in already_added:
+                    output += ''
+                else:
+                    if module.params['pn_bfd']:
+                        output += configure_ospf_bfd(module, vrouter_leaf,
+                                                     ip_leaf)
 
-            if vrouter_hostname in already_added:
-                pass
-            else:
-                if module.params['pn_bfd']:
-                    output += configure_ospf_bfd(module, vrouter_hostname,
-                                                 ip_leaf)
+                    cli = clicopy
+                    cli += ' vrouter-ospf-add vrouter-name ' + vrouter_leaf
+                    cli += ' network %s ospf-area %s' % (ospf_network,
+                                                         ospf_area_id)
 
-                cli = clicopy
-                cli += ' vrouter-ospf-add vrouter-name ' + vrouter_hostname
-                cli += ' network %s ospf-area %s' % (ospf_network,
-                                                     ospf_area_id)
-
-                if 'Success' in run_cli(module, cli):
-                    output += ' %s: Added OSPF neighbor %s to %s \n' % (
-                        hostname, ospf_network, vrouter_hostname
-                    )
-                    CHANGED_FLAG.append(True)
+                    if 'Success' in run_cli(module, cli):
+                        output += ' %s: Added OSPF neighbor to %s \n ' % (
+                            leaf, vrouter_leaf
+                        )
+                        CHANGED_FLAG.append(True)
 
     return output
 
@@ -1012,8 +888,6 @@ def assign_leafcluster_ospf_interface(module, dict_area_id):
     """
     output = ''
     iospf_ip_range = module.params['pn_iospf_ip_range']
-    spine_list = module.params['pn_spine_list']
-    leaf_list = module.params['pn_leaf_list']
     subnet_count = 0
     supernet = 30
 
@@ -1034,26 +908,25 @@ def assign_leafcluster_ospf_interface(module, dict_area_id):
             cli += ' no-show-headers'
             cluster_node_1 = run_cli(module, cli).split()[0]
 
-            if cluster_node_1 not in spine_list and cluster_node_1 in leaf_list:
-                ip_count = subnet_count * 4
-                ip1 = static_part + str(ip_count + 1) + '/' + str(supernet)
-                ip2 = static_part + str(ip_count + 2) + '/' + str(supernet)
-                ospf_network = static_part + str(ip_count) + '/' + str(supernet)
+            ip_count = subnet_count * 4
+            ip1 = static_part + str(ip_count + 1) + '/' + str(supernet)
+            ip2 = static_part + str(ip_count + 2) + '/' + str(supernet)
+            ospf_network = static_part + str(ip_count) + '/' + str(supernet)
 
-                cli = clicopy
-                cli += ' cluster-show name %s format cluster-node-2' % cluster
-                cli += ' no-show-headers'
-                cluster_node_2 = run_cli(module, cli).split()[0]
+            cli = clicopy
+            cli += ' cluster-show name %s format cluster-node-2' % cluster
+            cli += ' no-show-headers'
+            cluster_node_2 = run_cli(module, cli).split()[0]
 
-                ospf_area_id = dict_area_id[cluster_node_1]
-                output += vrouter_leafcluster_ospf_add(module, cluster_node_1,
-                                                       ip1, ospf_network,
-                                                       ospf_area_id)
-                output += vrouter_leafcluster_ospf_add(module, cluster_node_2,
-                                                       ip2, ospf_network,
-                                                       ospf_area_id)
+            ospf_area_id = dict_area_id[cluster_node_1]
+            output += vrouter_leafcluster_ospf_add(module, cluster_node_1,
+                                                   ip1, ospf_network,
+                                                   ospf_area_id)
+            output += vrouter_leafcluster_ospf_add(module, cluster_node_2,
+                                                   ip2, ospf_network,
+                                                   ospf_area_id)
 
-                subnet_count += 1
+            subnet_count += 1
     else:
         output += ' No leaf clusters present to add iOSPF \n'
 
@@ -1066,7 +939,6 @@ def main():
         argument_spec=dict(
             pn_cliusername=dict(required=False, type='str'),
             pn_clipassword=dict(required=False, type='str', no_log=True),
-            pn_spine_list=dict(required=False, type='list'),
             pn_leaf_list=dict(required=False, type='list'),
             pn_bgp_as_range=dict(required=False, type='str', default='65000'),
             pn_bgp_redistribute=dict(required=False, type='str',
@@ -1103,7 +975,7 @@ def main():
         message += configure_bgp(module, vrouter_names, dict_bgp_as,
                                  module.params['pn_bgp_maxpath'],
                                  module.params['pn_bgp_redistribute'])
-        message += add_bgp_neighbor(module, dict_bgp_as)
+        message += add_bgp_neighbor(module)
         message += assign_ibgp_interface(module, dict_bgp_as)
     elif routing_protocol == 'ospf':
         dict_area_id = find_area_id_leaf_switches(module)
@@ -1111,13 +983,11 @@ def main():
         message += add_ospf_redistribute(module, vrouter_names)
         message += assign_leafcluster_ospf_interface(module, dict_area_id)
 
-    message_string = message
     results = []
-    switch_list = module.params['pn_spine_list'] + module.params['pn_leaf_list']
-    for switch in switch_list:
+    for switch in module.params['pn_leaf_list']:
         replace_string = switch + ': '
 
-        for line in message_string.splitlines():
+        for line in message.splitlines():
             if replace_string in line:
                 json_msg = {
                     'switch': switch,
@@ -1133,7 +1003,7 @@ def main():
         exception='',
         failed=False,
         changed=True if True in CHANGED_FLAG else False,
-        task='Configure eBGP/OSPF'
+        task='Configure eBGP/OSPF with existing spine switches'
     )
 
 if __name__ == '__main__':

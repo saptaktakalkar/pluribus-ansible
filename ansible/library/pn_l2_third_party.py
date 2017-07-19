@@ -153,8 +153,8 @@ def run_cli(module, cli):
             failed=True,
             exception=err.strip(),
             summary=results,
-            task='Configure L2 (Auto vLags) with 3rd party spine switches',
-            msg='L2 configuration with 3rd party spine switches succeeded',
+            task='Configure L2 (Auto vLags) with existing spine switches',
+            msg='L2 configuration failed',
             changed=False
         )
     else:
@@ -507,12 +507,12 @@ def main():
     # Exit the module and return the required JSON.
     module.exit_json(
         unreachable=False,
-        msg='L2 configuration with 3rd party spine switches succeeded',
+        msg='L2 configuration succeeded',
         summary=results,
         exception='',
         failed=False,
         changed=True if True in CHANGED_FLAG else False,
-        task='Configure L2 (Auto vLags) with 3rd party spine switches'
+        task='Configure L2 (Auto vLags) with existing spine switches'
     )
 
 if __name__ == '__main__':

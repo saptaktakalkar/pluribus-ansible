@@ -1,44 +1,52 @@
 ---
 
 
-# Reset all switches
-- name: Switch Config Reset
-  hosts: all
+- name: Reset switches
+  hosts: localhost
 
   vars_files:
   - cli_vault.yml
 
   tasks:
-    - name: Reset all switches
+    - name: Switch config reset
       pn_switch_config_reset:
-        pn_cliusername: "{{ USERNAME }}"  # Cli username (value comes from cli_vault.yml).
-        pn_clipassword: "{{ PASSWORD }}"  # Cli password (value comes from cli_vault.yml).
-      register: reset_out                 # Variable to hold/register output of the above tasks.
-      ignore_errors: yes
-
-    - debug:
-        var: reset_out.stdout_lines
+        pn_cliusername: "{{ USERNAME }}"           # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ PASSWORD }}"           # Cli password (value comes from cli_vault.yml).
+        pn_host_list: "{{ groups['all'] }}"        # List of all switches
+        pn_host_ips: "{{ groups['all'] | map('extract', hostvars, ['ansible_host']) | join(',') }}"  # IPs of all switches separated by comma
+      register: reset_out                          # Variable to hold/register output of the above tasks.
 
     - name: Wait for nvOSd to reboot
-      pause:                             # Pause playbook execution for specified amount of time.
-        minutes: 3
-      when: reset_out.msg != ["Switch has been already reset."]
-
-    - name: Check nvOSd status (Retry until it's online)
-      command: service svc-nvOSd status
-      register: status
-      until: status.stdout == 'online'   # Keep on checking the nvOSd status until it's online.
-      retries: 10
-      changed_when: False
+      pause:
+        minutes: 2
+      when: reset_out.changed
 
 
-# Initial ZTP setup
+# This task is to accept eula.
+# It uses pn_eula_accept.py module from library/ directory.
+# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+- name: Zero Touch Provisioning - Eula accept
+  hosts: localhost
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Auto accept EULA
+      pn_eula_accept:
+        pn_cliusername: "{{ USERNAME }}"               # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ PASSWORD }}"               # Cli password (value comes from cli_vault.yml).
+        pn_host_list: "{{ groups['all'] }}"            # List of all switches
+        pn_host_ips: "{{ groups['all'] | map('extract', hostvars, ['ansible_host']) | join(',') }}"   # IPs of all switches separated by comma
+
+
+# This task is to configure initial ZTP setup on all switches.
+# It uses pn_fabric_creation.py module from library/ directory.
+# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+# If the tasks fails then it will retry as specified by retries count.
 - name: Zero Touch Provisioning - Initial setup
   hosts: all
   serial: 1
-  become: true
-  become_method: su
-  become_user: root
 
   vars_files:
   - cli_vault.yml
@@ -47,8 +55,8 @@
   - json_file_path: /tmp/output.json
 
   tasks:
-    - name: Auto accept EULA, Disable STP, enable ports and create/join fabric
-      pn_initial_ztp_json:
+    - name: Create/join fabric
+      pn_fabric_creation:
         pn_cliusername: "{{ USERNAME }}"               # Cli username (value comes from cli_vault.yml).
         pn_clipassword: "{{ PASSWORD }}"               # Cli password (value comes from cli_vault.yml).
         pn_fabric_name: 'test-l3-fabric'               # Name of the fabric to create/join.
@@ -69,11 +77,11 @@
         # pn_ntp_server: '0.us.pool.ntp.org'           # Specify NTP-SERVER value to be assign if pn_static_setup is True.
         # pn_web_api: True                             # Flag to enable web api. Default: True
         # pn_stp: False                                # Specify True if you want to enable STP at the end. Default: False.
-      register: ztp_out              # Variable to hold/register output of the above tasks.
-      until: ztp_out.failed != true  # If the above code fails it will retry the code
-      retries: 3                     # This is the retries count
+      register: ztp_out                                # Variable to hold/register output of the above tasks.
+      until: ztp_out.failed != true                    # If the above code fails it will retry the code
+      retries: 3                                       # This is the retries count
       delay: 3
-      ignore_errors: yes             # Flag to indicate if we should ignore errors if any.
+      ignore_errors: yes                               # Flag to indicate if we should ignore errors if any.
 
     # Copy the json output of the above task in a file
     - local_action: copy content={{ ztp_out }} dest={{ json_file_path }}
@@ -90,15 +98,12 @@
       when: validate.stdout != "JSON Validation Successful"
 
     - pause:
-        seconds: 2                   # Pause playbook execution for specified amount of time.
+        seconds: 2                                     # Pause playbook execution for specified amount of time.
 
 
 # L3 VRRP setup and automation tests
 - name: L3 VRRP setup and tests
   hosts: spine[0]
-  become: true
-  become_method: su
-  become_user: root
 
   vars_files:
   - cli_vault.yml
@@ -106,13 +111,13 @@
   vars:
     spine_count: "{{ groups['spine'] | length }}"
     leaf_count: "{{ groups['leaf'] | length }}"
-    csv_file: /etc/ansible/pluribus-ansible/ansible/l3_auto_setup.csv  # CSV file path
+    csv_file: /home/jenkins/pluribus-ansible/ansible/l3_auto_setup.csv  # CSV file path
     json_file_path: /tmp/output.json
 
   tasks:
     # L3 VRRP setup
     - name: Configure VRRP L3 setup
-      pn_ztp_vrrp_l3_json:
+      pn_l3_vrrp:
         pn_cliusername: "{{ USERNAME }}"  # Cli username (value comes from cli_vault.yml).
         pn_clipassword: "{{ PASSWORD }}"  # Cli password (value comes from cli_vault.yml).
         pn_spine_list: "{{ groups['spine'] }}"  # List of all spine switches mentioned under [spine] grp in hosts file.
@@ -143,7 +148,7 @@
 
     # L3 ZTP setup
     - name: Configure L3 ZTP (Auto configure link IPs)
-      pn_l3_ztp_json:
+      pn_l3_ztp:
         pn_cliusername: "{{ USERNAME }}"        # Cli username (value comes from cli_vault.yml).
         pn_clipassword: "{{ PASSWORD }}"        # Cli password (value comes from cli_vault.yml).
         pn_spine_list: "{{ groups['spine'] }}"  # List of all spine switches mentioned under [spine] grp in hosts file.
@@ -183,7 +188,7 @@
 
     # eBGP/OSPF setup
     - name: Configure eBGP/OSPF
-      pn_ebgp_ospf_json:
+      pn_ebgp_ospf:
         pn_cliusername: "{{ USERNAME }}"        # Cli username (value comes from cli_vault.yml).
         pn_clipassword: "{{ PASSWORD }}"        # Cli password (value comes from cli_vault.yml).
         pn_spine_list: "{{ groups['spine'] }}"  # List of all spine switches mentioned under [spine] grp in hosts file.
@@ -268,3 +273,4 @@
 
     - pause:
         seconds: 2                        # Pause playbook execution for specified amount of time.
+
