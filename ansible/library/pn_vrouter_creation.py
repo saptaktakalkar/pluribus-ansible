@@ -38,19 +38,31 @@ options:
         - Provide login password if user is not root.
       required: False
       type: str
-    pn_switch:
+    pn_switch_list:
       description:
-        - Name of the switch on which this task is currently getting executed.
-      required: True
+        - Specify list of all switches.
+      required: False
+      type: list
+      default: []
+    pn_vrrp_id:
+      description:
+        - Specify the vrrp id to be assigned.
+      required: False
+      type: str
+    pn_loopback_ip:
+      description:
+        - Specify loopback ip to be assigned to vrouters.
+      required: False
       type: str
 """
 
 EXAMPLES = """
 - name: Create Vrouters
-  pn_svi_configuration:
+  pn_vrouter_creation:
     pn_cliusername: "{{ USERNAME }}"
     pn_clipassword: "{{ PASSWORD }}"
-    pn_switch: "{{ inventory_hostname }}"
+    pn_switch_list: "{{ groups['switch'] }}"
+    pn_vrrp_id: '18'
 """
 
 RETURN = """
@@ -119,7 +131,7 @@ def run_cli(module, cli):
         return out
     if err:
         json_msg = {
-            'switch': '',
+            'switch': module.params['pn_switch_list'][0],
             'output': u'Operation Failed: {}'.format(' '.join(cli))
         }
         results.append(json_msg)
@@ -133,119 +145,103 @@ def run_cli(module, cli):
             changed=False
         )
     else:
-        return 'Success'
+        return None
 
 
-def create_vrouter(module, vnet_name):
+def create_vrouter(module):
     """
     Create a hardware vrouter.
     :param module: The Ansible module to fetch input parameters.
-    :param switch: Name of the switch.
-    :param vnet_name: Vnet name required for vrouter creation.
     :return: String describing if vrouter got created or not.
     """
     global CHANGED_FLAG
     output = ''
-    new_vrouter = False
-    cli_orig = pn_cli(module)
     vrrp_id = module.params['pn_vrrp_id']
-    switch_list = module.params['pn_switch_list']
-
-    # Check if vrouter already exists
-    for switch in switch_list:
-        cli = cli_orig
-        cli += ' switch ' + switch
-        clicopy = cli
-        vrouter_name = switch + '-vrouter'
-
-        cli = clicopy
-        cli += ' vrouter-show format name no-show-headers '
-        existing_vrouter_names = run_cli(module, cli)
-
-        if 'Success' not in existing_vrouter_names:
-            existing_vrouter_names = existing_vrouter_names.split()
-            if vrouter_name not in existing_vrouter_names:
-                new_vrouter = True
-
-        if new_vrouter or 'Success' in existing_vrouter_names:
-            cli = clicopy
-            cli += ' vrouter-create name %s ' % vrouter_name
-            cli += ' vnet %s ' % (vnet_name)
-            if vrrp_id:
-                cli += ' hw-vrrp-id %s ' % vrrp_id
-            cli += ' enable router-type hardware '
-            run_cli(module, cli)
-            CHANGED_FLAG.append(True)
-            output += '%s: Created vrouter with name %s\n' % (switch, vrouter_name)
-
-    return output
-
-
-def assign_loopback_ip(module, loopback_address):
-    """
-    Method to add loopback interface to vrouters.
-    :param module: The Ansible module to fetch input parameters.
-    :param loopback_address: The loopback ip to be assigned.
-    :return: String describing if loopback ips got assigned or not.
-    """
-    global CHANGED_FLAG
-    output = ''
-    address = loopback_address.split('.')
-    static_part = str(address[0]) + '.' + str(address[1]) + '.'
-    static_part += str(address[2]) + '.'
-
-    cli = pn_cli(module)
-    clicopy = cli
-    switch_list = module.params['pn_switch_list']
-
-    vrouter_count = int(address[3])
-    for switch in switch_list:
-        vrouter = switch + '-vrouter'
-        ip = static_part + str(vrouter_count)
-
-        cli = clicopy
-        cli += ' vrouter-modify name %s router-id %s ' % (vrouter, ip)
-        if 'Success' in run_cli(module, cli):
-            output += ' %s: Added router-id %s \n' % (switch, ip)
-
-        cli = clicopy
-        cli += ' vrouter-loopback-interface-show ip ' + ip
-        cli += ' format switch no-show-headers '
-        existing_vrouter = run_cli(module, cli).split()
-
-        if vrouter not in existing_vrouter:
-            cli = clicopy
-            cli += ' vrouter-loopback-interface-add vrouter-name '
-            cli += vrouter
-            cli += ' ip ' + ip
-            run_cli(module, cli)
-            CHANGED_FLAG.append(True)
-
-        output += ' %s: Added loopback ip %s to %s \n' % (switch, ip, vrouter)
-        vrouter_count += 1
-
-    return output
-
-
-def vrouter_creation(module):
-    """
-    Method to create vrouter
-    :param module: The Ansible module to fetch input parameters.
-    :return: String describing whether vrouter got created or not.
-    """
-    global CHANGED_FLAG
-    output = ''
 
     cli = pn_cli(module)
     cli += ' fabric-node-show format fab-name no-show-headers '
     fabric_name = list(set(run_cli(module, cli).split()))[0]
-
     vnet_name = fabric_name + '-global'
-    loopback_address = module.params['pn_loopback_ip']
 
-    output += create_vrouter(module, vnet_name)
-    if loopback_address:
-        output += assign_loopback_ip(module, loopback_address)
+    cli = pn_cli(module)
+    cli += ' vrouter-show format name no-show-headers '
+    existing_vrouter_names = run_cli(module, cli)
+
+    if existing_vrouter_names is not None:
+        existing_vrouter_names = existing_vrouter_names.split()
+
+    for switch in module.params['pn_switch_list']:
+        new_vrouter = False
+        vrouter_name = switch + '-vrouter'
+
+        if (existing_vrouter_names is not None and vrouter_name not in
+                existing_vrouter_names):
+            new_vrouter = True
+
+        if new_vrouter or existing_vrouter_names is None:
+            cli = pn_cli(module)
+            cli += ' switch %s ' % switch
+            cli += ' vrouter-create name %s vnet %s ' % (vrouter_name,
+                                                         vnet_name)
+            if vrrp_id:
+                cli += ' hw-vrrp-id %s ' % vrrp_id
+
+            cli += ' enable router-type hardware '
+            run_cli(module, cli)
+            CHANGED_FLAG.append(True)
+            output += '%s: Created vrouter with name %s\n' % (switch,
+                                                              vrouter_name)
+
+    return output
+
+
+def assign_loopback_and_router_id(module, loopback_address):
+    """
+    Add loopback interface and router id to vrouters.
+    :param module: The Ansible module to fetch input parameters.
+    :param loopback_address: The loopback ip to be assigned.
+    :return: String describing if loopback ip/router id got assigned or not.
+    """
+    global CHANGED_FLAG
+    output = ''
+
+    address = loopback_address.split('.')
+    static_part = str(address[0]) + '.' + str(address[1]) + '.'
+    static_part += str(address[2]) + '.'
+    vrouter_count = int(address[3])
+
+    for switch in module.params['pn_switch_list']:
+        add_loopback = False
+        vrouter = switch + '-vrouter'
+        ip = static_part + str(vrouter_count)
+
+        # Add router id
+        cli = pn_cli(module)
+        cli += ' vrouter-modify name %s router-id %s ' % (vrouter, ip)
+        run_cli(module, cli)
+        output += '%s: Added router id %s to %s\n' % (switch, ip, vrouter)
+
+        # Check existing loopback ip
+        cli = pn_cli(module)
+        cli += ' vrouter-loopback-interface-show ip %s ' % ip
+        cli += ' format switch no-show-headers '
+        existing_vrouter = run_cli(module, cli)
+
+        if existing_vrouter is not None:
+            existing_vrouter = existing_vrouter.split()
+            if vrouter not in existing_vrouter:
+                add_loopback = True
+
+        # Add loopback ip if not already exists
+        if add_loopback or existing_vrouter is None:
+            cli = pn_cli(module)
+            cli += ' vrouter-loopback-interface-add '
+            cli += ' vrouter-name %s ip %s ' % (vrouter, ip)
+            run_cli(module, cli)
+            CHANGED_FLAG.append(True)
+            output += '%s: Added loopback ip %s to %s\n' % (switch, ip, vrouter)
+
+        vrouter_count += 1
 
     return output
 
@@ -258,21 +254,30 @@ def main():
             pn_clipassword=dict(required=False, type='str', no_log=True),
             pn_loopback_ip=dict(required=False, type='str', default=''),
             pn_vrrp_id=dict(required=False, type='str', default=''),
-            pn_switch_list=dict(required=False, type='list'),
+            pn_switch_list=dict(required=False, type='list', default=[]),
         )
     )
 
     global CHANGED_FLAG
     results = []
     message = ''
+    loopback_address = module.params['pn_loopback_ip']
 
-    message += vrouter_creation(module)
+    # Create vrouters
+    message += create_vrouter(module)
 
-    for line in message.splitlines():
-        if ': ' in line:
-            return_msg = line.split(':')
-            json_msg = {'switch' : return_msg[0].strip(), 'output' : return_msg[1].strip()}
-            results.append(json_msg)
+    # Assign loopback ip to vrouters
+    if loopback_address:
+        message += assign_loopback_and_router_id(module, loopback_address)
+
+    for switch in module.params['pn_switch_list']:
+        replace_string = switch + ': '
+        for line in message.splitlines():
+            if replace_string in line:
+                results.append({
+                    'switch': switch,
+                    'output': (line.replace(replace_string, '')).strip()
+                })
 
     # Exit the module and return the required JSON.
     module.exit_json(
@@ -287,3 +292,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
