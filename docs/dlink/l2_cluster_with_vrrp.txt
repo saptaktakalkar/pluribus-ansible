@@ -18,8 +18,8 @@ Input parameters:
 Sample Hosts file:
 # This is the Ansible inventory/hosts file
 [switch]
-gui-spine1 ansible_host=10.9.21.60
-gui-spine2 ansible_host=10.9.21.61
+gui-spine1 ansible_host=10.9.21.60 ansible_user="{{ SSH_USER }}" ansible_ssh_pass="{{ SSH_PASS }}"
+gui-spine2 ansible_host=10.9.21.61 ansible_user="{{ SSH_USER }}" ansible_ssh_pass="{{ SSH_PASS }}"
 
 Sample vlan csv file:
 # vlan_id, list_of_untagged_ports

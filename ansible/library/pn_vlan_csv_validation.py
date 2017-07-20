@@ -99,21 +99,21 @@ def main():
             line_count += 1
             valid_ports = []
 
-            if row.startswith('#'):
-                # Skip comments which starts with '#'
+            if not row.strip() or row.startswith('#'):
+                # Skip blank lines and comments which starts with '#'
                 continue
             else:
                 elements = row.split(',')
-                if len(elements) > 1:
+                if len(elements) >= 1:
+                    is_ports = True if len(elements) > 1 else False
                     vlan = elements.pop(0)
-                    ports = elements
 
-                    if not vlan or not ports:
+                    # Vlan ID validation
+                    if not vlan:
                         output += 'Invalid entry at line number {}\n'.format(
                             line_count
                         )
                     else:
-                        # Vlan ID validation
                         if vlan in valid_vlans:
                             output += 'Duplicate vlan {} '.format(vlan)
                             output += 'at line number {}\n'.format(line_count)
@@ -125,7 +125,9 @@ def main():
                         else:
                             valid_vlans.append(vlan)
 
-                        # Ports validation
+                    # Ports validation
+                    if is_ports:
+                        ports = elements
                         for port in ports:
                             if port in valid_ports:
                                 output += 'Duplicate port {} '.format(port)

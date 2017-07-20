@@ -14,7 +14,7 @@ Input parameters:
 Sample Hosts file:
 # This is the Ansible inventory/hosts file
 [switch]
-gui-spine1 ansible_host=10.9.21.60
+gui-spine1 ansible_host=10.9.21.60 ansible_user="{{ SSH_USER }}" ansible_ssh_pass="{{ SSH_PASS }}"
 
 Sample bgp csv file:
 # switch_name, l3_port, my_ip, my_as, peer_ip, peer_as
