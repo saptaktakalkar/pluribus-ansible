@@ -346,7 +346,9 @@ def create_vrouter_without_vrrp(module, switch, vnet_name):
     :return: String describing if vrouter got created or if it already exists.
     """
     global CHANGED_FLAG
-    vrouter_name = str(switch) + '-vrouter'
+    switch = switch.strip()
+    vrouter_name = switch + '-vrouter'
+
     cli = pn_cli(module)
     cli += ' switch ' + switch
     clicopy = cli
