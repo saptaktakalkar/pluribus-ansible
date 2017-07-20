@@ -34,7 +34,7 @@
             <tooltip>Flag to toggle/convert 40g ports to 10g ports, Toggle 40g, boolean</tooltip>
             <parentKey>null</parentKey>
             <visible>true</visible>
-            <userAssistText>Trur or False</userAssistText>
+            <userAssistText>Convert 40g ports to 10g ports</userAssistText>
         </guiProperties>
 
         <guiProperties>
@@ -1346,11 +1346,9 @@
         <description>
             <![CDATA[
                 <ul>
-                    <li>Dummy text 1</li>
-                    <li>Dummy text 2</li>
-                    <li>Dummy text 3</li>
-                    <li>Dummy text 4</li>
-                    <li>Dummy text 5</li>
+                    <li>Setup fabric (single switch)</li>
+                    <li>Create VLANs with option to add untagged ports</li>
+                    <li>Create trunk (LAG)</li>
                 </ul>
             ]]>
         </description>
@@ -1390,16 +1388,83 @@
     </playbook>
 
     <playbook>
-        <name>L2 Cluster VRRP</name>
+        <name>L2 Two Switch Cluster</name>
         <image>assets/images/playbookImages/l2_vrrp.png</image>
         <description>
             <![CDATA[
                 <ul>
-                    <li>Dummy text 1</li>
-                    <li>Dummy text 2</li>
-                    <li>Dummy text 3</li>
-                    <li>Dummy text 4</li>
-                    <li>Dummy text 5</li>
+                    <li>Setup fabric (two switches)</li>
+                    <li>Create cluster</li>
+                    <li>Create VLANs with option to add untagged ports</li>
+                    <li>Create trunk (LAG)</li>
+                    <li>Create vLAG</li>
+                </ul>
+            ]]>
+        </description>
+        <csvValidationFileName></csvValidationFileName>
+        <playbookFileName>l2_two_switch_cluster.yml</playbookFileName>
+        <playbookType>Netvisor Enterprise L2/L3 License</playbookType>
+        <maxSwitchCount>-1</maxSwitchCount>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>Trunk Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>trunk_csv_file</key>
+            <type>file</type>
+            <sampleFilePath>assets/resources/trunk.csv</sampleFilePath>
+            <tooltip>Trunk Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning Trunk information</userAssistText>
+            <validationFile>trunk_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>VLAG Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>vlag_csv_file</key>
+            <type>file</type>
+            <sampleFilePath>assets/resources/vlag.csv</sampleFilePath>
+            <tooltip>VLAG Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning VLAG information</userAssistText>
+            <validationFile>vlag_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>VLAN Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>vlan_csv_file</key>
+            <type>file</type>
+            <sampleFilePath>assets/resources/vlan.csv</sampleFilePath>
+            <tooltip>VLAN Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning VLAN information</userAssistText>
+            <validationFile>vlan_csv_validation.yml</validationFile>
+        </guiProperties>
+    </playbook>
+
+    <playbook>
+        <name>L2 Cluster with VRRP</name>
+        <image>assets/images/playbookImages/l2_vrrp.png</image>
+        <description>
+            <![CDATA[
+                <ul>
+                    <li>Setup fabric (two switches)</li>
+                    <li>Create cluster</li>
+                    <li>Create VLANs with option to add untagged ports</li>
+                    <li>Create trunk (LAG)</li>
+                    <li>Create vLAG</li>
+                    <li>Create vRouter</li>
+                    <li>Setup VRRP</li>
                 </ul>
             ]]>
         </description>
@@ -1483,80 +1548,116 @@
     </playbook>
 
     <playbook>
-        <name>L2 Two Switch Cluster</name>
+        <name>L3 Single Routed BGP</name>
         <image>assets/images/playbookImages/l2_vrrp.png</image>
         <description>
             <![CDATA[
                 <ul>
-                    <li>Dummy text 1</li>
-                    <li>Dummy text 2</li>
-                    <li>Dummy text 3</li>
-                    <li>Dummy text 4</li>
-                    <li>Dummy text 5</li>
+                    <li>Setup fabric (single switch)</li>
+                    <li>Create vRouter (router-type hardware)</li>
+                    <li>Setup loopback IP & router id</li>
+                    <li>Create L3 Interface</li>
+                    <li>Setup BGP</li>
                 </ul>
             ]]>
         </description>
         <csvValidationFileName></csvValidationFileName>
-        <playbookFileName>l2_two_switch_cluster.yml</playbookFileName>
+        <playbookFileName>l3_single_routed_bgp.yml</playbookFileName>
         <playbookType>Netvisor Enterprise L2/L3 License</playbookType>
 
         <guiProperties>
             <tab>mandatory</tab>
-            <displayText>Trunk Data</displayText>
+            <displayText>BGP Data</displayText>
             <value></value>
             <choices></choices>
-            <key>trunk_csv_file</key>
+            <key>bgp_csv_file</key>
             <type>file</type>
-            <sampleFilePath>assets/resources/trunk.csv</sampleFilePath>
-            <tooltip>Trunk Data file</tooltip>
+            <sampleFilePath>assets/resources/bgp.csv</sampleFilePath>
+            <tooltip>BGP Data file</tooltip>
             <parentKey>null</parentKey>
             <visible>true</visible>
-            <userAssistText>File contaning Trunk information</userAssistText>
-            <validationFile>trunk_csv_validation.yml</validationFile>
+            <userAssistText>File contaning BGP information</userAssistText>
+            <validationFile>bgp_csv_validation.yml</validationFile>
         </guiProperties>
 
         <guiProperties>
-            <tab>mandatory</tab>
-            <displayText>VLAG Data</displayText>
-            <value></value>
+            <tab>optional</tab>
+            <displayText>Loopback IP</displayText>
+            <value>109.109.109.1</value>
             <choices></choices>
-            <key>vlag_csv_file</key>
-            <type>file</type>
-            <sampleFilePath>assets/resources/vlag.csv</sampleFilePath>
-            <tooltip>VLAG Data file</tooltip>
+            <key>pn_loopback_ip</key>
+            <type>IP</type>
+            <tooltip>Loopback IP starting value for vrouters.</tooltip>
+            <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
             <parentKey>null</parentKey>
             <visible>true</visible>
-            <userAssistText>File contaning VLAG information</userAssistText>
-            <validationFile>vlag_csv_validation.yml</validationFile>
-        </guiProperties>
-
-        <guiProperties>
-            <tab>mandatory</tab>
-            <displayText>VLAN Data</displayText>
-            <value></value>
-            <choices></choices>
-            <key>vlan_csv_file</key>
-            <type>file</type>
-            <sampleFilePath>assets/resources/vlan.csv</sampleFilePath>
-            <tooltip>VLAN Data file</tooltip>
-            <parentKey>null</parentKey>
-            <visible>true</visible>
-            <userAssistText>File contaning VLAN information</userAssistText>
-            <validationFile>vlan_csv_validation.yml</validationFile>
+            <userAssistText>Enter Valid IP</userAssistText>
         </guiProperties>
     </playbook>
 
     <playbook>
-        <name>L3 BGP with VRRPr</name>
+        <name>L3 Single Routed OSPF</name>
         <image>assets/images/playbookImages/l2_vrrp.png</image>
         <description>
             <![CDATA[
                 <ul>
-                    <li>Dummy text 1</li>
-                    <li>Dummy text 2</li>
-                    <li>Dummy text 3</li>
-                    <li>Dummy text 4</li>
-                    <li>Dummy text 5</li>
+                    <li>Setup fabric (single switch)</li>
+                    <li>Create vRouter (router-type hardware)</li>
+                    <li>Setup loopback IP & router id</li>
+                    <li>Create L3 Interface</li>
+                    <li>Setup OSPF</li>
+                </ul>
+            ]]>
+        </description>
+        <csvValidationFileName></csvValidationFileName>
+        <playbookFileName>l3_single_routed_ospf.yml</playbookFileName>
+        <playbookType>Netvisor Enterprise L2/L3 License</playbookType>
+        <maxSwitchCount>1</maxSwitchCount>
+
+        <guiProperties>
+            <tab>mandatory</tab>
+            <displayText>OSPF Data</displayText>
+            <value></value>
+            <choices></choices>
+            <key>ospf_csv_file</key>
+            <type>file</type>
+            <sampleFilePath>assets/resources/ospf.csv</sampleFilePath>
+            <tooltip>OSPF Data file</tooltip>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>File contaning OSPF information</userAssistText>
+            <validationFile>ospf_csv_validation.yml</validationFile>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Loopback IP</displayText>
+            <value>109.109.109.1</value>
+            <choices></choices>
+            <key>pn_loopback_ip</key>
+            <type>IP</type>
+            <tooltip>Loopback IP starting value for vrouters.</tooltip>
+            <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>Enter Valid IP</userAssistText>
+        </guiProperties>
+    </playbook>
+
+    <playbook>
+        <name>L3 BGP with VRRP</name>
+        <image>assets/images/playbookImages/l2_vrrp.png</image>
+        <description>
+            <![CDATA[
+                <ul>
+                    <li>Setup fabric (two switches)</li>
+                    <li>Create cluster</li>
+                    <li>Create VLANs with option to add untagged ports</li>
+                    <li>Create trunk (LAG)</li>
+                    <li>Create vLAG</li>
+                    <li>Create vRouter</li>
+                    <li>Setup VRRP</li>
+                    <li>Setup BGP</li>
                 </ul>
             ]]>
         </description>
@@ -1674,11 +1775,14 @@
         <description>
             <![CDATA[
                 <ul>
-                    <li>Dummy text 1</li>
-                    <li>Dummy text 2</li>
-                    <li>Dummy text 3</li>
-                    <li>Dummy text 4</li>
-                    <li>Dummy text 5</li>
+                    <li>Setup fabric (two switches)</li>
+                    <li>Create cluster</li>
+                    <li>Create VLANs with option to add untagged ports</li>
+                    <li>Create trunk (LAG)</li>
+                    <li>Create vLAG</li>
+                    <li>Create vRouter</li>
+                    <li>Setup VRRP</li>
+                    <li>Setup OSPF</li>
                 </ul>
             ]]>
         </description>
@@ -1791,64 +1895,17 @@
     </playbook>
 
     <playbook>
-        <name>L3 Single Routed eBGP</name>
+        <name>L3 Single Routed BGP with L2</name>
         <image>assets/images/playbookImages/l2_vrrp.png</image>
         <description>
             <![CDATA[
                 <ul>
-                    <li>Dummy text 1</li>
-                    <li>Dummy text 2</li>
-                    <li>Dummy text 3</li>
-                    <li>Dummy text 4</li>
-                    <li>Dummy text 5</li>
-                </ul>
-            ]]>
-        </description>
-        <csvValidationFileName></csvValidationFileName>
-        <playbookFileName>l3_single_routed_bgp.yml</playbookFileName>
-        <playbookType>Netvisor Enterprise L2/L3 License</playbookType>
-
-        <guiProperties>
-            <tab>mandatory</tab>
-            <displayText>BGP Data</displayText>
-            <value></value>
-            <choices></choices>
-            <key>bgp_csv_file</key>
-            <type>file</type>
-            <sampleFilePath>assets/resources/bgp.csv</sampleFilePath>
-            <tooltip>BGP Data file</tooltip>
-            <parentKey>null</parentKey>
-            <visible>true</visible>
-            <userAssistText>File contaning BGP information</userAssistText>
-            <validationFile>bgp_csv_validation.yml</validationFile>
-        </guiProperties>
-
-        <guiProperties>
-            <tab>optional</tab>
-            <displayText>Loopback IP</displayText>
-            <value>109.109.109.1</value>
-            <choices></choices>
-            <key>pn_loopback_ip</key>
-            <type>IP</type>
-            <tooltip>Loopback IP starting value for vrouters.</tooltip>
-            <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
-            <parentKey>null</parentKey>
-            <visible>true</visible>
-            <userAssistText>Enter Valid IP</userAssistText>
-        </guiProperties>
-    </playbook>
-
-    <playbook>
-        <name>L3 Single Routed eBGP with L2</name>
-        <image>assets/images/playbookImages/l2_vrrp.png</image>
-        <description>
-            <![CDATA[
-                <ul>
-                    <li>Dummy text 1</li>
-                    <li>Dummy text 2</li>
-                    <li>Dummy text 3</li>
-                    <li>Dummy text 4</li>
-                    <li>Dummy text 5</li>
+                    <li>Setup fabric (single switch)</li>
+                    <li>Create VLANs with option to add untagged ports</li>
+                    <li>Create trunk (LAG)</li>
+                    <li>Create vRouter</li>
+                    <li>Setup BGP</li>
+                    <li>Create SVIs</li>
                 </ul>
             ]]>
         </description>
@@ -1932,64 +1989,17 @@
     </playbook>
 
     <playbook>
-        <name>L3 Single Routed OSPF</name>
-        <image>assets/images/playbookImages/l2_vrrp.png</image>
-        <description>
-            <![CDATA[
-                <ul>
-                    <li>Dummy text 1</li>
-                    <li>Dummy text 2</li>
-                    <li>Dummy text 3</li>
-                    <li>Dummy text 4</li>
-                    <li>Dummy text 5</li>
-                </ul>
-            ]]>
-        </description>
-        <csvValidationFileName></csvValidationFileName>
-        <playbookFileName>l3_single_routed_ospf.yml</playbookFileName>
-        <playbookType>Netvisor Enterprise L2/L3 License</playbookType>
-
-        <guiProperties>
-            <tab>mandatory</tab>
-            <displayText>OSPF Data</displayText>
-            <value></value>
-            <choices></choices>
-            <key>ospf_csv_file</key>
-            <type>file</type>
-            <sampleFilePath>assets/resources/ospf.csv</sampleFilePath>
-            <tooltip>OSPF Data file</tooltip>
-            <parentKey>null</parentKey>
-            <visible>true</visible>
-            <userAssistText>File contaning OSPF information</userAssistText>
-            <validationFile>ospf_csv_validation.yml</validationFile>
-        </guiProperties>
-
-        <guiProperties>
-            <tab>optional</tab>
-            <displayText>Loopback IP</displayText>
-            <value>109.109.109.1</value>
-            <choices></choices>
-            <key>pn_loopback_ip</key>
-            <type>IP</type>
-            <tooltip>Loopback IP starting value for vrouters.</tooltip>
-            <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
-            <parentKey>null</parentKey>
-            <visible>true</visible>
-            <userAssistText>Enter Valid IP</userAssistText>
-        </guiProperties>
-    </playbook>
-
-    <playbook>
         <name>L3 Single Routed OSPF with L2</name>
         <image>assets/images/playbookImages/l2_vrrp.png</image>
         <description>
             <![CDATA[
                 <ul>
-                    <li>Dummy text 1</li>
-                    <li>Dummy text 2</li>
-                    <li>Dummy text 3</li>
-                    <li>Dummy text 4</li>
-                    <li>Dummy text 5</li>
+                    <li>Setup fabric (single switch)</li>
+                    <li>Create VLANs with option to add untagged ports</li>
+                    <li>Create trunk (LAG)</li>
+                    <li>Create vRouter</li>
+                    <li>Setup OSPF</li>
+                    <li>Create SVIs</li>
                 </ul>
             ]]>
         </description>
