@@ -101,8 +101,8 @@ def main():
             row = row.strip()
             line_count += 1
 
-            if row.startswith('#'):
-                # Skip comments which starts with '#'
+            if not row.strip() or row.startswith('#'):
+                # Skip blank lines and comments which starts with '#'
                 continue
             else:
                 elements = row.split(',')
