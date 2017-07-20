@@ -1,6 +1,7 @@
+#L3 Single Routed BGP with L2
 ---
 
-- name: Configure eBGP, SVI
+- name: Configure L3 Single Routed BGP with L2
   hosts: switch[0]
 
   vars_files:
@@ -32,8 +33,8 @@
       pn_ebgp_configuration:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_bgp_data: "{{ lookup('file', '{{ bgp_csv_file }}') }}"
         pn_switch_list: "{{ groups['switch'] }}"
+        pn_bgp_data: "{{ lookup('file', '{{ bgp_csv_file }}') }}"
 
     - name: Configure SVI
       pn_svi_configuration:

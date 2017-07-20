@@ -4,7 +4,6 @@
 
 - name: Configure L2 Cluster with VRRP
   hosts: switch[0]
-  serial: 1
 
   vars_files:
   - cli_vault.yml

@@ -1,6 +1,7 @@
+#L3 OSPF with VRRP
 ---
 
-- name: Configure OSPF, VRRP
+- name: Configure L3 OSPF with VRRP
   hosts: switch[0]
 
   vars_files:
@@ -42,16 +43,18 @@
         pn_vrrp_id: "{{ pn_vrrp_id }}"
         pn_switch_list: "{{ groups['switch'] }}"
 
-    - name: Configure VRRP on cluster switch
+    - name: Configure VRRP
       pn_vrrp_creation:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_switch: "{{ inventory_hostname }}"
+        pn_switch_list: "{{ groups['switch'] }}"        
+        pn_vrrp_id: "{{ pn_vrrp_id }}"
         pn_vrrp_data: "{{ lookup('file', '{{ vrrp_csv_file }}') }}"
 
     - name: Configure OSPF
       pn_ospf_configuration:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_ospf_data: "{{ lookup('file', '{{ ospf_csv_file }}') }}"
         pn_switch_list: "{{ groups['switch'] }}"
+        pn_ospf_data: "{{ lookup('file', '{{ ospf_csv_file }}') }}"
+

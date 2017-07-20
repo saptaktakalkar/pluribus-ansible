@@ -1,6 +1,7 @@
+#L3 BGP with VRRP
 ---
 
-- name: Configure eBGP, VRRP
+- name: Configure L3 BGP with VRRP
   hosts: switch[0]
 
   vars_files:
@@ -42,16 +43,18 @@
         pn_vrrp_id: "{{ pn_vrrp_id }}"
         pn_switch_list: "{{ groups['switch'] }}"
 
-    - name: Configure L2 VRRP on cluster switch
+    - name: Configure VRRP
       pn_vrrp_creation:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_switch: "{{ inventory_hostname }}"
+        pn_switch_list: "{{ groups['switch'] }}"
+        pn_vrrp_id: "{{ pn_vrrp_id }}"
         pn_vrrp_data: "{{ lookup('file', '{{ vrrp_csv_file }}') }}"
 
-    - name: Configure eBGP
+    - name: Configure BGP
       pn_ebgp_configuration:
         pn_cliusername: "{{ USERNAME }}"
         pn_clipassword: "{{ PASSWORD }}"
-        pn_bgp_data: "{{ lookup('file', '{{ bgp_csv_file }}') }}"
         pn_switch_list: "{{ groups['switch'] }}"
+        pn_bgp_data: "{{ lookup('file', '{{ bgp_csv_file }}') }}"
+
