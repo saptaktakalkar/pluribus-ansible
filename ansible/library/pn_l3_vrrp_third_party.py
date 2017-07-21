@@ -477,6 +477,7 @@ def configure_vrrp(module, csv_data):
             continue
         else:
             elements = row.split(',')
+            elements = filter(None, elements)
             switch_list = []
             vlan_id = elements[0].strip()
             vrrp_ip = elements[1].strip()
