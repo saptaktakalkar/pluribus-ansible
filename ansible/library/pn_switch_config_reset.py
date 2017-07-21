@@ -92,8 +92,6 @@ msg:
   type: str
 """
 
-CHANGED_FLAG = []
-
 
 def main():
     """ This section is for arguments parsing """
@@ -112,6 +110,7 @@ def main():
     switch_ips = switch_ips.split(',')
     result = []
     count = 0
+    changed_flag, unreachable_flag = [], []
 
     for ip in switch_ips:
         cli = 'sshpass -p %s ' % password
@@ -129,29 +128,40 @@ def main():
 
             cli = shlex.split(cli)
             module.run_command(cli)
-            CHANGED_FLAG.append(True)
+            changed_flag.append(True)
 
             result.append({
                 'switch': switch_list[count],
                 'output': 'Switch config reset completed successfully'
             })
-        else:
+        elif 'permission denied' in err.lower():
             result.append({
                 'switch': switch_list[count],
                 'output': 'Switch has been already reset'
+            })
+        elif 'no route to host' in err.lower():
+            unreachable_flag.append(True)
+            result.append({
+                'switch': switch_list[count],
+                'output': 'Switch is unreachable'
+            })
+        else:
+            result.append({
+                'switch': switch_list[count],
+                'output': 'Could not reset the switch'
             })
 
         count += 1
 
     # Exit the module and return the required JSON
     module.exit_json(
-        unreachable=False,
+        unreachable=True if True in unreachable_flag else False,
         msg='Switch config reset completed successfully',
         summary=result,
         exception='',
         task='Switch config reset',
         failed=False,
-        changed=True if True in CHANGED_FLAG else False
+        changed=True if True in changed_flag else False
     )
 
 if __name__ == '__main__':
