@@ -204,6 +204,7 @@ def main():
                 continue
             else:
                 elements = row.split(',')
+                elements = filter(None, elements)
                 vlan_id = elements.pop(0)
                 if len(elements) > 0:
                     untagged_ports = ','.join(elements)

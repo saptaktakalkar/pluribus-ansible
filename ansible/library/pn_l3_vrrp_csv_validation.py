@@ -126,6 +126,7 @@ def main():
                 continue
             else:
                 elements = row.split(',')
+                elements = filter(None, elements)
                 # Check number of elements per row.
                 if len(elements) != 3 and len(elements) != 6:
                     output += 'Invalid number of elements '

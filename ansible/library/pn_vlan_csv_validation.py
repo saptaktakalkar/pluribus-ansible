@@ -104,6 +104,7 @@ def main():
                 continue
             else:
                 elements = row.split(',')
+                elements = filter(None, elements)
                 if len(elements) >= 1:
                     is_ports = True if len(elements) > 1 else False
                     vlan = elements.pop(0)
