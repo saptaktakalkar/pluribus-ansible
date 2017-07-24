@@ -219,7 +219,7 @@
             <tooltip>Flag to toggle/convert 40g ports to 10g ports, Toggle 40g, boolean</tooltip>
             <parentKey>null</parentKey>
             <visible>true</visible>
-            <userAssistText>Trur or False</userAssistText>
+            <userAssistText>Flag to toggle/convert 40g ports to 10g ports</userAssistText>
         </guiProperties>
 
         <guiProperties>
