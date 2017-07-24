@@ -239,7 +239,7 @@
 
     <playbook>
         <name>L2 VRRP</name>
-        <image>assets/images/playbookImages/l2_vrrp.png</image>
+        <image>assets/images/playbookImages/l2_vrrp_leaf_spine.png</image>
         <description><![CDATA[
             <ul>
                 <li>Create trunk</li>
@@ -324,7 +324,7 @@
 
     <playbook>
         <name>L3 VRRP eBGP</name>
-        <image>assets/images/playbookImages/l3_vrrp.png</image>
+        <image>assets/images/playbookImages/l3_vrrp_leaf_spine_bgp.png</image>
         <description><![CDATA[
             <ul>
                 <li>Create vRouter</li>
@@ -582,7 +582,7 @@
 
     <playbook>
         <name>L3 VRRP OSPF</name>
-        <image>assets/images/playbookImages/l3_vrrp.png</image>
+        <image>assets/images/playbookImages/l3_vrrp_leaf_spine_ospf.png</image>
         <description><![CDATA[
             <ul>
                 <li>Create vRouter</li>
@@ -859,7 +859,7 @@
 
     <playbook>
         <name>L3 VRRP eBGP with existing spines</name>
-        <image>assets/images/playbookImages/l3_existing_spine.png</image>
+        <image>assets/images/playbookImages/l3_bgp_existing_spine.png</image>
         <description>
             <![CDATA[
                 <ul>
@@ -1116,7 +1116,7 @@
 
     <playbook>
         <name>L3 VRRP OSPF with existing spines</name>
-        <image>assets/images/playbookImages/l3_existing_spine.png</image>
+        <image>assets/images/playbookImages/l3_ospf_existing_spine.png</image>
         <description>
             <![CDATA[
                 <ul>
@@ -1342,7 +1342,7 @@
 
     <playbook>
         <name>L2 Single Switch</name>
-        <image>assets/images/playbookImages/l2_vrrp.png</image>
+        <image>assets/images/playbookImages/l2_single_switch.png</image>
         <description>
             <![CDATA[
                 <ul>
@@ -1389,7 +1389,7 @@
 
     <playbook>
         <name>L2 Two Switch Cluster</name>
-        <image>assets/images/playbookImages/l2_vrrp.png</image>
+        <image>assets/images/playbookImages/l2_two_switch_cluster.png</image>
         <description>
             <![CDATA[
                 <ul>
@@ -1454,7 +1454,7 @@
 
     <playbook>
         <name>L2 Cluster with VRRP</name>
-        <image>assets/images/playbookImages/l2_vrrp.png</image>
+        <image>assets/images/playbookImages/l2_cluster_vrrp.png</image>
         <description>
             <![CDATA[
                 <ul>
@@ -1549,7 +1549,7 @@
 
     <playbook>
         <name>L3 Single Routed BGP</name>
-        <image>assets/images/playbookImages/l2_vrrp.png</image>
+        <image>assets/images/playbookImages/l3_single_switch_bgp.png</image>
         <description>
             <![CDATA[
                 <ul>
@@ -1597,7 +1597,7 @@
 
     <playbook>
         <name>L3 Single Routed OSPF</name>
-        <image>assets/images/playbookImages/l2_vrrp.png</image>
+        <image>assets/images/playbookImages/l3_single_switch_ospf.png</image>
         <description>
             <![CDATA[
                 <ul>
@@ -1646,7 +1646,7 @@
 
     <playbook>
         <name>L3 BGP with VRRP</name>
-        <image>assets/images/playbookImages/l2_vrrp.png</image>
+        <image>assets/images/playbookImages/l3_vrrp_bgp.png</image>
         <description>
             <![CDATA[
                 <ul>
@@ -1771,7 +1771,7 @@
 
     <playbook>
         <name>L3 OSPF with VRRP</name>
-        <image>assets/images/playbookImages/l2_vrrp.png</image>
+        <image>assets/images/playbookImages/l3_vrrp_ospf.png</image>
         <description>
             <![CDATA[
                 <ul>
@@ -1896,7 +1896,7 @@
 
     <playbook>
         <name>L3 Single Routed BGP with L2</name>
-        <image>assets/images/playbookImages/l2_vrrp.png</image>
+        <image>assets/images/playbookImages/l3_single_switch_bgp_with_l2.png</image>
         <description>
             <![CDATA[
                 <ul>
@@ -1990,7 +1990,7 @@
 
     <playbook>
         <name>L3 Single Routed OSPF with L2</name>
-        <image>assets/images/playbookImages/l2_vrrp.png</image>
+        <image>assets/images/playbookImages/l3_single_switch_ospf_with_l2.png</image>
         <description>
             <![CDATA[
                 <ul>
