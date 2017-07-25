@@ -25,7 +25,7 @@
 # pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 # If the tasks fails then it will retry as specified by retries count.
 - name: Zero Touch Provisioning - Initial setup
-  hosts: spine, leaf
+  hosts: spine:leaf
   serial: 1
 
   vars_files:
@@ -38,7 +38,7 @@
         pn_clipassword: "{{ PASSWORD }}"                              # Cli password (value comes from cli_vault.yml).
         pn_fabric_name: "{{ pn_fabric_name }}"                        # Name of the fabric to create/join.
         pn_current_switch: "{{ inventory_hostname }}"                 # Name of the switch on which this task is currently getting executed.
-        pn_spine_list: "{{ groups['spine'] }}"                        # List of all spine switches mentioned under [spine] grp in hosts file.
+        pn_spine_list: "{{ groups['spine'] | default([]) }}"          # List of all spine switches mentioned under [spine] grp in hosts file.
         pn_leaf_list: "{{ groups['leaf'] }}"                          # List of all leaf switches mentioned under [leaf] grp in hosts file.
         pn_toggle_40g: "{{ pn_toggle_40g }}"                          # Flag to indicate if 40g ports should be converted to 10g ports or not.
         pn_inband_ip: "{{ pn_inband_ip }}"                            # Inband ips to be assigned to switches starting with this value. Default: 172.16.0.0/24.
