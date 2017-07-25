@@ -1357,7 +1357,7 @@
         <playbookType>Netvisor Enterprise L2/L3 License</playbookType>
 
         <guiProperties>
-            <tab>mandatory</tab>
+            <tab>optional</tab>
             <displayText>Trunk Data</displayText>
             <value></value>
             <choices></choices>
@@ -1407,7 +1407,7 @@
         <maxSwitchCount>-1</maxSwitchCount>
 
         <guiProperties>
-            <tab>mandatory</tab>
+            <tab>optional</tab>
             <displayText>Trunk Data</displayText>
             <value></value>
             <choices></choices>
@@ -1473,7 +1473,7 @@
         <playbookType>Netvisor Enterprise L2/L3 License</playbookType>
 
         <guiProperties>
-            <tab>mandatory</tab>
+            <tab>optional</tab>
             <displayText>Trunk Data</displayText>
             <value></value>
             <choices></choices>
@@ -1488,7 +1488,7 @@
         </guiProperties>
 
         <guiProperties>
-            <tab>mandatory</tab>
+            <tab>optional</tab>
             <displayText>VLAG Data</displayText>
             <value></value>
             <choices></choices>
@@ -1666,7 +1666,7 @@
         <playbookType>Netvisor Enterprise L2/L3 License</playbookType>
 
         <guiProperties>
-            <tab>mandatory</tab>
+            <tab>optional</tab>
             <displayText>Trunk Data</displayText>
             <value></value>
             <choices></choices>
@@ -1681,7 +1681,7 @@
         </guiProperties>
 
         <guiProperties>
-            <tab>mandatory</tab>
+            <tab>optional</tab>
             <displayText>VLAG Data</displayText>
             <value></value>
             <choices></choices>
@@ -1791,7 +1791,7 @@
         <playbookType>Netvisor Enterprise L2/L3 License</playbookType>
 
         <guiProperties>
-            <tab>mandatory</tab>
+            <tab>optional</tab>
             <displayText>Trunk Data</displayText>
             <value></value>
             <choices></choices>
@@ -1806,7 +1806,7 @@
         </guiProperties>
 
         <guiProperties>
-            <tab>mandatory</tab>
+            <tab>optional</tab>
             <displayText>VLAG Data</displayText>
             <value></value>
             <choices></choices>
@@ -1944,7 +1944,7 @@
         </guiProperties>
 
         <guiProperties>
-            <tab>mandatory</tab>
+            <tab>optional</tab>
             <displayText>SVI Data</displayText>
             <value></value>
             <choices></choices>
@@ -2053,7 +2053,7 @@
         </guiProperties>
 
         <guiProperties>
-            <tab>mandatory</tab>
+            <tab>optional</tab>
             <displayText>Trunk Data</displayText>
             <value></value>
             <choices></choices>
