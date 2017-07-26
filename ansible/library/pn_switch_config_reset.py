@@ -19,6 +19,7 @@
 #
 
 import shlex
+import time
 
 from ansible.module_utils.basic import AnsibleModule
 
@@ -108,19 +109,30 @@ def main():
     switch_ips = module.params['pn_host_ips']
 
     switch_ips = switch_ips.split(',')
-    result = []
+    result, reset_ips = [], []
     count = 0
     changed_flag, unreachable_flag = [], []
 
     for ip in switch_ips:
         cli = 'sshpass -p %s ' % password
         cli += 'ssh %s@%s ' % (username, ip)
-        cli += 'eula-show'
 
         cli = shlex.split(cli)
         rc, out, err = module.run_command(cli)
+        err = err.lower()
 
-        if out:
+        if 'permission denied' in err:
+            result.append({
+                'switch': switch_list[count],
+                'output': 'Switch has been already reset'
+            })
+        elif 'no route to host' in err:
+            unreachable_flag.append(True)
+            result.append({
+                'switch': switch_list[count],
+                'output': 'Switch is unreachable'
+            })
+        elif 'permission denied' not in err and not rc:
             cli = 'sshpass -p %s ssh %s@%s ' % (password, username, ip)
             cli += 'shell /usr/bin/cli --quiet '
             cli += '--user %s:%s --no-login-prompt ' % (username, password)
@@ -129,29 +141,30 @@ def main():
             cli = shlex.split(cli)
             module.run_command(cli)
             changed_flag.append(True)
+            reset_ips.append(ip)
 
             result.append({
                 'switch': switch_list[count],
-                'output': 'Switch config reset completed successfully'
-            })
-        elif 'permission denied' in err.lower():
-            result.append({
-                'switch': switch_list[count],
-                'output': 'Switch has been already reset'
-            })
-        elif 'no route to host' in err.lower():
-            unreachable_flag.append(True)
-            result.append({
-                'switch': switch_list[count],
-                'output': 'Switch is unreachable'
-            })
-        else:
-            result.append({
-                'switch': switch_list[count],
-                'output': 'Could not reset the switch'
+                'output': 'Switch reset completed'
             })
 
         count += 1
+
+    if reset_ips:
+        # Wait 120 secs for nvOS to come up
+        time.sleep(120)
+
+        # Check until we are able to ssh into switches
+        for ip in reset_ips:
+            while True:
+                cli = 'sshpass -p %s ' % password
+                cli += 'ssh %s@%s ' % (username, ip)
+
+                cli = shlex.split(cli)
+                rc, out, err = module.run_command(cli)
+
+                if 'permission denied' in err.lower():
+                    break
 
     # Exit the module and return the required JSON
     module.exit_json(
