@@ -752,28 +752,38 @@ def find_area_id_leaf_switches(module):
     cli = pn_cli(module)
     clicopy = cli
     dict_area_id = {}
+    area_configure_flag = module.params['pn_area_configure_flag']
 
-    cli += ' cluster-show format name no-show-headers'
-    cluster_list = run_cli(module, cli).split()
+    if area_configure_flag == 'singlearea':
+        for leaf in leaf_list:
+            dict_area_id[leaf] = '0'
 
-    if 'Success' not in cluster_list:
-        for cluster in cluster_list:
-            cli = clicopy
-            cli += ' cluster-show name %s' % cluster
-            cli += ' format cluster-node-1,cluster-node-2 no-show-headers'
-            cluster_nodes = run_cli(module, cli).split()
+    elif area_configure_flag == 'dualarea':
+        for leaf in leaf_list:
+            dict_area_id[leaf] = str(ospf_area_id)
 
-            if cluster_nodes[0] in leaf_list and cluster_nodes[1] in leaf_list:
-                ospf_area_id += 1
-                dict_area_id[cluster_nodes[0]] = str(ospf_area_id)
-                dict_area_id[cluster_nodes[1]] = str(ospf_area_id)
-                cluster_leaf_list.append(cluster_nodes[0])
-                cluster_leaf_list.append(cluster_nodes[1])
-
-    non_clustered_leaf_list = list(set(leaf_list) - set(cluster_leaf_list))
-    for leaf in non_clustered_leaf_list:
-        ospf_area_id += 1
-        dict_area_id[leaf] = str(ospf_area_id)
+    elif area_configure_flag == 'multiarea':
+        cli += ' cluster-show format name no-show-headers'
+        cluster_list = run_cli(module, cli).split()
+    
+        if 'Success' not in cluster_list:
+            for cluster in cluster_list:
+                cli = clicopy
+                cli += ' cluster-show name %s' % cluster
+                cli += ' format cluster-node-1,cluster-node-2 no-show-headers'
+                cluster_nodes = run_cli(module, cli).split()
+    
+                if cluster_nodes[0] in leaf_list and cluster_nodes[1] in leaf_list:
+                    dict_area_id[cluster_nodes[0]] = str(ospf_area_id)
+                    dict_area_id[cluster_nodes[1]] = str(ospf_area_id)
+                    ospf_area_id += 1
+                    cluster_leaf_list.append(cluster_nodes[0])
+                    cluster_leaf_list.append(cluster_nodes[1])
+    
+        non_clustered_leaf_list = list(set(leaf_list) - set(cluster_leaf_list))
+        for leaf in non_clustered_leaf_list:
+            ospf_area_id += 1
+            dict_area_id[leaf] = str(ospf_area_id)
 
     return dict_area_id
 
@@ -1084,6 +1094,8 @@ def main():
             pn_ospf_area_id=dict(required=False, type='str', default='0'),
             pn_routing_protocol=dict(required=False, type='str',
                                      choices=['ebgp', 'ospf'], default='ebgp'),
+            pn_area_configure_flag=dict(required=False, type='str',
+                                        choices=['singlearea', 'dualarea', 'multiarea'], default='dualarea'),
         )
     )
 
