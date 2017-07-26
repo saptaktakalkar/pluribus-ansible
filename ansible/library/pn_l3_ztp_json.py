@@ -18,8 +18,8 @@
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from ansible.module_utils.basic import AnsibleModule
 import shlex
+from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = """
 ---
@@ -189,7 +189,7 @@ def run_cli(module, cli):
     if err:
         json_msg = {
             'switch': '',
-             'output': u'Operation Failed: {}'.format(' '.join(cli))
+            'output': u'Operation Failed: {}'.format(' '.join(cli))
         }
         results.append(json_msg)
         module.exit_json(
@@ -275,13 +275,14 @@ def calculate_link_ip_addresses(address_str, cidr_str, supernet_str):
     address = address_str.split('.')
     cidr = int(cidr_str)
     supernet = int(supernet_str)
-    supernet_mapping = {
-        30: 2,
-        29: 6,
-        28: 14,
-        27: 30
-    }
-    supernet_range = supernet_mapping[supernet]
+    #supernet_mapping = {
+    #    30: 2,
+    #    29: 6,
+    #    28: 14,
+    #    27: 30
+    #}
+    supernet_range = (1 << (32 - supernet)) - 2
+    #supernet_range = supernet_mapping[supernet]
     base_addr = int(address[3])
     # Initialize the netmask and calculate based on CIDR mask
     mask = [0, 0, 0, 0]
@@ -310,10 +311,17 @@ def calculate_link_ip_addresses(address_str, cidr_str, supernet_str):
         while count < last_ip[3]:
             hostmin = host + 1
             hostmax = hostmin + supernet_range - 1
-            while hostmin <= hostmax:
-                ips_list.append(hostmin)
-                hostmin += 1
-            host = hostmax + 2
+            if supernet == 31:
+                while hostmax <= hostmin:
+                    ips_list.append(hostmax)
+                    hostmax += 1
+                host = hostmin + 1
+            else:
+                while hostmin <= hostmax:
+                    ips_list.append(hostmin)
+                    hostmin += 1
+                host = hostmax + 2
+
             count = host
 
         list_index = 0
@@ -581,9 +589,10 @@ def auto_configure_link_ips(module):
                 ip_count = 0
                 diff = 32 - int(supernet)
                 count = (1 << diff) - 4
-                while ip_count < count:
-                    available_ips.pop(0)
-                    ip_count += 1
+                if count > 0:
+                    while ip_count < count:
+                        available_ips.pop(0)
+                        ip_count += 1
 
     if fabric_loopback:
         # Assign loopback ip to vrouters.
@@ -649,7 +658,7 @@ def main():
     # Exit the module and return the required JSON.
     module.exit_json(
         unreachable=False,
-        msg = 'L3 ZTP configuration succeeded',
+        msg='L3 ZTP configuration succeeded',
         summary=results,
         exception='',
         failed=False,
@@ -660,4 +669,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
