@@ -400,22 +400,6 @@
         </guiProperties>
 
         <guiProperties>
-        <tab>optional</tab>
-        <displayText>Assign Loopback</displayText>
-        <value>True</value>
-        <choices>
-            <option>False</option>
-            <option>True</option>
-        </choices>
-        <key>pn_assign_loopback</key>
-        <type>boolean</type>
-        <tooltip>Flag to indicate if loopback ips should be assigned to vrouters</tooltip>
-        <parentKey>null</parentKey>
-        <visible>true</visible>
-        <userAssistText>True or False</userAssistText>
-        </guiProperties>
-
-        <guiProperties>
             <tab>optional</tab>
             <displayText>Loopback IP</displayText>
             <value>109.109.109.0/24</value>
@@ -655,22 +639,6 @@
             <parentKey>null</parentKey>
             <visible>true</visible>
             <userAssistText>Value between 0-31</userAssistText>
-        </guiProperties>
-
-        <guiProperties>
-            <tab>optional</tab>
-            <displayText>Assign Loopback</displayText>
-            <value>True</value>
-            <choices>
-                <option>False</option>
-                <option>True</option>
-            </choices>
-            <key>pn_assign_loopback</key>
-            <type>boolean</type>
-            <tooltip>Flag to indicate if loopback ips should be assigned to vrouters</tooltip>
-            <parentKey>null</parentKey>
-            <visible>true</visible>
-            <userAssistText>True or False</userAssistText>
         </guiProperties>
 
         <guiProperties>
@@ -937,22 +905,6 @@
 
         <guiProperties>
             <tab>optional</tab>
-            <displayText>Assign Loopback</displayText>
-            <value>True</value>
-            <choices>
-                <option>False</option>
-                <option>True</option>
-            </choices>
-            <key>pn_assign_loopback</key>
-            <type>boolean</type>
-            <tooltip>Flag to indicate if loopback ips should be assigned to vrouters</tooltip>
-            <parentKey>null</parentKey>
-            <visible>true</visible>
-            <userAssistText>True or False</userAssistText>
-        </guiProperties>
-
-        <guiProperties>
-            <tab>optional</tab>
             <displayText>Loopback IP</displayText>
             <value>109.109.109.0/24</value>
             <choices></choices>
@@ -1189,22 +1141,6 @@
             <parentKey>null</parentKey>
             <visible>true</visible>
             <userAssistText>Value between 0-31</userAssistText>
-        </guiProperties>
-
-        <guiProperties>
-            <tab>optional</tab>
-            <displayText>Assign Loopback</displayText>
-            <value>True</value>
-            <choices>
-                <option>False</option>
-                <option>True</option>
-            </choices>
-            <key>pn_assign_loopback</key>
-            <type>boolean</type>
-            <tooltip>Flag to indicate if loopback ips should be assigned to vrouters</tooltip>
-            <parentKey>null</parentKey>
-            <visible>true</visible>
-            <userAssistText>True or False</userAssistText>
         </guiProperties>
 
         <guiProperties>
@@ -1944,7 +1880,7 @@
         </guiProperties>
 
         <guiProperties>
-            <tab>optional</tab>
+            <tab>mandatory</tab>
             <displayText>SVI Data</displayText>
             <value></value>
             <choices></choices>
@@ -1959,7 +1895,7 @@
         </guiProperties>
 
         <guiProperties>
-            <tab>mandatory</tab>
+            <tab>optional</tab>
             <displayText>Trunk Data</displayText>
             <value></value>
             <choices></choices>
