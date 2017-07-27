@@ -15,7 +15,7 @@
             <key>pn_fabric_name</key>
             <type>text</type>
             <tooltip>Enter Fabric Name</tooltip>
-            <regex>^[a-zA-Z0-9_.:-]{1,59}$</regex>
+            <regex>^[a-zA-Z0-9_-]{1,59}$</regex>
             <parentKey>null</parentKey>
             <visible>true</visible>
             <userAssistText>Can contain: "letters, numbers, _, ., :, and -"</userAssistText>
@@ -200,7 +200,7 @@
             <key>pn_fabric_name</key>
             <type>text</type>
             <tooltip>Enter Fabric Name</tooltip>
-            <regex>^[a-zA-Z0-9_.:-]{1,59}$</regex>
+            <regex>^[a-zA-Z0-9_-]{1,59}$</regex>
             <parentKey>null</parentKey>
             <visible>true</visible>
             <userAssistText>Can contain: "letters, numbers, _, ., :, and -"</userAssistText>
