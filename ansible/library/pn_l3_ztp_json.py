@@ -361,6 +361,7 @@ def create_vrouter(module, switch, vnet_name):
     if vrouter_name not in existing_vrouter_names:
         cli = clicopy
         cli += ' vrouter-create name %s vnet %s ' % (vrouter_name, vnet_name)
+        cli += ' router-type hardware'
         run_cli(module, cli)
         CHANGED_FLAG.append(True)
         return ' %s: Created vrouter with name %s \n' % (switch, vrouter_name)
@@ -484,7 +485,7 @@ def assign_loopback_ip(module, loopback_address):
 
     cli = pn_cli(module)
     clicopy = cli
-    switch_list = module.params['pn_spine_list']
+    switch_list = list(module.params['pn_spine_list'])
     switch_list += module.params['pn_leaf_list']
 
     vrouter_count = 1
