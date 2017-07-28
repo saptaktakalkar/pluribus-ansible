@@ -419,11 +419,11 @@ def configure_fabric(module):
                 sys_names = list(set(sys_names.split()))
                 cluster_node = None
                 for sys in sys_names:
-                    if sys in switch_list:
+                    if sys in switch_list and sys != switch:
                         cluster_node = sys
                         break
 
-                if cluster_node is not None and cluster_node != switch:
+                if cluster_node is not None:
                     cli = pn_cli(module)
                     cli += ' fabric-show format name no-show-headers '
                     existing_fabrics = run_cli(module, cli).split()
@@ -525,3 +525,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
