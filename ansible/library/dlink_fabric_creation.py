@@ -481,21 +481,10 @@ def main():
 
     # Create/join fabric
     out = configure_fabric(module)
-    if 'Error' in out:
-        module.exit_json(
-            unreachable=False,
-            failed=True,
-            exception=out,
-            summary=results,
-            task='Fabric creation',
-            msg='Fabric creation failed',
-            changed=False
-        )
-    else:
-        results.append({
-            'switch': switch,
-            'output': out
-        })
+    results.append({
+        'switch': switch,
+        'output': out
+    })
 
     # Configure fabric control network to mgmt
     configure_control_network(module)
