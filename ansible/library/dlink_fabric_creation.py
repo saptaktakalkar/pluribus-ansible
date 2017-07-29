@@ -431,7 +431,7 @@ def configure_fabric(module):
                     'switch': switch,
                     'output': msg
                 }
-                return module.exit_json(
+                module.exit_json(
                     unreachable=False,
                     failed=True,
                     exception=msg,
