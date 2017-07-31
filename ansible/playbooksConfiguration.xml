@@ -235,6 +235,62 @@
             <visible>true</visible>
             <userAssistText>IP address with subnet mask</userAssistText>
         </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>DNS IP</displayText>
+            <value>10.20.41.1</value>
+            <choices></choices>
+            <key>pn_dns_ip</key>
+            <type>IP</type>
+            <tooltip>Specify dns-ip to be assigned to switches</tooltip>
+            <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>IP address</userAssistText>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>DNS Secondary IP</displayText>
+            <value>10.20.4.1</value>
+            <choices></choices>
+            <key>pn_dns_secondary_ip</key>
+            <type>IP</type>
+            <tooltip>Specify dns-secondary-ip to be assigned to switches</tooltip>
+            <regex>(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.)(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(($)|(\/)([0-2]?[0-9]|[3][0-2])($))</regex>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>IP address</userAssistText>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>Domain Name</displayText>
+            <value>pluribusnetworks.com</value>
+            <choices></choices>
+            <key>pn_domain_name</key>
+            <type>URL</type>
+            <tooltip>Specify domain-name to be assigned to switches</tooltip>
+            <regex>^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$</regex>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>Enter valid URL</userAssistText>
+        </guiProperties>
+
+        <guiProperties>
+            <tab>optional</tab>
+            <displayText>NTP Server</displayText>
+            <value>0.us.pool.ntp.org</value>
+            <choices></choices>
+            <key>pn_ntp_server</key>
+            <type>URL</type>
+            <tooltip>Specify ntp-server value to be assigned to switches</tooltip>
+            <regex>^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$</regex>
+            <parentKey>null</parentKey>
+            <visible>true</visible>
+            <userAssistText>Enter valid URL</userAssistText>
+        </guiProperties>
     </playbook>
 
     <playbook>
