@@ -1358,7 +1358,7 @@
         </guiProperties>
 
         <guiProperties>
-            <tab>mandatory</tab>
+            <tab>optional</tab>
             <displayText>VLAG Data</displayText>
             <value></value>
             <choices></choices>
