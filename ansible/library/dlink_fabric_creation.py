@@ -201,7 +201,7 @@ def assign_inband_ip(module):
             cli += ' in-band-ip %s ' % ip
             run_cli(module, cli)
             CHANGED_FLAG.append(True)
-            output += 'Assigned in-band ip %s ' % ip
+            output += 'Assigned in-band ip %s' % ip
 
         return output
 
@@ -356,6 +356,54 @@ def configure_control_network(module):
         run_cli(module, cli)
 
 
+def update_switch_name(module, switch_name):
+    """
+    Method to update switch name to match with the name given in hosts file.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch_name: Name to assign to the switch.
+    :return: String describing if switch name got updated or False.
+    """
+    cli = pn_cli(module)
+    cli += ' switch-setup-show format switch-name '
+    if switch_name != run_cli(module, cli).split()[1]:
+        cli = pn_cli(module)
+        cli += ' switch-setup-modify switch-name %s ' % switch_name
+        run_cli(module, cli)
+        return 'Updated switch name to %s' % switch_name
+
+    return False
+
+
+def make_switch_setup_static(module):
+    """
+    Method to assign static values to different switch setup parameters.
+    :param module: The Ansible module to fetch input parameters.
+    """
+    dns_ip = module.params['pn_dns_ip']
+    dns_secondary_ip = module.params['pn_dns_secondary_ip']
+    domain_name = module.params['pn_domain_name']
+    ntp_server = module.params['pn_ntp_server']
+
+    cli = pn_cli(module)
+    cli += ' switch-setup-modify '
+
+    if dns_ip:
+        cli += ' dns-ip ' + dns_ip
+
+    if dns_secondary_ip:
+        cli += ' dns-secondary-ip ' + dns_secondary_ip
+
+    if domain_name:
+        cli += ' domain-name ' + domain_name
+
+    if ntp_server:
+        cli += ' ntp-server ' + ntp_server
+
+    clicopy = cli
+    if clicopy.split('switch-setup-modify')[1] != ' ':
+        run_cli(module, cli)
+
+
 def create_fabric(module, fabric_name):
     """
     Create a fabric
@@ -472,7 +520,11 @@ def main():
         pn_fabric_name=dict(required=True, type='str'),
         pn_inband_ip=dict(required=False, type='str', default='172.16.0.0/24'),
         pn_switch=dict(required=False, type='str'),
-        pn_toggle_40g=dict(required=False, type='bool', default=True), )
+        pn_toggle_40g=dict(required=False, type='bool', default=True),
+        pn_dns_ip=dict(required=False, type='str', default=''),
+        pn_dns_secondary_ip=dict(required=False, type='str', default=''),
+        pn_domain_name=dict(required=False, type='str', default=''),
+        pn_ntp_server=dict(required=False, type='str', default=''), )
     )
 
     global CHANGED_FLAG
@@ -488,6 +540,17 @@ def main():
 
     # Configure fabric control network to mgmt
     configure_control_network(module)
+
+    # Update switch name to match with hostname
+    out = update_switch_name(module, switch)
+    if out:
+        results.append({
+            'switch': switch,
+            'output': out
+        })
+
+    # Update switch setup values
+    make_switch_setup_static(module)
 
     # Enable web api
     enable_web_api(module)
