@@ -384,6 +384,28 @@ def join_fabric(module, fabric_name):
     return 'Joined fabric {}'.format(fabric_name)
 
 
+def is_switches_connected(module):
+    """
+    Check if switches are physically connected to each other.
+    :param module: The Ansible module to fetch input parameters.
+    :return: True if connected else False.
+    """
+    cli = pn_cli(module)
+    cli += ' lldp-show format switch,sys-name parsable-delim , '
+    sys_names = run_cli(module, cli)
+
+    if sys_names is not None:
+        switch1 = module.params['pn_switch_list'][0]
+        switch2 = module.params['pn_switch_list'][1]
+
+        sys_names = list(set(sys_names.split()))
+        for cluster in sys_names:
+            if switch1 in cluster and switch2 in cluster:
+                return True
+
+    return False
+
+
 def configure_fabric(module):
     """
     Create/join fabric.
@@ -393,8 +415,6 @@ def configure_fabric(module):
     switch_list = module.params['pn_switch_list']
     switch = module.params['pn_switch']
     fabric_name = module.params['pn_fabric_name']
-    err_flag = False
-    output = ''
 
     cli = pn_cli(module)
     cli += ' fabric-info format name no-show-headers '
@@ -404,45 +424,41 @@ def configure_fabric(module):
     # Above fabric-info cli command will throw an error, if switch is not part
     # of any fabric. So if err, we need to create/join the fabric.
     if err:
-        find_cluster = True if len(switch_list) == 2 else False
+        if len(switch_list) == 2:
+            if not is_switches_connected(module):
+                msg = 'Error: Switches are not connected to each other'
+                results = {
+                    'switch': switch,
+                    'output': msg
+                }
+                module.exit_json(
+                    unreachable=False,
+                    failed=True,
+                    exception=msg,
+                    summary=results,
+                    task='Fabric creation',
+                    msg='Fabric creation failed',
+                    changed=False
+                )
 
-        # Clustered switches will be in same fabric.
-        # So if a switch is going to be a part of a cluster, then check whether
-        # that switch need to create a fabric or need to join the fabric
-        # created by it's clustered switch.
-        if find_cluster:
+            new_fabric = False
             cli = pn_cli(module)
-            cli += ' lldp-show format sys-name no-show-headers '
-            sys_names = run_cli(module, cli)
+            cli += ' fabric-show format name no-show-headers '
+            existing_fabrics = run_cli(module, cli)
 
-            if sys_names is not None:
-                sys_names = list(set(sys_names.split()))
-                cluster_node = None
-                for sys in sys_names:
-                    if sys in switch_list:
-                        cluster_node = sys
-                        break
+            if existing_fabrics is not None:
+                existing_fabrics = existing_fabrics.split()
+                if fabric_name not in existing_fabrics:
+                    new_fabric = True
 
-                if cluster_node is not None and cluster_node != switch:
-                    cli = pn_cli(module)
-                    cli += ' fabric-show format name no-show-headers '
-                    existing_fabrics = run_cli(module, cli).split()
-
-                    if fabric_name in existing_fabrics:
-                        output = join_fabric(module, fabric_name)
-                    else:
-                        output = create_fabric(module, fabric_name)
-                else:
-                    err_flag = True
+            if new_fabric or existing_fabrics is None:
+                output = create_fabric(module, fabric_name)
             else:
-                err_flag = True
+                output = join_fabric(module, fabric_name)
         else:
             output = create_fabric(module, fabric_name)
     else:
         return 'Fabric already configured'
-
-    if err_flag:
-        return 'Error: Switches are not connected to each other'
 
     return output
 
@@ -465,21 +481,10 @@ def main():
 
     # Create/join fabric
     out = configure_fabric(module)
-    if 'Error' in out:
-        module.exit_json(
-            unreachable=False,
-            failed=True,
-            exception=out,
-            summary=results,
-            task='Fabric creation',
-            msg='Fabric creation failed',
-            changed=False
-        )
-    else:
-        results.append({
-            'switch': switch,
-            'output': out
-        })
+    results.append({
+        'switch': switch,
+        'output': out
+    })
 
     # Configure fabric control network to mgmt
     configure_control_network(module)
@@ -525,3 +530,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
