@@ -124,13 +124,13 @@ def main():
         if 'permission denied' in err:
             result.append({
                 'switch': switch_list[count],
-                'output': 'Switch has been already reset'
+                'output': 'Switch has been already reset. RC: %s' % rc
             })
         elif 'no route to host' in err:
             unreachable_flag.append(True)
             result.append({
                 'switch': switch_list[count],
-                'output': 'Switch is unreachable'
+                'output': 'Switch is unreachable. RC: %s' % rc
             })
         elif 'permission denied' not in err and not rc:
             cli = 'sshpass -p %s ssh %s@%s ' % (password, username, ip)
@@ -145,18 +145,34 @@ def main():
 
             result.append({
                 'switch': switch_list[count],
-                'output': 'Switch reset completed'
+                'output': 'Switch reset completed. RC: %s' % rc
+            })
+        else:
+            cli = 'sshpass -p %s ssh %s@%s ' % (password, username, ip)
+            cli += 'shell /usr/bin/cli --quiet '
+            cli += '--user %s:%s --no-login-prompt ' % (username, password)
+            cli += 'switch-config-reset'                
+
+            cli = shlex.split(cli)
+            module.run_command(cli)
+            changed_flag.append(True)
+            reset_ips.append(ip)
+
+            result.append({
+                'switch': switch_list[count],
+                'output': 'Switch reset completed. (This is an unhandled case. Please forward the log to the technical team)\n RC: %s\n ERR: %s\n OUT: %s' % (rc, err, out)
             })
 
         count += 1
 
     if reset_ips:
-        # Wait 120 secs for nvOS to come up
-        time.sleep(120)
+        # Wait 180 secs for nvOS to come up
+        time.sleep(180)
 
         # Check until we are able to ssh into switches
         for ip in reset_ips:
-            while True:
+            epocs = 0
+            while epocs <= 6:
                 cli = 'sshpass -p %s ' % password
                 cli += 'ssh %s@%s ' % (username, ip)
 
@@ -165,6 +181,9 @@ def main():
 
                 if 'permission denied' in err.lower():
                     break
+
+                time.sleep(10)
+                epocs += 1
 
     # Exit the module and return the required JSON
     module.exit_json(
