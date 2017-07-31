@@ -113,9 +113,11 @@ def main():
     count = 0
     changed_flag, unreachable_flag = [], []
 
+    ssh_prefix = "ssh -o StrictHostKeyChecking=no"
+
     for ip in switch_ips:
         cli = 'sshpass -p %s ' % password
-        cli += 'ssh %s@%s ' % (username, ip)
+        cli += '%s %s@%s ' % (ssh_prefix, username, ip)
 
         cli = shlex.split(cli)
         rc, out, err = module.run_command(cli)
@@ -133,7 +135,7 @@ def main():
                 'output': 'Switch is unreachable'
             })
         elif 'permission denied' not in err and not rc:
-            cli = 'sshpass -p %s ssh %s@%s ' % (password, username, ip)
+            cli = 'sshpass -p %s %s %s@%s ' % (password, ssh_prefix, username, ip)
             cli += 'shell /usr/bin/cli --quiet '
             cli += '--user %s:%s --no-login-prompt ' % (username, password)
             cli += 'switch-config-reset'
@@ -148,7 +150,7 @@ def main():
                 'output': 'Switch reset completed'
             })
         else:
-            cli = 'sshpass -p %s ssh %s@%s ' % (password, username, ip)
+            cli = 'sshpass -p %s %s %s@%s ' % (password, ssh_prefix, username, ip)
             cli += 'shell /usr/bin/cli --quiet '
             cli += '--user %s:%s --no-login-prompt ' % (username, password)
             cli += 'switch-config-reset'                
@@ -174,7 +176,7 @@ def main():
             epocs = 0
             while epocs <= 6:
                 cli = 'sshpass -p %s ' % password
-                cli += 'ssh %s@%s ' % (username, ip)
+                cli += '%s %s@%s ' % (ssh_prefix, username, ip)
 
                 cli = shlex.split(cli)
                 rc, out, err = module.run_command(cli)
