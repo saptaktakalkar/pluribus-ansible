@@ -39,6 +39,10 @@
         pn_fabric_name: "{{ pn_fabric_name }}"                       # Name of the fabric to create.
         pn_inband_ip: "{{ pn_inband_ip }}"                           # Inband ips to be assigned to switches starting with this value. Default: 172.16.0.0/24.
         pn_toggle_40g: "{{ pn_toggle_40g }}"                         # Flag to indicate if 40g ports should be converted to 10g ports or not. Default: True
+        pn_dns_ip: "{{ pn_dns_ip }}"                                 # Specify DNS-IP value to be assigned to switches.
+        pn_dns_secondary_ip: "{{ pn_dns_secondary_ip }}"             # Specify DNS-SECONDARY-IP value to be assigned to switches.
+        pn_domain_name: "{{ pn_domain_name }}"                       # Specify DOMAIN-NAME value to be assigned to switches.
+        pn_ntp_server: "{{ pn_ntp_server }}"                         # Specify NTP-SERVER value to be assigned to switches.
       register: ztp_out                                              # Variable to hold/register output of the above tasks.
       until: ztp_out.failed != true                                  # If the above code fails it will retry the code
       retries: 3                                                     # This is the retries count
