@@ -124,13 +124,13 @@ def main():
         if 'permission denied' in err:
             result.append({
                 'switch': switch_list[count],
-                'output': 'Switch has been already reset. RC: %s' % rc
+                'output': 'Switch has been already reset'
             })
         elif 'no route to host' in err:
             unreachable_flag.append(True)
             result.append({
                 'switch': switch_list[count],
-                'output': 'Switch is unreachable. RC: %s' % rc
+                'output': 'Switch is unreachable'
             })
         elif 'permission denied' not in err and not rc:
             cli = 'sshpass -p %s ssh %s@%s ' % (password, username, ip)
@@ -145,7 +145,7 @@ def main():
 
             result.append({
                 'switch': switch_list[count],
-                'output': 'Switch reset completed. RC: %s' % rc
+                'output': 'Switch reset completed'
             })
         else:
             cli = 'sshpass -p %s ssh %s@%s ' % (password, username, ip)
