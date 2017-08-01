@@ -244,24 +244,6 @@ def run_cli(module, cli):
         return 'Success'
 
 
-def update_switch_names(module, switch_name):
-    """
-    Method to update switch names.
-    :param module: The Ansible module to fetch input parameters.
-    :param switch_name: Name to assign to the switch.
-    :return: String describing switch name got modified or not.
-    """
-    cli = pn_cli(module)
-    cli += ' switch-setup-show format switch-name '
-    if switch_name == run_cli(module, cli).split()[1]:
-        return ' Switch name is same as hostname! '
-    else:
-        cli = pn_cli(module)
-        cli += ' switch-setup-modify switch-name ' + switch_name
-        run_cli(module, cli)
-        return ' Updated switch name to match hostname! '
-
-
 def make_switch_setup_static(module):
     """
     Method to assign static values to different switch setup parameters.
@@ -567,10 +549,6 @@ def main():
     current_switch = module.params['pn_current_switch']
     results = []
     global CHANGED_FLAG
-
-    # Update switch names to match host names from hosts file
-    if 'Updated' in update_switch_names(module, current_switch):
-        CHANGED_FLAG.append(True)
 
     # Make switch setup static
     if module.params['pn_static_setup']:
