@@ -356,24 +356,6 @@ def configure_control_network(module):
         run_cli(module, cli)
 
 
-def update_switch_name(module, switch_name):
-    """
-    Method to update switch name to match with the name given in hosts file.
-    :param module: The Ansible module to fetch input parameters.
-    :param switch_name: Name to assign to the switch.
-    :return: String describing if switch name got updated or False.
-    """
-    cli = pn_cli(module)
-    cli += ' switch-setup-show format switch-name '
-    if switch_name != run_cli(module, cli).split()[1]:
-        cli = pn_cli(module)
-        cli += ' switch-setup-modify switch-name %s ' % switch_name
-        run_cli(module, cli)
-        return 'Updated switch name to %s' % switch_name
-
-    return False
-
-
 def make_switch_setup_static(module):
     """
     Method to assign static values to different switch setup parameters.
@@ -506,7 +488,8 @@ def configure_fabric(module):
         else:
             output = create_fabric(module, fabric_name)
     else:
-        return 'Fabric already configured'
+        existing_fabric_name = out.split()[1]
+        return 'Fabric %s already configured' % existing_fabric_name
 
     return output
 
@@ -538,16 +521,11 @@ def main():
         'output': out
     })
 
+    # Determine 'msg' field of JSON that will be returned at the end
+    msg = out if 'already configured' in out else 'Fabric creation succeeded'
+
     # Configure fabric control network to mgmt
     configure_control_network(module)
-
-    # Update switch name to match with hostname
-    out = update_switch_name(module, switch)
-    if out:
-        results.append({
-            'switch': switch,
-            'output': out
-        })
 
     # Update switch setup values
     make_switch_setup_static(module)
@@ -583,7 +561,7 @@ def main():
     # Exit the module and return the required JSON
     module.exit_json(
         unreachable=False,
-        msg='Fabric creation succeeded',
+        msg=msg,
         summary=results,
         exception='',
         task='Fabric creation',
