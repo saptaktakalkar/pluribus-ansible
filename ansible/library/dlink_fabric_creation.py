@@ -488,8 +488,7 @@ def configure_fabric(module):
         else:
             output = create_fabric(module, fabric_name)
     else:
-        existing_fabric_name = out.split()[1]
-        return 'Fabric %s already configured' % existing_fabric_name
+        return 'Fabric already configured'
 
     return output
 
