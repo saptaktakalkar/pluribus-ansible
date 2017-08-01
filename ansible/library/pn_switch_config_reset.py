@@ -19,6 +19,7 @@
 #
 
 import shlex
+import time
 
 from ansible.module_utils.basic import AnsibleModule
 
@@ -92,8 +93,6 @@ msg:
   type: str
 """
 
-CHANGED_FLAG = []
-
 
 def main():
     """ This section is for arguments parsing """
@@ -110,48 +109,93 @@ def main():
     switch_ips = module.params['pn_host_ips']
 
     switch_ips = switch_ips.split(',')
-    result = []
+    result, reset_ips = [], []
     count = 0
+    changed_flag, unreachable_flag = [], []
+
+    ssh_prefix = "ssh -o StrictHostKeyChecking=no"
 
     for ip in switch_ips:
         cli = 'sshpass -p %s ' % password
-        cli += 'ssh %s@%s ' % (username, ip)
-        cli += 'eula-show'
+        cli += '%s %s@%s ' % (ssh_prefix, username, ip)
 
         cli = shlex.split(cli)
         rc, out, err = module.run_command(cli)
+        err = err.lower()
 
-        if out:
-            cli = 'sshpass -p %s ssh %s@%s ' % (password, username, ip)
+        if 'permission denied' in err:
+            result.append({
+                'switch': switch_list[count],
+                'output': 'Switch has been already reset'
+            })
+        elif 'no route to host' in err:
+            unreachable_flag.append(True)
+            result.append({
+                'switch': switch_list[count],
+                'output': 'Switch is unreachable'
+            })
+        elif 'permission denied' not in err and not rc:
+            cli = 'sshpass -p %s %s %s@%s ' % (password, ssh_prefix, username, ip)
             cli += 'shell /usr/bin/cli --quiet '
             cli += '--user %s:%s --no-login-prompt ' % (username, password)
             cli += 'switch-config-reset'
 
             cli = shlex.split(cli)
             module.run_command(cli)
-            CHANGED_FLAG.append(True)
+            changed_flag.append(True)
+            reset_ips.append(ip)
 
             result.append({
                 'switch': switch_list[count],
-                'output': 'Switch config reset completed successfully'
+                'output': 'Switch reset completed'
             })
         else:
+            cli = 'sshpass -p %s %s %s@%s ' % (password, ssh_prefix, username, ip)
+            cli += 'shell /usr/bin/cli --quiet '
+            cli += '--user %s:%s --no-login-prompt ' % (username, password)
+            cli += 'switch-config-reset'                
+
+            cli = shlex.split(cli)
+            module.run_command(cli)
+            changed_flag.append(True)
+            reset_ips.append(ip)
+
             result.append({
                 'switch': switch_list[count],
-                'output': 'Switch has been already reset'
+                'output': 'Switch reset completed. (This is an unhandled case. Please forward the log to the technical team)\n RC: %s\n ERR: %s\n OUT: %s' % (rc, err, out)
             })
 
         count += 1
 
+    if reset_ips:
+        # Wait 180 secs for nvOS to come up
+        time.sleep(180)
+
+        # Check until we are able to ssh into switches
+        for ip in reset_ips:
+            epocs = 0
+            while epocs <= 6:
+                cli = 'sshpass -p %s ' % password
+                cli += '%s %s@%s ' % (ssh_prefix, username, ip)
+
+                cli = shlex.split(cli)
+                rc, out, err = module.run_command(cli)
+
+                if 'permission denied' in err.lower():
+                    break
+
+                time.sleep(10)
+                epocs += 1
+
     # Exit the module and return the required JSON
     module.exit_json(
-        unreachable=False,
+        unreachable=True if True in unreachable_flag else False,
         msg='Switch config reset completed successfully',
         summary=result,
         exception='',
         task='Switch config reset',
         failed=False,
-        changed=True if True in CHANGED_FLAG else False
+        changed=True if True in changed_flag else False
     )
 
 if __name__ == '__main__':
