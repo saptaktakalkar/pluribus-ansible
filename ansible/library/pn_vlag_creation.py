@@ -206,11 +206,11 @@ def main():
             else:
                 elements = row.split(',')
                 if len(elements) == 5:
-                    vlag_name = elements[0]
-                    local_switch = elements[1]
-                    local_ports = elements[2]
-                    peer_switch = elements[3]
-                    peer_ports = elements[4]
+                    vlag_name = elements[0].strip()
+                    local_switch = elements[1].strip()
+                    local_ports = elements[2].strip()
+                    peer_switch = elements[3].strip()
+                    peer_ports = elements[4].strip()
 
                     message += create_vlag(module, vlag_name, local_switch,
                                            local_ports, peer_switch, peer_ports)

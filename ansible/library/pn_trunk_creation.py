@@ -202,8 +202,8 @@ def main():
                 continue
             else:
                 elements = row.split(',')
-                switch_name = elements.pop(0)
-                trunk_name = elements.pop(0)
+                switch_name = elements.pop(0).strip()
+                trunk_name = elements.pop(0).strip()
                 ports = ','.join(elements)
 
                 if switch_name in switch_list:
