@@ -268,12 +268,12 @@ def bgp_configuration(module):
                 continue
             else:
                 elements = row.split(',')
-                switch = elements.pop(0)
-                l3_port = elements.pop(0)
-                interface_ip = elements.pop(0)
-                bgp_as = elements.pop(0)
-                neighbor_ip = elements.pop(0)
-                remote_as = elements.pop(0)
+                switch = elements.pop(0).strip()
+                l3_port = elements.pop(0).strip()
+                interface_ip = elements.pop(0).strip()
+                bgp_as = elements.pop(0).strip()
+                neighbor_ip = elements.pop(0).strip()
+                remote_as = elements.pop(0).strip()
 
                 cli = clicopy
                 cli += ' vrouter-show location %s ' % switch

@@ -207,8 +207,8 @@ def main():
                 continue
             else:
                 elements = row.split(',')
-                ip_gateway = elements.pop(0)
-                vlan_id = elements.pop(0)
+                ip_gateway = elements.pop(0).strip()
+                vlan_id = elements.pop(0).strip()
 
     message += svi_configuration(module, ip_gateway, switch, vlan_id)
 

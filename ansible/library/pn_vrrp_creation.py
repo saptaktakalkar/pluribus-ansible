@@ -291,11 +291,11 @@ def main():
                 continue
             else:
                 elements = row.split(',')
-                vlan_id = elements.pop(0)
-                gateway_ip = elements.pop(0)
-                primary_ip = elements.pop(0)
-                secondary_ip = elements.pop(0)
-                active_switch = elements.pop(0)
+                vlan_id = elements.pop(0).strip()
+                gateway_ip = elements.pop(0).strip()
+                primary_ip = elements.pop(0).strip()
+                secondary_ip = elements.pop(0).strip()
+                active_switch = elements.pop(0).strip()
 
                 message += create_vlan(module, switch_list[0], vlan_id)
 

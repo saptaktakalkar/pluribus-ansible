@@ -272,10 +272,10 @@ def ospf_configuration(module):
                 continue
             else:
                 elements = row.split(',')
-                switch = elements.pop(0)
-                l3_port = elements.pop(0)
-                interface_ip = elements.pop(0)
-                area_id = elements.pop(0)
+                switch = elements.pop(0).strip()
+                l3_port = elements.pop(0).strip()
+                interface_ip = elements.pop(0).strip()
+                area_id = elements.pop(0).strip()
 
                 address = interface_ip.split('/')
                 cidr = int(address[1])
