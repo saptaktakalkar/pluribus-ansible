@@ -544,7 +544,7 @@ def auto_configure_link_ips(module):
     # Get the list of available link ips to assign.
     available_ips = calculate_link_ip_addresses(module.params['pn_net_address'],
                                                 module.params['pn_cidr'],
-                                                supernet, 2)
+                                                supernet, 3)
 
     # Get the fabric name and create vnet name required for vrouter creation.
     cli = clicopy
@@ -570,13 +570,13 @@ def auto_configure_link_ips(module):
             while len(leaf_port) > 0:
                 ip_list = available_ips.next()
                 lport = leaf_port[0]
-                ip = ip_list[0]
+                ip = ip_list[1]
                 delete_trunk(module, leaf, lport, spine)
                 output += create_interface(module, leaf, ip, lport)
 
                 leaf_port.remove(lport)
 
-                ip = ip_list[1]
+                ip = ip_list[2]
 
                 cli = clicopy
                 cli += ' switch %s port-show port %s ' % (leaf, lport)

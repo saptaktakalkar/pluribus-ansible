@@ -441,7 +441,7 @@ def add_bgp_neighbor(module, dict_bgp_as):
             else:
                 cli = clicopy
                 cli += ' vrouter-bgp-add vrouter-name ' + vrouter_spine
-                cli += ' neighbor %s remote-as %s ' % (ip_leaf,
+                cli += ' neighbor %s remote-as %s multi-protocol ipv6-unicast' % (ip_leaf,
                                                        bgp_leaf)
                 if module.params['pn_bfd']:
                     cli += ' bfd '
@@ -463,7 +463,7 @@ def add_bgp_neighbor(module, dict_bgp_as):
             else:
                 cli = clicopy
                 cli += ' vrouter-bgp-add vrouter-name ' + vrouter_leaf
-                cli += ' neighbor %s remote-as %s ' % (ip_spine,
+                cli += ' neighbor %s remote-as %s multi-protocol ipv6-unicast' % (ip_spine,
                                                        bgp_spine)
                 if module.params['pn_bfd']:
                     cli += ' bfd '
