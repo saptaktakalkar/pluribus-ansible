@@ -1,0 +1,2 @@
+#switch_name, l3_port, my_ip, my_as, peer_ip, peer_as
+ansible-leaf4, 4, 11.1.4.1/30, 65005, 11.1.4.2, 65003

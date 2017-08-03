@@ -1,0 +1,147 @@
+---
+
+
+- name: Reset switches
+  hosts: localhost
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Switch config reset
+      pn_switch_config_reset:
+        pn_cliusername: "{{ USERNAME }}"           # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ PASSWORD }}"           # Cli password (value comes from cli_vault.yml).
+        pn_host_list: "{{ groups['all'] }}"        # List of all switches
+        pn_host_ips: "{{ groups['all'] | map('extract', hostvars, ['ansible_host']) | join(',') }}"  # IPs of all switches separated by comma
+      register: reset_out                          # Variable to hold/register output of the above tasks.
+
+    - name: Wait for nvOSd to reboot
+      pause:
+        minutes: 2
+      when: reset_out.changed
+
+
+# This task is to accept eula.
+# It uses pn_eula_accept.py module from library/ directory.
+# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+- name: Zero Touch Provisioning - Eula accept
+  hosts: localhost
+
+  vars_files:
+  - cli_vault.yml
+
+  tasks:
+    - name: Auto accept EULA
+      pn_eula_accept:
+        pn_cliusername: "{{ USERNAME }}"               # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ PASSWORD }}"               # Cli password (value comes from cli_vault.yml).
+        pn_host_list: "{{ groups['all'] }}"            # List of all switches
+        pn_host_ips: "{{ groups['all'] | map('extract', hostvars, ['ansible_host']) | join(',') }}"   # IPs of all switches separated by comma
+
+
+# This play is to configure fabric
+# pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+- name: Create/join fabric
+  hosts: all
+  serial: 1
+
+  vars_files:
+  - cli_vault.yml
+
+  vars:
+  - json_file_path: /tmp/output.json
+
+  tasks:
+    - name: Fabric creation/join
+      dlink_fabric_creation:
+        pn_cliusername: "{{ USERNAME }}"                             # Cli username (value comes from cli_vault.yml).
+        pn_clipassword: "{{ PASSWORD }}"                             # Cli password (value comes from cli_vault.yml).
+        pn_switch: "{{ inventory_hostname }}"                        # Name of the switch on which this task is currently getting executed.
+        pn_switch_list: "{{ groups['switch'] | default([]) }}"       # List of all switches mentioned under [switch] grp in hosts file.
+        pn_fabric_name: "l3-single-ospf"                            # Name of the fabric to create.
+        pn_inband_ip: "172.13.7.0/24"                               # Inband ips to be assigned to switches starting with this value. Default: 172.16.0.0/24.
+        #pn_toggle_40g: "{{ pn_toggle_40g }}"                         # Flag to indicate if 40g ports should be converted to 10g ports or not. Default: True
+        #pn_dns_ip: "{{ pn_dns_ip }}"                                 # Specify DNS-IP value to be assigned to switches.
+        #pn_dns_secondary_ip: "{{ pn_dns_secondary_ip }}"             # Specify DNS-SECONDARY-IP value to be assigned to switches.
+        #pn_domain_name: "{{ pn_domain_name }}"                       # Specify DOMAIN-NAME value to be assigned to switches.
+        #pn_ntp_server: "{{ pn_ntp_server }}"                         # Specify NTP-SERVER value to be assigned to switches.
+      register: ztp_out                                              # Variable to hold/register output of the above tasks.
+      until: ztp_out.failed != true                                  # If the above code fails it will retry the code
+      retries: 3                                                     # This is the retries count
+      delay: 3
+
+    # Copy the json output of the above task in a file
+    - local_action: copy content={{ ztp_out }} dest={{ json_file_path }}
+
+    # Validate the json output stored in the file
+    - local_action: command python validate_json.py {{ json_file_path }}
+      register: validate
+
+    # Remove the above created file
+    - local_action: file path={{ json_file_path }} state=absent
+
+    - fail:
+        msg: "JSON validation failed"
+      when: validate.stdout != "JSON Validation Successful"
+
+    - pause:
+        seconds: 2                                     # Pause playbook execution for specified amount of time.
+
+
+- name: Configure L3 single routed ospf
+  hosts: switch[0]
+
+  vars_files:
+  - cli_vault.yml
+
+  vars:
+  - json_file_path: /tmp/output.json
+  - ospf_csv_file: /home/jenkins/pluribus-ansible/ansible/dlink_leaf4_ospf.csv
+
+
+  tasks:
+    - name: Create vrouter
+      pn_vrouter_creation:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_vrrp_id: "20"
+        pn_switch_list: "{{ groups['switch'] }}"
+      register: vrouter_out
+
+    # Copy the json output of the above task in a file
+    - local_action: copy content={{ vrouter_out }} dest={{ json_file_path }}
+
+    # Validate the json output stored in the file
+    - local_action: command python validate_json.py {{ json_file_path }}
+      register: validate
+
+    # Remove the above created file
+    - local_action: file path={{ json_file_path }} state=absent
+
+    - fail:
+        msg: "JSON validation failed"
+      when: validate.stdout != "JSON Validation Successful"
+
+    - name: Configure OSPF
+      pn_ospf_configuration:
+        pn_cliusername: "{{ USERNAME }}"
+        pn_clipassword: "{{ PASSWORD }}"
+        pn_switch_list: "{{ groups['switch'] }}"
+        pn_ospf_data: "{{ lookup('file', '{{ ospf_csv_file }}') }}"
+      register: ospf_out
+
+    # Copy the json output of the above task in a file
+    - local_action: copy content={{ ospf_out }} dest={{ json_file_path }}
+
+    # Validate the json output stored in the file
+    - local_action: command python validate_json.py {{ json_file_path }}
+      register: validate
+
+    # Remove the above created file
+    - local_action: file path={{ json_file_path }} state=absent
+
+    - fail:
+        msg: "JSON validation failed"
+      when: validate.stdout != "JSON Validation Successful"
+

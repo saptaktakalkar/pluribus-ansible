@@ -1,0 +1,2 @@
+#switch_name, l3_port, interface_ip, area_id
+ansible-leaf4, 2, 10.2.2.1/30, 0
