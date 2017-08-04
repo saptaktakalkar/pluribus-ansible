@@ -133,6 +133,7 @@ def main():
             if leaf_ips:
                 switch_ips += leaf_ips.split(',')
 
+    switch_ips = switch_ips.split(',')
     result = []
     count = 0
 
@@ -179,3 +180,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
