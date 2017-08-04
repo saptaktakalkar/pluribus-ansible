@@ -100,14 +100,38 @@ def main():
     module = AnsibleModule(argument_spec=dict(
         pn_cliusername=dict(required=True, type='str'),
         pn_clipassword=dict(required=True, type='str', no_log=True),
-        pn_host_list=dict(required=True, type='list'),
-        pn_host_ips=dict(required=True, type='str'),
+        pn_spine_list=dict(required=False, type='list', default=[]),
+        pn_leaf_list=dict(required=False, type='list', default=[]),
+        pn_spine_ips=dict(required=False, type='str', default=''),
+        pn_leaf_ips=dict(required=False, type='str', default=''),
+        pn_dlink_switch_list=dict(required=False, type='list', default=[]),
+        pn_dlink_switch_ips=dict(required=False, type='str', default=''),
     ))
 
     username = module.params['pn_cliusername']
     password = module.params['pn_clipassword']
-    switch_list = module.params['pn_host_list']
-    switch_ips = module.params['pn_host_ips']
+    spine_list = module.params['pn_spine_list']
+    leaf_list = module.params['pn_leaf_list']
+    spine_ips = module.params['pn_spine_ips']
+    leaf_ips = module.params['pn_leaf_ips']
+    dlink_switch_list = module.params['pn_dlink_switch_list']
+    dlink_switch_ips = module.params['pn_dlink_switch_ips']
+    switch_list = []
+    switch_ips = []
+
+    if dlink_switch_list:
+        switch_list += dlink_switch_list
+        if dlink_switch_ips:
+            switch_ips += dlink_switch_ips.split(',')
+    else:
+        if spine_list:
+            switch_list += spine_list
+            if spine_ips:
+                switch_ips += spine_ips.split(',')
+        if leaf_list:
+            switch_list += leaf_list
+            if leaf_ips:
+                switch_ips += leaf_ips.split(',')
 
     switch_ips = switch_ips.split(',')
     result = []
