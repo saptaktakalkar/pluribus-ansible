@@ -113,12 +113,12 @@ options:
 
 EXAMPLES = """
 - name: Zero Touch Provisioning - Layer3 setup
-  pn_l3_ztp:
+  pn_l3_ztp_json_ipv6:
     pn_cliusername: "{{ USERNAME }}"
     pn_clipassword: "{{ PASSWORD }}"
-    pn_net_address: '192.168.0.1'
-    pn_cidr: '24'
-    pn_supernet: '30'
+    pn_net_address: 'f:f:f:f:f:f:f:2'
+    pn_cidr: '64'
+    pn_supernet: '126'
 """
 
 RETURN = """
@@ -263,7 +263,12 @@ def update_fabric_network_to_inband(module):
 
 
 def find_network(address, mask):
-    # Initialize net and binary and netmask with addr to get network
+    """
+    Method to find the network address
+    :param address: The address whose network to be found.
+    :param mask: Subnet mask.
+    :return: The network ip.
+    """
     network = []
     for i in range(8):
         network.append(int(address[i], 16) & mask[i])
@@ -272,6 +277,12 @@ def find_network(address, mask):
 
 
 def find_broadcast(network, cidr):
+    """
+    Method to find the broadcast address
+    :param network: The network ip whose broadcast ip to be found.
+    :param cidr: Subnet mask.
+    :return: The broadcast ip.
+    """
     broadcast = list(network)
     broadcast_range = 128 - cidr
     for i in range(broadcast_range):
@@ -280,6 +291,11 @@ def find_broadcast(network, cidr):
     return broadcast
 
 def find_mask(cidr):
+    """
+    Method to find the subnet mask.
+    :param cidr: Subnet mask.
+    :return: The subnet mask
+    """
     mask = [0, 0, 0, 0, 0, 0, 0, 0]
     for i in range(cidr):
         mask[i / 16] += (1 << (15 - i % 16))
@@ -287,7 +303,52 @@ def find_mask(cidr):
     return mask
 
 
+def find_network_supernet(broadcast, cidr, supernet):
+    """
+    Method to find the subnet address
+    :param broadcast: The next subnet to be found after the broadcast ip.
+    :param cidr: Subnet mask.
+    :param supernet: Supernet mask.
+    :return: The next subnet after the broadcast ip.
+    """
+    host_bit = ''
+    for j in range(128-supernet):
+        host_bit += '0'
+
+    subnet_network_bit = []
+    for j in range((supernet/16) + 1):
+        subnet_network_bit.append(str(bin(broadcast[j])[2:]).rjust(16, '0'))
+    subnet_network_bit = ''.join(subnet_network_bit)
+
+    network_bit = subnet_network_bit[:cidr]
+
+    subnet_bit = subnet_network_bit[cidr:supernet]
+    subnet_bit = bin(int(subnet_bit, 2) + 1)[2:].rjust(supernet - cidr, '0')
+
+    final_subnet_binary = network_bit + subnet_bit + host_bit
+    final_subnet = []
+    temp1 = ''
+    for k in range(32):
+        temp = final_subnet_binary[(4 * k):(4 * (k+1))]
+        temp1 += hex(int(temp, 2))[2:]
+
+        if (k % 4) == 3:
+            final_subnet.append(int(temp1, 16))
+            temp1 = ''
+
+    return final_subnet
+
+
 def calculate_link_ip_addresses(address_str, cidr_str, supernet_str, ip_count):
+    """
+    Generator to calculate link IPs for layer 3 fabric.
+    :param address_str: Host/network address.
+    :param cidr_str: Subnet mask.
+    :param supernet_str: Supernet mask.
+    :ip_count: No. of ips required per build.
+    :return: List of available IP addresses that can be assigned to vrouter
+    interfaces for layer 3 fabric.
+    """
     if '::' in address_str:
         add_str = ''
         count = (address_str.count(':'))
@@ -313,30 +374,35 @@ def calculate_link_ip_addresses(address_str, cidr_str, supernet_str, ip_count):
     broadcast = find_broadcast(network, cidr)
 
     mask_supernet = find_mask(supernet)
-    network_supernet = find_network(address, mask_supernet)
+    network_hex = []
+    for i in range(8):
+        network_hex.append(hex(network[i])[2:])
+    network_supernet = find_network(network_hex, mask_supernet)
     broadcast_supernet = find_broadcast(network_supernet, supernet)
 
     initial_ip = network_supernet[7]
-
-
-    while initial_ip <= broadcast[7]:
+    ip_checking = list(network_supernet)
+    while not(initial_ip >= broadcast[7] and ip_checking[:7] == broadcast[:7]):
+        initial_ip = network_supernet[7]
         ips_list = []
         no_of_ip = 0
         while initial_ip <= broadcast_supernet[7] and no_of_ip < ip_count:
-            ip = list(network)
+            ip = list(network_supernet)
             ip[7] = initial_ip
-            for i in range(0,8):
+
+            for i in range(0, 8):
                 ip[i] = hex(ip[i])[2:]
+
             ip = ':'.join(ip)
             ip += '/' + str(supernet)
             ips_list.append(ip)
             initial_ip += 1
             no_of_ip += 1
-
-        network_supernet = list(broadcast_supernet)
-        network_supernet[7] += 1
+            ip_checking = list(broadcast_supernet)
+        initial_ip = broadcast_supernet[7]
+        network_supernet = find_network_supernet(broadcast_supernet, cidr, supernet)
         broadcast_supernet = find_broadcast(network_supernet, supernet)
-        initial_ip = network_supernet[7]
+
         yield ips_list
 
 
@@ -573,7 +639,24 @@ def auto_configure_link_ips(module):
                 continue
 
             while len(leaf_port) > 0:
-                ip_list = available_ips.next()
+                try:
+                    ip_list = available_ips.next()
+                except:
+                    msg = 'Error: ip range exhausted'
+                    results = {
+                        'switch': '',
+                        'output': msg
+                    }
+                    module.exit_json(
+                        unreachable=False,
+                        failed=True,
+                        exception=msg,
+                        summary=results,
+                        task='L3 ZTP',
+                        msg='L3 ZTP failed',
+                        changed=False
+                    )
+
                 lport = leaf_port[0]
                 ip = (ip_list[0] if supernet == '127' else ip_list[1])
                 delete_trunk(module, leaf, lport, spine)

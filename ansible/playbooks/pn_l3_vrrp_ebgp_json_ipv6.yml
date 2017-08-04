@@ -15,8 +15,10 @@
       pn_eula_accept:
         pn_cliusername: "{{ USERNAME }}"               # Cli username (value comes from cli_vault.yml).
         pn_clipassword: "{{ PASSWORD }}"               # Cli password (value comes from cli_vault.yml).
-        pn_host_list: "{{ groups['all'] }}"            # List of all switches
-        pn_host_ips: "{{ groups['all'] | map('extract', hostvars, ['ansible_host']) | join(',') }}"   # IPs of all switches separated by comma
+        pn_spine_list: "{{ groups['spine'] | default([]) }}"            # List of all switches
+        pn_leaf_list: "{{ groups['leaf'] | default([])}}"            # List of all switches
+        pn_leaf_ips: "{{ groups['leaf'] | default('') | map('extract', hostvars, ['ansible_host']) | join(',') }}"   # IPs of all switches separated by comma
+        pn_spine_ips: "{{ groups['spine'] | default('') | map('extract', hostvars, ['ansible_host']) | join(',') }}"
 
 
 # This task is to configure initial ZTP setup on all switches.
@@ -24,7 +26,7 @@
 # pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
 # If the tasks fails then it will retry as specified by retries count.
 - name: Zero Touch Provisioning - Initial setup
-  hosts: all
+  hosts: spine, leaf
   serial: 1
 
   vars_files:
@@ -58,39 +60,39 @@
       retries: 3                     # This is the retries count
       delay: 3
       ignore_errors: yes             # Flag to indicate if we should ignore errors if any.
-#
-#
-## This task is to configure VRRP for Layer 3 using csv lookup.
-## It takes required VRRP config data from csv file.
-## Specify the correct 'csv_file' path under vars section.
-## It uses pn_ztp_vrrp_l3.py module from library/ directory.
-## pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
-## If the tasks fails then it will retry as specified by retries count.
-#- name: Virtual Router Redundancy Protocol (VRRP) - Layer 3 Setup
-#  hosts: spine[0]
-#
-#  vars_files:
-#  - cli_vault.yml
-#
-#  vars:
-#  - csv_file: /etc/ansible/pluribus-ansible/ansible/l3_verizon_setup.csv  # CSV file path
-#
-#  tasks:
-#    - name: Configure VRRP L3 setup
-#      pn_ztp_vrrp_l3_json:
-#        pn_cliusername: "{{ USERNAME }}"  # Cli username (value comes from cli_vault.yml).
-#        pn_clipassword: "{{ PASSWORD }}"  # Cli password (value comes from cli_vault.yml).
-#        pn_spine_list: "{{ groups['spine'] }}"  # List of all spine switches mentioned under [spine] grp in hosts file.
-#        pn_leaf_list: "{{ groups['leaf'] }}"    # List of all leaf switches mentioned under [leaf] grp in hosts file.
-#        pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"  # VRRP Layer3 data specified in CSV file.
-#      register: vrrp_out               # Variable to hold/register output of the above tasks.
-#      until:  vrrp_out.failed != true  # If error pops up it will retry the code
-#      retries: 3                       # This is the retries count
-#      delay: 1
-#      ignore_errors: yes               # Flag to indicate if we should ignore errors if any.
-#
-#    - pause:
-#        seconds: 2                     # Pause playbook execution for specified amount of time.
+##
+##
+### This task is to configure VRRP for Layer 3 using csv lookup.
+### It takes required VRRP config data from csv file.
+### Specify the correct 'csv_file' path under vars section.
+### It uses pn_ztp_vrrp_l3.py module from library/ directory.
+### pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
+### If the tasks fails then it will retry as specified by retries count.
+##- name: Virtual Router Redundancy Protocol (VRRP) - Layer 3 Setup
+##  hosts: spine[0]
+##
+##  vars_files:
+##  - cli_vault.yml
+##
+##  vars:
+##  - csv_file: /etc/ansible/pluribus-ansible/ansible/l3_verizon_setup.csv  # CSV file path
+##
+##  tasks:
+##    - name: Configure VRRP L3 setup
+##      pn_ztp_vrrp_l3_json:
+##        pn_cliusername: "{{ USERNAME }}"  # Cli username (value comes from cli_vault.yml).
+##        pn_clipassword: "{{ PASSWORD }}"  # Cli password (value comes from cli_vault.yml).
+##        pn_spine_list: "{{ groups['spine'] }}"  # List of all spine switches mentioned under [spine] grp in hosts file.
+##        pn_leaf_list: "{{ groups['leaf'] }}"    # List of all leaf switches mentioned under [leaf] grp in hosts file.
+##        pn_csv_data: "{{ lookup('file', '{{ csv_file }}') }}"  # VRRP Layer3 data specified in CSV file.
+##      register: vrrp_out               # Variable to hold/register output of the above tasks.
+##      until:  vrrp_out.failed != true  # If error pops up it will retry the code
+##      retries: 3                       # This is the retries count
+##      delay: 1
+##      ignore_errors: yes               # Flag to indicate if we should ignore errors if any.
+##
+##    - pause:
+##        seconds: 2                     # Pause playbook execution for specified amount of time.
 
 
 # This task is to configure ZTP layer 3 setup.
