@@ -104,6 +104,8 @@ def main():
         pn_leaf_list=dict(required=False, type='list', default=[]),
         pn_spine_ips=dict(required=False, type='str', default=''),
         pn_leaf_ips=dict(required=False, type='str', default=''),
+        pn_dlink_switch_list=dict(required=False, type='list', default=[]),
+        pn_dlink_switch_ips=dict(required=False, type='str', default=''),
     ))
 
     username = module.params['pn_cliusername']
@@ -112,17 +114,24 @@ def main():
     leaf_list = module.params['pn_leaf_list']
     spine_ips = module.params['pn_spine_ips']
     leaf_ips = module.params['pn_leaf_ips']
+    dlink_switch_list = module.params['pn_dlink_switch_list']
+    dlink_switch_ips = module.params['pn_dlink_switch_ips']
     switch_list = []
     switch_ips = []
 
-    if spine_list:
-        switch_list += spine_list
-    if leaf_list:
-        switch_list += leaf_list
-    if spine_ips:
-        switch_ips += spine_ips.split(',')
-    if leaf_ips:
-        switch_ips += leaf_ips.split(',')
+    if dlink_switch_list:
+        switch_list += dlink_switch_list
+        if dlink_switch_ips:
+            switch_ips += dlink_switch_ips.split(',')
+    else:
+        if spine_list:
+            switch_list += spine_list
+            if spine_ips:
+                switch_ips += spine_ips.split(',')
+        if leaf_list:
+            switch_list += leaf_list
+            if leaf_ips:
+                switch_ips += leaf_ips.split(',')
 
     result = []
     count = 0
