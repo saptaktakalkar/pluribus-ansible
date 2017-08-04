@@ -133,7 +133,6 @@ def main():
             if leaf_ips:
                 switch_ips += leaf_ips.split(',')
 
-    switch_ips = switch_ips.split(',')
     result = []
     count = 0
 
