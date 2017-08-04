@@ -100,30 +100,16 @@ def main():
     module = AnsibleModule(argument_spec=dict(
         pn_cliusername=dict(required=True, type='str'),
         pn_clipassword=dict(required=True, type='str', no_log=True),
-        pn_spine_list=dict(required=False, type='list', default=[]),
-        pn_leaf_list=dict(required=False, type='list', default=[]),
-        pn_spine_ips=dict(required=False, type='str', default=''),
-        pn_leaf_ips=dict(required=False, type='str', default=''),
+        pn_host_list=dict(required=True, type='list'),
+        pn_host_ips=dict(required=True, type='str'),
     ))
 
     username = module.params['pn_cliusername']
     password = module.params['pn_clipassword']
-    spine_list = module.params['pn_spine_list']
-    leaf_list = module.params['pn_leaf_list']
-    spine_ips = module.params['pn_spine_ips']
-    leaf_ips = module.params['pn_leaf_ips']
-    switch_list = []
-    switch_ips = []
+    switch_list = module.params['pn_host_list']
+    switch_ips = module.params['pn_host_ips']
 
-    if spine_list:
-        switch_list += spine_list
-    if leaf_list:
-        switch_list += leaf_list
-    if spine_ips:
-        switch_ips += spine_ips.split(',')
-    if leaf_ips:
-        switch_ips += leaf_ips.split(',')
-
+    switch_ips = switch_ips.split(',')
     result = []
     count = 0
 
@@ -170,3 +156,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
