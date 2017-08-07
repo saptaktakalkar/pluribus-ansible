@@ -19,8 +19,6 @@
         pn_dlink_switch_list: "{{ groups['switch'] }}"     # List of all switches
         pn_dlink_switch_ips: "{{ groups['switch'] | map('extract', hostvars, ['ansible_host']) | join(',') }}"   # IPs of all switches separated by comma
 
-    - pause:
-        seconds: 20                                        # Pause playbook execution for specified amount of time.
 
 # This play is to configure fabric
 # pn_cliusername and pn_clipassword comes from vars file - cli_vault.yml
