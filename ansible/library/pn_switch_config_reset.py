@@ -134,7 +134,7 @@ def main():
                 'switch': switch_list[count],
                 'output': 'Switch is unreachable'
             })
-        elif 'permission denied' not in err and not rc:
+        else:
             cli = 'sshpass -p %s %s %s@%s ' % (password, ssh_prefix, username, ip)
             cli += 'shell /usr/bin/cli --quiet '
             cli += '--user %s:%s --no-login-prompt ' % (username, password)
@@ -148,21 +148,6 @@ def main():
             result.append({
                 'switch': switch_list[count],
                 'output': 'Switch reset completed'
-            })
-        else:
-            cli = 'sshpass -p %s %s %s@%s ' % (password, ssh_prefix, username, ip)
-            cli += 'shell /usr/bin/cli --quiet '
-            cli += '--user %s:%s --no-login-prompt ' % (username, password)
-            cli += 'switch-config-reset'                
-
-            cli = shlex.split(cli)
-            module.run_command(cli)
-            changed_flag.append(True)
-            reset_ips.append(ip)
-
-            result.append({
-                'switch': switch_list[count],
-                'output': 'Switch reset completed. (This is an unhandled case. Please forward the log to the technical team)\n RC: %s\n ERR: %s\n OUT: %s' % (rc, err, out)
             })
 
         count += 1
