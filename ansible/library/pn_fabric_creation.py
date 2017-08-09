@@ -558,7 +558,7 @@ def main():
         pn_ntp_server=dict(required=False, type='str'),
         pn_web_api=dict(type='bool', default=True),
         pn_stp=dict(required=False, type='bool', default=True), )
-                          )
+    )
 
     fabric_name = module.params['pn_fabric_name']
     fabric_network = module.params['pn_fabric_network']

@@ -525,7 +525,7 @@ def main():
         pn_dns_secondary_ip=dict(required=False, type='str', default=''),
         pn_domain_name=dict(required=False, type='str', default=''),
         pn_ntp_server=dict(required=False, type='str', default=''), )
-                          )
+    )
 
     global CHANGED_FLAG
     results = []
