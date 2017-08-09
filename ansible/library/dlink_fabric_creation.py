@@ -493,6 +493,24 @@ def configure_fabric(module):
     return output
 
 
+def update_switch_names(module, switch_name):
+    """
+    Method to update switch names.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch_name: Name to assign to the switch.
+    :return: String describing switch name got modified or not.
+    """
+    cli = pn_cli(module)
+    cli += ' switch-setup-show format switch-name '
+    if switch_name == run_cli(module, cli).split()[1]:
+        return ' Switch name is same as hostname! '
+    else:
+        cli = pn_cli(module)
+        cli += ' switch-setup-modify switch-name ' + switch_name
+        run_cli(module, cli)
+        return ' Updated switch name to match hostname! '
+
+
 def main():
     """ This section is for arguments parsing """
     module = AnsibleModule(argument_spec=dict(
@@ -507,11 +525,14 @@ def main():
         pn_dns_secondary_ip=dict(required=False, type='str', default=''),
         pn_domain_name=dict(required=False, type='str', default=''),
         pn_ntp_server=dict(required=False, type='str', default=''), )
-    )
+                          )
 
     global CHANGED_FLAG
     results = []
     switch = module.params['pn_switch']
+
+    # Update switch names to match host names from hosts file
+    update_switch_names(module, switch)
 
     # Create/join fabric
     out = configure_fabric(module)
@@ -570,4 +591,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

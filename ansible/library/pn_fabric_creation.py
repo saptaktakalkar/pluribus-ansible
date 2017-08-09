@@ -283,6 +283,24 @@ def make_switch_setup_static(module):
         run_cli(module, cli)
 
 
+def update_switch_names(module, switch_name):
+    """
+    Method to update switch names.
+    :param module: The Ansible module to fetch input parameters.
+    :param switch_name: Name to assign to the switch.
+    :return: String describing switch name got modified or not.
+    """
+    cli = pn_cli(module)
+    cli += ' switch-setup-show format switch-name '
+    if switch_name == run_cli(module, cli).split()[1]:
+        return ' Switch name is same as hostname! '
+    else:
+        cli = pn_cli(module)
+        cli += ' switch-setup-modify switch-name ' + switch_name
+        run_cli(module, cli)
+        return ' Updated switch name to match hostname! '
+
+
 def modify_stp_local(module, modify_flag):
     """
     Method to enable/disable STP (Spanning Tree Protocol) on a switch.
@@ -540,7 +558,7 @@ def main():
         pn_ntp_server=dict(required=False, type='str'),
         pn_web_api=dict(type='bool', default=True),
         pn_stp=dict(required=False, type='bool', default=True), )
-    )
+                          )
 
     fabric_name = module.params['pn_fabric_name']
     fabric_network = module.params['pn_fabric_network']
@@ -553,6 +571,10 @@ def main():
     # Make switch setup static
     if module.params['pn_static_setup']:
         make_switch_setup_static(module)
+
+    # Update switch names to match host names from hosts file
+    if 'Updated' in update_switch_names(module, current_switch):
+        CHANGED_FLAG.append(True)
 
     # Create/join fabric
     if 'already in the fabric' not in create_or_join_fabric(module, fabric_name,
@@ -638,4 +660,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
