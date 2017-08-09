@@ -148,7 +148,7 @@ def main():
             cli = 'sshpass -p admin ssh -o StrictHostKeyChecking=no '
             cli += '%s@%s -- --quiet --script-password ' % (username, ip)
             cli += 'switch-setup-modify password %s ' % password
-            cli += 'eula-accepted true'
+            cli += 'switch-name %s eula-accepted true' % switch_list[count]
 
             cli = shlex.split(cli)
             module.run_command(cli)
